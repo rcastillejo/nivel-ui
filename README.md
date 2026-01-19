@@ -1,36 +1,169 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nivel Gym - Sistema de Reservas
 
-## Getting Started
+Sistema de reservas para gimnasio desarrollado en Next.js con TypeScript y Tailwind CSS.
 
-First, run the development server:
+## 🌟 Características
+
+### Para Clientes
+- **Reserva en 2 pasos**: Seleccionar fecha y luego horario/entrenador
+- **Calendario interactivo** para selección de fechas
+- **Grid de horarios** mostrando disponibilidad de entrenadores
+- **Modales de confirmación** para un flujo de reserva profesional
+- **Interfaz responsive** que funciona en todos los dispositivos
+
+### Para Entrenadores
+- **Registro de horario**: Configurar disponibilidad semanal de forma visual
+- **Vista de citas**: Calendario semanal con todas las reservas
+- **Gestión de especialización**: Categorización por tipo de entrenamiento
+- **Dashboard intuitivo** con navegación por pestañas
+
+## 🚀 Demo
+
+El sitio está desplegado en GitHub Pages: [https://rcastillejo.github.io/nivel-ui](https://rcastillejo.github.io/nivel-ui)
+
+## 🛠️ Tecnologías
+
+- **Next.js 16** - Framework React con App Router
+- **TypeScript** - Tipado estático
+- **Tailwind CSS** - Styling utility-first
+- **React DatePicker** - Selección de fechas
+- **date-fns** - Manipulación de fechas
+- **GitHub Pages** - Hosting estático
+
+## 📦 Instalación Local
 
 ```bash
+# Clonar el repositorio
+git clone https://github.com/rcastillejo/nivel-ui.git
+cd nivel-ui
+
+# Instalar dependencias
+npm install
+
+# Ejecutar en modo desarrollo
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Abrir en el navegador
+open http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🏗️ Build y Despliegue
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Build Local
+```bash
+# Generar build estático
+npm run build
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Los archivos estáticos se generan en la carpeta 'out'
+```
 
-## Learn More
+### Despliegue en GitHub Pages
+```bash
+# Desplegar directamente (requiere configuración de gh-pages)
+npm run deploy
+```
 
-To learn more about Next.js, take a look at the following resources:
+### Despliegue Automático
+El proyecto está configurado con GitHub Actions para despliegue automático:
+- Se ejecuta al hacer push a la rama `main`
+- Construye la aplicación estáticamente
+- Despliega automáticamente en GitHub Pages
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📁 Estructura del Proyecto
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+├── app/
+│   ├── page.tsx                 # Página principal
+│   ├── trainer/
+│   │   └── page.tsx            # Dashboard del entrenador
+│   └── layout.tsx              # Layout principal
+├── components/
+│   ├── BookingWizard.tsx       # Flujo de reservas para clientes
+│   ├── CalendarStep.tsx        # Paso 1: Selección de fecha
+│   ├── TimeGridStep.tsx        # Paso 2: Selección de horario
+│   ├── ConfirmationModal.tsx   # Modal de confirmación de reserva
+│   ├── SuccessModal.tsx        # Modal de reserva exitosa
+│   └── trainer/
+│       ├── TrainerSchedule.tsx     # Registro de horarios
+│       ├── TrainerAppointments.tsx # Vista de citas
+│       ├── SaveScheduleModal.tsx   # Modal de confirmación de horario
+│       └── ScheduleSavedModal.tsx  # Modal de horario guardado
+```
 
-## Deploy on Vercel
+## 🎯 Funcionalidades Implementadas
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### ✅ Sistema de Reservas (Cliente)
+- [x] Selección de fecha con calendario
+- [x] Grid de horarios por entrenador
+- [x] Modal de confirmación de reserva
+- [x] Modal de éxito con detalles
+- [x] Validaciones de formulario
+- [x] Interfaz responsive
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### ✅ Panel del Entrenador
+- [x] Registro de horarios semanales
+- [x] Vista de citas en calendario
+- [x] Modal de confirmación para guardar horario
+- [x] Modal de éxito al guardar
+- [x] Navegación entre secciones
+- [x] Datos mock para demo
+
+### ✅ Configuración y Despliegue
+- [x] Configuración para exportación estática
+- [x] GitHub Actions para CI/CD
+- [x] Optimización para GitHub Pages
+- [x] Build automático y despliegue
+
+## 🎨 Diseño
+
+- **Estilo**: Minimalista y profesional
+- **Colores**: Azul primario con acentos verdes para confirmaciones
+- **Tipografía**: System fonts para mejor rendimiento
+- **Iconos**: Heroicons SVG integrados
+- **Layout**: Responsive con breakpoints móvil/tablet/desktop
+
+## 📱 Responsive Design
+
+- **Móvil (< 768px)**: Layout de una columna, navegación optimizada
+- **Tablet (768px - 1024px)**: Layout de dos columnas para formularios
+- **Desktop (> 1024px)**: Layout completo con todas las características
+
+## 🔧 Scripts Disponibles
+
+```bash
+npm run dev          # Desarrollo local
+npm run build        # Build de producción
+npm run start        # Servidor de producción local
+npm run lint         # Linting con ESLint
+npm run export       # Exportación estática
+npm run deploy       # Despliegue a GitHub Pages
+```
+
+## 🌐 Configuración de GitHub Pages
+
+El proyecto está configurado para despliegue automático en GitHub Pages:
+
+1. **Base Path**: `/nivel-ui` para el repositorio GitHub
+2. **Static Export**: Generación de archivos estáticos
+3. **GitHub Actions**: Workflow automático en `.github/workflows/deploy.yml`
+4. **Asset Optimization**: Imágenes y recursos optimizados
+
+## 🚀 Próximas Mejoras
+
+- [ ] Integración con backend real (API)
+- [ ] Autenticación de usuarios
+- [ ] Notificaciones por email
+- [ ] Sistema de pagos
+- [ ] Historial de reservas
+- [ ] Cancelación de citas
+- [ ] Ratings y reviews
+- [ ] Panel de administración
+
+## 📄 Licencia
+
+Este proyecto es un prototipo desarrollado para demostración.
+
+---
+
+Desarrollado con ❤️ por [Ricardo Castillejo](https://github.com/rcastillejo)
