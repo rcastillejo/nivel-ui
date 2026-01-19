@@ -23,27 +23,15 @@ interface TimeGridStepProps {
 const trainers: Trainer[] = [
   {
     id: 'trainer1',
-    name: 'Carlos Mendoza',
-    specialization: 'Fuerza y Acondicionamiento',
+    name: 'Entrenador Diego Lamas',
+    specialization: '',
     availableSlots: ['09:00', '10:00', '11:00', '16:00', '17:00', '18:00']
   },
   {
     id: 'trainer2',
-    name: 'Ana Torres',
-    specialization: 'Yoga y Flexibilidad',
+    name: 'Entrenador Jeanpierre Casas',
+    specialization: '',
     availableSlots: ['08:00', '09:00', '15:00', '16:00', '19:00', '20:00']
-  },
-  {
-    id: 'trainer3',
-    name: 'Miguel Rodriguez',
-    specialization: 'CrossFit y HIIT',
-    availableSlots: ['07:00', '08:00', '12:00', '17:00', '18:00', '19:00']
-  },
-  {
-    id: 'trainer4',
-    name: 'Laura García',
-    specialization: 'Pilates y Core',
-    availableSlots: ['10:00', '11:00', '14:00', '15:00', '16:00', '17:00']
   }
 ];
 
@@ -62,13 +50,19 @@ export default function TimeGridStep({
   };
 
   return (
-    <div>
+    <div className="border-t border-gray-200 pt-8">
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Seleccionar Horario
+          Seleccionar Horario y Entrenador
         </h2>
-        <p className="text-gray-600">
-          Fecha seleccionada: <span className="font-semibold text-gray-900 capitalize">{formattedDate}</span>
+        <div className="inline-flex items-center px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+          <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span className="text-blue-800 font-medium capitalize">{formattedDate}</span>
+        </div>
+        <p className="text-sm text-gray-500 mt-2">
+          Selecciona un horario disponible para completar tu reserva
         </p>
       </div>
 
@@ -77,7 +71,6 @@ export default function TimeGridStep({
           <div key={trainer.id} className="border border-gray-200 rounded-lg p-4">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-gray-900">{trainer.name}</h3>
-              <p className="text-sm text-gray-600">{trainer.specialization}</p>
             </div>
             
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
@@ -104,36 +97,72 @@ export default function TimeGridStep({
       </div>
 
       {selectedTrainer && selectedTime && (
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h4 className="font-semibold text-blue-900 mb-2">Resumen de la reserva:</h4>
-          <div className="text-blue-800">
-            <p><strong>Fecha:</strong> {formattedDate}</p>
-            <p><strong>Entrenador:</strong> {selectedTrainer}</p>
-            <p><strong>Hora:</strong> {selectedTime}</p>
+        <div className="mt-8 p-6 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl shadow-sm">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h4 className="text-xl font-semibold text-gray-900 mb-2">
+              Confirmar tu Reserva
+            </h4>
+            <p className="text-gray-600">
+              Revisa los detalles de tu sesión de entrenamiento
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg p-4 mb-6 border border-gray-200">
+            <h5 className="font-semibold text-gray-900 mb-3 text-center">Detalles de la reserva</h5>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-gray-600 font-medium">Fecha:</span>
+                <span className="font-semibold text-gray-900 capitalize">{formattedDate}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-gray-600 font-medium">Entrenador:</span>
+                <span className="font-semibold text-gray-900">{selectedTrainer}</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-gray-600 font-medium">Hora:</span>
+                <span className="font-semibold text-gray-900">{selectedTime}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <h6 className="font-semibold text-blue-900 mb-1">Importante:</h6>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Llega 10 minutos antes de tu sesión</li>
+                  <li>• Trae agua y una toalla</li>
+                  <li>• Usa ropa deportiva adecuada</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={() => onTimeSelect('', '')}
+              className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Modificar Selección
+            </button>
+            <button
+              onClick={onConfirm}
+              className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-md"
+            >
+              Confirmar Reserva
+            </button>
           </div>
         </div>
       )}
 
-      <div className="flex justify-between mt-8">
-        <button
-          onClick={onBack}
-          className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
-        >
-          Volver
-        </button>
-        
-        <button
-          onClick={onConfirm}
-          disabled={!selectedTrainer || !selectedTime}
-          className={`px-8 py-3 rounded-lg font-semibold transition-colors ${
-            selectedTrainer && selectedTime
-              ? 'bg-green-600 text-white hover:bg-green-700'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          Confirmar Reserva
-        </button>
-      </div>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
@@ -14,15 +16,14 @@ export default function CalendarStep({ selectedDate, onDateSelect }: CalendarSte
 
   const handleDateChange = (date: Date | null) => {
     setTempDate(date);
-  };
-
-  const handleContinue = () => {
-    if (tempDate) {
-      onDateSelect(tempDate);
+    if (date) {
+      onDateSelect(date);
     }
   };
 
   const today = new Date();
+  const minDate = new Date();
+  minDate.setDate(minDate.getDate() + 2); // Minimum 2 days from today
   const maxDate = new Date();
   maxDate.setMonth(maxDate.getMonth() + 2); // Allow booking up to 2 months in advance
 
@@ -31,8 +32,11 @@ export default function CalendarStep({ selectedDate, onDateSelect }: CalendarSte
       <h2 className="text-2xl font-bold text-gray-900 mb-2">
         Seleccionar Fecha
       </h2>
-      <p className="text-gray-600 mb-8">
+      <p className="text-gray-600 mb-2">
         Elige el día para tu sesión de entrenamiento
+      </p>
+      <p className="text-sm text-orange-600 mb-6">
+        Las reservas deben realizarse con mínimo 2 días de anticipación
       </p>
 
       <div className="flex justify-center mb-8">
@@ -40,7 +44,7 @@ export default function CalendarStep({ selectedDate, onDateSelect }: CalendarSte
           <DatePicker
             selected={tempDate}
             onChange={handleDateChange}
-            minDate={today}
+            minDate={minDate}
             maxDate={maxDate}
             inline
             showMonthDropdown
@@ -64,19 +68,18 @@ export default function CalendarStep({ selectedDate, onDateSelect }: CalendarSte
         </div>
       </div>
 
-      <div className="flex justify-center">
-        <button
-          onClick={handleContinue}
-          disabled={!tempDate}
-          className={`px-8 py-3 rounded-lg font-semibold transition-colors ${
-            tempDate
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          Continuar
-        </button>
-      </div>
+      {tempDate && (
+        <div className="text-center mt-4">
+          <div className="inline-flex items-center px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
+            <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="text-green-800 font-medium">
+              {format(tempDate, "EEEE, d 'de' MMMM", { locale: es })}
+            </span>
+          </div>
+        </div>
+      )}
 
       <style jsx global>{`
         .custom-calendar {

@@ -55,7 +55,9 @@ export default function BookingWizard() {
   };
 
   const handleShowModal = () => {
-    setShowModal(true);
+    // Skip confirmation modal and go directly to success
+    setConfirmedBooking({ ...bookingData });
+    setShowSuccessModal(true);
   };
 
   const handleCloseModal = () => {
@@ -86,39 +88,42 @@ export default function BookingWizard() {
       <div className="flex items-center justify-center mb-8">
         <div className="flex items-center space-x-4">
           <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-            currentStep === 'calendar' ? 'bg-blue-600 text-white' : 'bg-blue-600 text-white'
+            bookingData.selectedDate ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'
           }`}>
-            1
+            {bookingData.selectedDate ? '✓' : '1'}
           </div>
           <div className={`w-12 h-0.5 ${
-            currentStep === 'time' ? 'bg-blue-600' : 'bg-gray-300'
+            bookingData.selectedDate ? 'bg-green-600' : 'bg-gray-300'
           }`}></div>
           <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-            currentStep === 'time' ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
+            bookingData.selectedDate && bookingData.selectedTime ? 'bg-green-600 text-white' : 
+            bookingData.selectedDate ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
           }`}>
-            2
+            {bookingData.selectedDate && bookingData.selectedTime ? '✓' : '2'}
           </div>
         </div>
       </div>
 
-      {/* Step content */}
-      {currentStep === 'calendar' && (
+      {/* Unified step content */}
+      <div className="space-y-8">
+        {/* Step 1 - Calendar (always visible) */}
         <CalendarStep
           selectedDate={bookingData.selectedDate}
           onDateSelect={handleDateSelect}
         />
-      )}
 
-      {currentStep === 'time' && (
-        <TimeGridStep
-          selectedDate={bookingData.selectedDate!}
-          selectedTrainer={bookingData.selectedTrainer}
-          selectedTime={bookingData.selectedTime}
-          onTimeSelect={handleTimeSelect}
-          onBack={handleBackToCalendar}
-          onConfirm={handleShowModal}
-        />
-      )}
+        {/* Step 2 - Time Grid (visible after date selection) */}
+        {bookingData.selectedDate && (
+          <TimeGridStep
+            selectedDate={bookingData.selectedDate}
+            selectedTrainer={bookingData.selectedTrainer}
+            selectedTime={bookingData.selectedTime}
+            onTimeSelect={handleTimeSelect}
+            onBack={handleBackToCalendar}
+            onConfirm={handleShowModal}
+          />
+        )}
+      </div>
 
       {/* Confirmation Modal */}
       {showModal && bookingData.selectedDate && bookingData.selectedTrainer && bookingData.selectedTime && (
