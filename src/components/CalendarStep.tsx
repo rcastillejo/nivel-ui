@@ -30,13 +30,10 @@ export default function CalendarStep({ selectedDate, onDateSelect }: CalendarSte
   return (
     <div className="text-center">
       <h2 className="text-2xl font-bold text-gray-900 mb-2">
-        Seleccionar Fecha
+        ¿Cuándo quieres entrenar?
       </h2>
-      <p className="text-gray-600 mb-2">
-        Elige el día para tu sesión de entrenamiento
-      </p>
       <p className="text-sm text-orange-600 mb-6">
-        Las reservas deben realizarse con mínimo 2 días de anticipación
+        Reservas con mínimo 2 días de anticipación
       </p>
 
       <div className="flex justify-center mb-8">
@@ -74,7 +71,7 @@ export default function CalendarStep({ selectedDate, onDateSelect }: CalendarSte
             <svg className="w-5 h-5 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <span className="text-green-800 font-medium">
+            <span className="text-green-800 font-medium capitalize">
               {format(tempDate, "EEEE, d 'de' MMMM", { locale: es })}
             </span>
           </div>

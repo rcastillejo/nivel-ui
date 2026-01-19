@@ -40,45 +40,27 @@ export default function SuccessModal({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h4 className="text-lg font-semibold text-gray-900 mb-2">
-              ¡Tu sesión ha sido reservada exitosamente!
-            </h4>
-            <p className="text-gray-600">
-              Te enviaremos un email de confirmación con todos los detalles.
-            </p>
           </div>
 
-          {/* Booking details */}
+          {/* Booking details - Simplified */}
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-            <h4 className="font-semibold text-green-900 mb-3 text-center">Detalles de tu reserva</h4>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-green-700">Fecha:</span>
-                <span className="font-medium text-green-900 capitalize">{formattedDate}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-green-700">Entrenador:</span>
-                <span className="font-medium text-green-900">{selectedTrainer}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-green-700">Hora:</span>
-                <span className="font-medium text-green-900">{selectedTime}</span>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-green-900 mb-2">{selectedTrainer}</div>
+              <div className="text-green-800">
+                <div className="capitalize">{format(selectedDate, "EEEE, d 'de' MMMM", { locale: es })}</div>
+                <div className="text-xl font-bold text-green-800 mt-1">{selectedTime}</div>
               </div>
             </div>
           </div>
 
-          {/* Additional info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <h5 className="font-semibold text-blue-900 mb-2">Recordatorio:</h5>
-            <ul className="text-sm text-blue-800 space-y-1">
-              <li>• Llega 10 minutos antes de tu sesión</li>
-              <li>• Trae agua y una toalla</li>
-              <li>• Usa ropa deportiva adecuada</li>
-            </ul>
-          </div>
-
-          <div className="text-sm text-gray-500 text-center">
-            <p>Si necesitas cancelar o modificar tu reserva, contáctanos con al menos 2 horas de anticipación.</p>
+          <div className="text-center text-sm text-gray-600 mb-4">
+            <p>📧 Recibirás un email de confirmación</p>
+            <p className="mt-2 text-xs flex items-center justify-center gap-1">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Llega 10 min antes • Trae agua y toalla
+            </p>
           </div>
         </div>
 
@@ -86,9 +68,9 @@ export default function SuccessModal({
         <div className="p-6 border-t border-gray-200">
           <button
             onClick={onClose}
-            className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            className="w-full px-4 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors"
           >
-            Hacer Nueva Reserva
+            Salir
           </button>
         </div>
       </div>

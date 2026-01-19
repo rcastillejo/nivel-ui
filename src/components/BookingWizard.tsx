@@ -84,25 +84,19 @@ export default function BookingWizard() {
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
-      {/* Progress indicator */}
-      <div className="flex items-center justify-center mb-8">
-        <div className="flex items-center space-x-4">
-          <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-            bookingData.selectedDate ? 'bg-green-600 text-white' : 'bg-blue-600 text-white'
-          }`}>
-            {bookingData.selectedDate ? '✓' : '1'}
-          </div>
-          <div className={`w-12 h-0.5 ${
-            bookingData.selectedDate ? 'bg-green-600' : 'bg-gray-300'
-          }`}></div>
-          <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-            bookingData.selectedDate && bookingData.selectedTime ? 'bg-green-600 text-white' : 
-            bookingData.selectedDate ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-          }`}>
-            {bookingData.selectedDate && bookingData.selectedTime ? '✓' : '2'}
+      {/* Progress indicator - simplified */}
+      {bookingData.selectedDate && (
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center px-4 py-2 bg-green-50 border border-green-200 rounded-full text-sm">
+            <svg className="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="text-green-800 font-medium">
+              {bookingData.selectedTime ? 'Reserva lista para confirmar' : 'Fecha seleccionada'}
+            </span>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Unified step content */}
       <div className="space-y-8">
