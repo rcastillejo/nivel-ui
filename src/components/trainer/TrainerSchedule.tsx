@@ -15,20 +15,27 @@ interface DaySchedule {
 }
 
 const timeSlots = [
-  '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
-  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
-  '19:00', '20:00'
+  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'
 ];
 
 const daysOfWeek = [
-  'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
+  'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'
 ];
+
+// Horarios específicos por día
+const getTimeSlotsForDay = (dayIndex: number) => {
+  if (dayIndex === 5) { // Sábado (índice 5)
+    return timeSlots.slice(0, 8); // De 06:00 a 13:00 (último horario 12:00)
+  }
+  return timeSlots.slice(0, 15); // Lunes a Viernes: De 06:00 a 20:00 (último horario 8pm)
+};
 
 export default function TrainerSchedule() {
   const [schedule, setSchedule] = useState<DaySchedule[]>(
-    daysOfWeek.map(day => ({
+    daysOfWeek.map((day, dayIndex) => ({
       day,
-      slots: timeSlots.map(time => ({
+      slots: getTimeSlotsForDay(dayIndex).map(time => ({
         time,
         available: false
       }))
@@ -36,7 +43,7 @@ export default function TrainerSchedule() {
   );
 
   const [trainerInfo, setTrainerInfo] = useState({
-    name: '',
+    name: 'Diego Lamas',
     specialization: ''
   });
 
@@ -101,35 +108,19 @@ export default function TrainerSchedule() {
       {/* Trainer Info Section */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="text-lg font-semibold text-blue-900 mb-4">Información del Entrenador</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nombre
+              Entrenador
             </label>
-            <input
-              type="text"
+            <select
               value={trainerInfo.name}
               onChange={(e) => setTrainerInfo(prev => ({ ...prev, name: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Ingresa tu nombre"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Especialización
-            </label>
-            <select
-              value={trainerInfo.specialization}
-              onChange={(e) => setTrainerInfo(prev => ({ ...prev, specialization: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">Selecciona una especialización</option>
-              <option value="Fuerza y Acondicionamiento">Fuerza y Acondicionamiento</option>
-              <option value="Yoga y Flexibilidad">Yoga y Flexibilidad</option>
-              <option value="CrossFit y HIIT">CrossFit y HIIT</option>
-              <option value="Pilates y Core">Pilates y Core</option>
-              <option value="Cardio y Resistencia">Cardio y Resistencia</option>
-              <option value="Entrenamiento Funcional">Entrenamiento Funcional</option>
+              <option value="">Selecciona un entrenador</option>
+              <option value="Diego Lamas">Diego Lamas</option>
+              <option value="Jeanpierre Casas">Jeanpierre Casas</option>
             </select>
           </div>
         </div>
@@ -164,26 +155,35 @@ export default function TrainerSchedule() {
           </div>
 
           {/* Time slots grid */}
-          {timeSlots.map((time, timeIndex) => (
+          {timeSlots.slice(0, Math.max(...daysOfWeek.map((_, dayIndex) => getTimeSlotsForDay(dayIndex).length))).map((time, timeIndex) => (
             <div key={time} className="grid grid-cols-8 border-b border-gray-100 hover:bg-gray-50">
               <div className="p-3 text-center font-medium text-gray-600 bg-gray-25">
                 {time}
               </div>
               {daysOfWeek.map((day, dayIndex) => {
+                const daySlots = getTimeSlotsForDay(dayIndex);
                 const slot = schedule[dayIndex].slots[timeIndex];
+                const isTimeAvailable = timeIndex < daySlots.length;
+                
                 return (
                   <div key={`${day}-${time}`} className="p-2 text-center">
-                    <button
-                      onClick={() => handleSlotToggle(dayIndex, timeIndex)}
-                      className={`w-8 h-8 rounded-full border-2 transition-all duration-200 ${
-                        slot.available
-                          ? 'bg-green-500 border-green-500 text-white'
-                          : 'bg-white border-gray-300 hover:border-green-400'
-                      }`}
-                      title={slot.available ? 'Disponible - Click para desactivar' : 'No disponible - Click para activar'}
-                    >
-                      {slot.available ? '✓' : ''}
-                    </button>
+                    {isTimeAvailable ? (
+                      <button
+                        onClick={() => handleSlotToggle(dayIndex, timeIndex)}
+                        className={`w-8 h-8 rounded-full border-2 transition-all duration-200 ${
+                          slot && slot.available
+                            ? 'bg-green-500 border-green-500 text-white'
+                            : 'bg-white border-gray-300 hover:border-green-400'
+                        }`}
+                        title={slot && slot.available ? 'Disponible - Click para desactivar' : 'No disponible - Click para activar'}
+                      >
+                        {slot && slot.available ? '✓' : ''}
+                      </button>
+                    ) : (
+                      <div className="w-8 h-8 flex items-center justify-center">
+                        <span className="text-gray-300 text-sm">-</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -212,9 +212,9 @@ export default function TrainerSchedule() {
         </div>
         <button
           onClick={handleSaveSchedule}
-          disabled={!trainerInfo.name || !trainerInfo.specialization || getTotalAvailableSlots() === 0}
+          disabled={!trainerInfo.name || getTotalAvailableSlots() === 0}
           className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
-            trainerInfo.name && trainerInfo.specialization && getTotalAvailableSlots() > 0
+            trainerInfo.name && getTotalAvailableSlots() > 0
               ? 'bg-blue-600 text-white hover:bg-blue-700'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}

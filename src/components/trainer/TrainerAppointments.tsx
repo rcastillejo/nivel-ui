@@ -37,7 +37,7 @@ const mockAppointments: Appointment[] = [
     date: new Date(2026, 0, 22), // January 22, 2026
     time: '10:00',
     duration: 60,
-    status: 'pending'
+    status: 'cancelled'
   },
   {
     id: '4',
@@ -53,7 +53,7 @@ const mockAppointments: Appointment[] = [
     date: new Date(2026, 0, 25), // January 25, 2026
     time: '11:00',
     duration: 60,
-    status: 'confirmed'
+    status: 'cancelled'
   }
 ];
 
@@ -199,10 +199,6 @@ export default function TrainerAppointments() {
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 bg-green-100 border border-green-200 rounded"></div>
           <span>Confirmada</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 bg-yellow-100 border border-yellow-200 rounded"></div>
-          <span>Pendiente</span>
         </div>
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 bg-red-100 border border-red-200 rounded"></div>

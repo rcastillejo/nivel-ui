@@ -3,7 +3,7 @@
 interface ScheduleSavedModalProps {
   isOpen: boolean;
   trainerName: string;
-  specialization: string;
+  specialization?: string;
   totalHours: number;
   onClose: () => void;
 }
@@ -49,15 +49,11 @@ export default function ScheduleSavedModal({
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-green-700">Entrenador:</span>
-                <span className="font-medium text-green-900">{trainerName}</span>
+                <span className="font-medium text-green-900">Entrenador {trainerName}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-green-700">Especialización:</span>
-                <span className="font-medium text-green-900">{specialization}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-green-700">Horas disponibles:</span>
-                <span className="font-medium text-green-900">{totalHours} horas semanales</span>
+                <span className="text-green-700">Horas configuradas:</span>
+                <span className="font-medium text-green-900">{totalHours} horas</span>
               </div>
             </div>
           </div>

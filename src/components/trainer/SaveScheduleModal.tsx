@@ -3,7 +3,7 @@
 interface SaveScheduleModalProps {
   isOpen: boolean;
   trainerName: string;
-  specialization: string;
+  specialization?: string;
   totalHours: number;
   onConfirm: () => void;
   onCancel: () => void;
@@ -48,11 +48,7 @@ export default function SaveScheduleModal({
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-blue-700">Entrenador:</span>
-                <span className="font-medium text-blue-900">{trainerName}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-blue-700">Especialización:</span>
-                <span className="font-medium text-blue-900">{specialization}</span>
+                <span className="font-medium text-blue-900">Entrenador {trainerName}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-blue-700">Horas disponibles:</span>
