@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import BookingWizard from '@/components/BookingWizard';
+import BookingView from '@/components/BookingView';
 
 export default function ClientPage() {
   return (
@@ -13,7 +13,7 @@ export default function ClientPage() {
               Nivel Gym - Reservas
             </h1>
             <p className="text-lg text-gray-600">
-              Reserva tu sesión de entrenamiento
+              Reserva tu sesión de entrenamiento con patrón MVVM
             </p>
           </div>
           <Link 
@@ -24,7 +24,7 @@ export default function ClientPage() {
           </Link>
         </div>
 
-        <BookingWizard />
+        <BookingView />
       </div>
     </main>
   );

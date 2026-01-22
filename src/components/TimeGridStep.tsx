@@ -2,13 +2,8 @@
 
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-
-interface Trainer {
-  id: string;
-  name: string;
-  specialization: string;
-  availableSlots: string[];
-}
+import { useData } from '@/core/providers/DataProvider';
+import { Trainer } from '@/core/types';
 
 interface TimeGridStepProps {
   selectedDate: Date;
@@ -19,22 +14,6 @@ interface TimeGridStepProps {
   onConfirm: () => void;
 }
 
-// Mock data for trainers
-const trainers: Trainer[] = [
-  {
-    id: 'trainer1',
-    name: 'Entrenador Diego Lamas',
-    specialization: '',
-    availableSlots: ['09:00', '10:00', '11:00', '16:00', '17:00', '18:00']
-  },
-  {
-    id: 'trainer2',
-    name: 'Entrenador Jeanpierre Casas',
-    specialization: '',
-    availableSlots: ['08:00', '09:00', '15:00', '16:00', '19:00', '20:00']
-  }
-];
-
 export default function TimeGridStep({
   selectedDate,
   selectedTrainer,
@@ -43,11 +22,23 @@ export default function TimeGridStep({
   onBack,
   onConfirm
 }: TimeGridStepProps) {
+  const { trainers, isLoading } = useData();
   const formattedDate = format(selectedDate, "EEEE, d 'de' MMMM", { locale: es });
 
   const handleSlotClick = (trainerId: string, trainerName: string, time: string) => {
     onTimeSelect(trainerName, time);
   };
+
+  if (isLoading) {
+    return (
+      <div className="border-t border-gray-200 pt-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando entrenadores...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="border-t border-gray-200 pt-8">
@@ -58,20 +49,20 @@ export default function TimeGridStep({
       </div>
 
       <div className="space-y-6">
-        {trainers.map((trainer) => (
+        {trainers.map((trainer: Trainer) => (
           <div key={trainer.id} className="border border-gray-200 rounded-lg p-4">
             <div className="mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">{trainer.name}</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Entrenador {trainer.name}</h3>
             </div>
             
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-              {trainer.availableSlots.map((time) => {
-                const isSelected = selectedTrainer === trainer.name && selectedTime === time;
+              {trainer.availableSlots.map((time: string) => {
+                const isSelected = selectedTrainer === `Entrenador ${trainer.name}` && selectedTime === time;
                 
                 return (
                   <button
                     key={time}
-                    onClick={() => handleSlotClick(trainer.id, trainer.name, time)}
+                    onClick={() => handleSlotClick(trainer.id, `Entrenador ${trainer.name}`, time)}
                     className={`px-3 py-2 text-sm font-medium rounded-md border transition-all duration-200 ${
                       isSelected
                         ? 'bg-blue-600 text-white border-blue-600 shadow-md'
