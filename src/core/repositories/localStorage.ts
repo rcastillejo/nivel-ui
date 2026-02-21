@@ -57,6 +57,66 @@ const initialData = {
       time: '10:00',
       duration: 60,
       status: 'cancelled' as const
+    },
+    {
+      id: 'booking4',
+      clientName: 'Luis Torres',
+      trainerId: 'trainer1',
+      trainerName: 'Entrenador Diego Lamas',
+      date: new Date(2026, 0, 22), // 22 enero 2026 - mismo día y hora que booking1
+      time: '09:00',
+      duration: 60,
+      status: 'confirmed' as const
+    },
+    {
+      id: 'booking5',
+      clientName: 'Patricia Vega',
+      trainerId: 'trainer1',
+      trainerName: 'Entrenador Diego Lamas',
+      date: new Date(2026, 0, 22), // 22 enero 2026 - mismo día y hora que booking1
+      time: '09:00',
+      duration: 60,
+      status: 'confirmed' as const
+    },
+    {
+      id: 'booking6',
+      clientName: 'Roberto Silva',
+      trainerId: 'trainer1',
+      trainerName: 'Entrenador Diego Lamas',
+      date: new Date(2026, 0, 22), // 22 enero 2026 - mismo día y hora que booking1
+      time: '09:00',
+      duration: 60,
+      status: 'confirmed' as const
+    },
+    {
+      id: 'booking7',
+      clientName: 'Laura Mendoza',
+      trainerId: 'trainer2',
+      trainerName: 'Entrenador Jeanpierre Casas',
+      date: new Date(2026, 0, 23), // 23 enero 2026 - mismo día y hora que booking2
+      time: '16:00',
+      duration: 60,
+      status: 'confirmed' as const
+    },
+    {
+      id: 'booking8',
+      clientName: 'Diego Castro',
+      trainerId: 'trainer2',
+      trainerName: 'Entrenador Jeanpierre Casas',
+      date: new Date(2026, 0, 23), // 23 enero 2026 - mismo día y hora que booking2
+      time: '16:00',
+      duration: 60,
+      status: 'confirmed' as const
+    },
+    {
+      id: 'booking9',
+      clientName: 'Luis Castillejo',
+      trainerId: 'trainer2',
+      trainerName: 'Entrenador Jeanpierre Casas',
+      date: new Date(2026, 1, 23), // 23 febrero 2026 - mismo día y hora que booking2
+      time: '16:00',
+      duration: 60,
+      status: 'confirmed' as const
     }
   ],
   trainerSchedules: [
