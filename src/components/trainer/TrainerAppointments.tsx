@@ -5,6 +5,7 @@ import { format, startOfWeek, addDays, isSameDay, addWeeks, subWeeks } from 'dat
 import { es } from 'date-fns/locale';
 import { useData } from '@/core/providers/DataProvider';
 import { Booking } from '@/core/types';
+import { TimeSlotWithCapacity } from '@/core/types';
 
 interface Appointment {
   id: string;
@@ -27,7 +28,7 @@ export default function TrainerAppointments() {
   };
 
   // Agrupar citas por hora y contar para el aforo
-  const getBookingsByTime = (date: Date) => {
+  const getBookingsByTime = (date: Date): TimeSlotWithCapacity[] => {
     const dayBookings = getAppointmentsForDay(date);
     const bookingsByTime = dayBookings.reduce((acc, booking) => {
       if (!acc[booking.time]) {

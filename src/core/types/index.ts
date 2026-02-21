@@ -32,6 +32,13 @@ export interface TimeSlot {
   available: boolean;
 }
 
+export interface TimeSlotWithCapacity {
+  time: string;
+  count: number;
+  totalCapacity: number;
+  bookings: Booking[];
+}
+
 export interface AppState {
   trainers: Trainer[];
   bookings: Booking[];
