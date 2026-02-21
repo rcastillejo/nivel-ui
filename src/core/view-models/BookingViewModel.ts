@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { BookingModel } from '../models/BookingModel';
-import { Booking, Trainer } from '../types';
+import { Booking, Trainer, ZoneType } from '../types';
 
 export class BookingViewModel {
   // Estado observable
@@ -13,6 +13,7 @@ export class BookingViewModel {
   selectedDate: Date | null = null;
   selectedTrainer: Trainer | null = null;
   selectedTime: string | null = null;
+  selectedZone: ZoneType | null = null;
   clientName = 'Cliente Demo'; // En una app real vendría de un formulario
   
   // Estado de modales
@@ -80,6 +81,7 @@ export class BookingViewModel {
         date: this.selectedDate!,
         time: this.selectedTime!,
         duration: 60,
+        zone: this.selectedZone!,
         status: 'confirmed'
       };
 
@@ -137,6 +139,10 @@ export class BookingViewModel {
     this.selectedTime = time;
   }
 
+  setZone(zone: ZoneType) {
+    this.selectedZone = zone;
+  }
+
   setClientName(name: string) {
     this.clientName = name;
   }
@@ -145,6 +151,7 @@ export class BookingViewModel {
     this.selectedDate = null;
     this.selectedTrainer = null;
     this.selectedTime = null;
+    this.selectedZone = null;
     this.availableSlots = [];
   }
 
@@ -166,6 +173,7 @@ export class BookingViewModel {
       this.selectedDate &&
       this.selectedTrainer &&
       this.selectedTime &&
+      this.selectedZone &&
       this.clientName.trim()
     );
   }

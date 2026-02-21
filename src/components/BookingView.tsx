@@ -8,6 +8,7 @@ import CalendarStep from './CalendarStep';
 import SuccessModal from './SuccessModal';
 import { format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { ZoneType, ZONE_CONFIG } from '@/core/types';
 
 const BookingView = observer(() => {
   const vm = useBookingViewModel();
@@ -29,6 +30,10 @@ const BookingView = observer(() => {
       vm.setTrainer(trainer.id);
       vm.setTime(time);
     }
+  };
+
+  const handleZoneSelect = (zone: ZoneType) => {
+    vm.setZone(zone);
   };
 
   const handleConfirmBooking = async () => {
@@ -99,7 +104,9 @@ const BookingView = observer(() => {
             trainers={vm.trainers}
             selectedTrainerName={vm.selectedTrainerName}
             selectedTime={vm.selectedTime}
+            selectedZone={vm.selectedZone}
             onTimeSelect={handleTimeSelect}
+            onZoneSelect={handleZoneSelect}
             onBack={handleBackToCalendar}
             onConfirm={handleConfirmBooking}
             canConfirm={vm.canCreateBooking}
@@ -114,6 +121,7 @@ const BookingView = observer(() => {
           selectedDate={vm.confirmedBooking.date}
           selectedTrainer={vm.confirmedBooking.trainerName}
           selectedTime={vm.confirmedBooking.time}
+          selectedZone={vm.confirmedBooking.zone}
           onClose={() => vm.closeSuccessModal()}
         />
       )}
@@ -131,7 +139,9 @@ interface TimeSelectionViewProps {
   }>;
   selectedTrainerName: string | null;
   selectedTime: string | null;
+  selectedZone: ZoneType | null;
   onTimeSelect: (trainer: string, time: string) => void;
+  onZoneSelect: (zone: ZoneType) => void;
   onBack: () => void;
   onConfirm: () => void;
   canConfirm: boolean;
@@ -142,7 +152,9 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
   trainers,
   selectedTrainerName,
   selectedTime,
+  selectedZone,
   onTimeSelect,
+  onZoneSelect,
   onBack,
   onConfirm,
   canConfirm
@@ -236,6 +248,39 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
                 <span className="text-2xl font-bold text-blue-600 block mt-1">{selectedTime}</span>
               </div>
             </div>
+          </div>
+
+          {/* Zone Selection */}
+          <div className="bg-white rounded-lg p-4 mb-6 border border-gray-200">
+            <h6 className="font-semibold text-gray-900 mb-3 text-center">¿Dónde prefieres tu sesión?</h6>
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(ZONE_CONFIG).map(([zone, config]) => (
+                <button
+                  key={zone}
+                  onClick={() => onZoneSelect(zone as ZoneType)}
+                  className={`px-4 py-3 rounded-lg border font-medium transition-all duration-200 ${
+                    selectedZone === zone
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500 hover:bg-blue-50'
+                  }`}
+                >
+                  <div className="flex flex-col items-center">
+                    <span className="text-2xl mb-1">{config.icon}</span>
+                    <span>{config.name}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            {selectedZone && (
+              <div className="mt-3 text-center">
+                <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {ZONE_CONFIG[selectedZone].label}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">

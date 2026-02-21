@@ -5,6 +5,24 @@ export interface Trainer {
   availableSlots: string[];
 }
 
+// Configuración de zonas
+export const ZONE_CONFIG = {
+  gym: {
+    id: 'gym' as const,
+    name: 'Gym',
+    label: 'Entrenamiento en el gym',
+    icon: '🏋️'
+  },
+  gabinete: {
+    id: 'gabinete' as const,
+    name: 'Gabinete',
+    label: 'Sesión en gabinete',
+    icon: '🏢'
+  }
+} as const;
+
+export type ZoneType = keyof typeof ZONE_CONFIG;
+
 export interface Booking {
   id: string;
   clientName: string;
@@ -13,6 +31,7 @@ export interface Booking {
   date: Date;
   time: string;
   duration: number; // minutos
+  zone: ZoneType;
   status: 'confirmed' | 'cancelled' | 'pending';
 }
 

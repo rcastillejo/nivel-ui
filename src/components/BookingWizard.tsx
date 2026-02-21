@@ -6,7 +6,7 @@ import TimeGridStep from './TimeGridStep';
 import ConfirmationModal from './ConfirmationModal';
 import SuccessModal from './SuccessModal';
 import { useData } from '@/core/providers/DataProvider';
-import { Booking } from '@/core/types';
+import { Booking, ZoneType } from '@/core/types';
 
 export type BookingStep = 'calendar' | 'time';
 
@@ -14,6 +14,7 @@ export interface BookingData {
   selectedDate: Date | null;
   selectedTrainer: string | null;
   selectedTime: string | null;
+  selectedZone: ZoneType | null;
 }
 
 export default function BookingWizard() {
@@ -26,11 +27,13 @@ export default function BookingWizard() {
     selectedDate: null,
     selectedTrainer: null,
     selectedTime: null,
+    selectedZone: null,
   });
   const [bookingData, setBookingData] = useState<BookingData>({
     selectedDate: null,
     selectedTrainer: null,
     selectedTime: null,
+    selectedZone: null,
   });
 
   const handleDateSelect = (date: Date) => {
@@ -49,12 +52,20 @@ export default function BookingWizard() {
     }));
   };
 
+  const handleZoneSelect = (zone: ZoneType) => {
+    setBookingData(prev => ({
+      ...prev,
+      selectedZone: zone,
+    }));
+  };
+
   const handleBackToCalendar = () => {
     setCurrentStep('calendar');
     setBookingData(prev => ({
       ...prev,
       selectedTrainer: null,
       selectedTime: null,
+      selectedZone: null,
     }));
   };
 
@@ -68,7 +79,7 @@ export default function BookingWizard() {
   };
 
   const handleConfirmBooking = async () => {
-    if (!bookingData.selectedDate || !bookingData.selectedTrainer || !bookingData.selectedTime) {
+    if (!bookingData.selectedDate || !bookingData.selectedTrainer || !bookingData.selectedTime || !bookingData.selectedZone) {
       return;
     }
 
@@ -88,6 +99,7 @@ export default function BookingWizard() {
         date: bookingData.selectedDate,
         time: bookingData.selectedTime,
         duration: 60,
+        zone: bookingData.selectedZone,
         status: 'confirmed'
       };
 
@@ -113,6 +125,7 @@ export default function BookingWizard() {
       selectedDate: null,
       selectedTrainer: null,
       selectedTime: null,
+      selectedZone: null,
     });
   };
 
@@ -156,7 +169,9 @@ export default function BookingWizard() {
             selectedDate={bookingData.selectedDate}
             selectedTrainer={bookingData.selectedTrainer}
             selectedTime={bookingData.selectedTime}
+            selectedZone={bookingData.selectedZone}
             onTimeSelect={handleTimeSelect}
+            onZoneSelect={handleZoneSelect}
             onBack={handleBackToCalendar}
             onConfirm={handleShowModal}
           />
@@ -164,24 +179,26 @@ export default function BookingWizard() {
       </div>
 
       {/* Confirmation Modal */}
-      {showModal && bookingData.selectedDate && bookingData.selectedTrainer && bookingData.selectedTime && (
+      {showModal && bookingData.selectedDate && bookingData.selectedTrainer && bookingData.selectedTime && bookingData.selectedZone && (
         <ConfirmationModal
           isOpen={showModal}
           selectedDate={bookingData.selectedDate}
           selectedTrainer={bookingData.selectedTrainer}
           selectedTime={bookingData.selectedTime}
+          selectedZone={bookingData.selectedZone}
           onConfirm={handleConfirmBooking}
           onCancel={handleCloseModal}
         />
       )}
 
       {/* Success Modal */}
-      {showSuccessModal && confirmedBooking.selectedDate && confirmedBooking.selectedTrainer && confirmedBooking.selectedTime && (
+      {showSuccessModal && confirmedBooking.selectedDate && confirmedBooking.selectedTrainer && confirmedBooking.selectedTime && confirmedBooking.selectedZone && (
         <SuccessModal
           isOpen={showSuccessModal}
           selectedDate={confirmedBooking.selectedDate}
           selectedTrainer={confirmedBooking.selectedTrainer}
           selectedTime={confirmedBooking.selectedTime}
+          selectedZone={confirmedBooking.selectedZone}
           onClose={handleCloseSuccessModal}
         />
       )}

@@ -13,7 +13,7 @@ export default function ClientPage() {
               Nivel Gym - Reservas
             </h1>
             <p className="text-lg text-gray-600">
-              Reserva tu sesión de entrenamiento con patrón MVVM
+              Reserva tu sesión de entrenamiento
             </p>
           </div>
           <Link 
