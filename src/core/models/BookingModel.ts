@@ -41,11 +41,16 @@ export class BookingModel {
     if (!trainerSchedule) {
       // Si no hay horario configurado, usar los slots por defecto del entrenador
       const existingBookings = await this.getBookingsByDate(date);
-      const bookedSlots = existingBookings
-        .filter(b => b.trainerId === trainerId && b.status !== 'cancelled')
-        .map(b => b.time);
-
-      return trainer.availableSlots.filter(slot => !bookedSlots.includes(slot));
+      const maxCapacity = 10;
+      
+      return trainer.availableSlots.filter(slot => {
+        const bookingsForSlot = existingBookings.filter(
+          b => b.trainerId === trainerId && 
+               b.time === slot && 
+               b.status === 'confirmed'
+        );
+        return bookingsForSlot.length < maxCapacity;
+      });
     }
 
     // Determinar qué día de la semana es
@@ -65,13 +70,18 @@ export class BookingModel {
       .filter(slot => slot.available)
       .map(slot => slot.time);
 
-    // Filtrar los que ya están reservados
+    // Filtrar los que ya están llenos (capacidad máxima = 10)
     const existingBookings = await this.getBookingsByDate(date);
-    const bookedSlots = existingBookings
-      .filter(b => b.trainerId === trainerId && b.status !== 'cancelled')
-      .map(b => b.time);
-
-    return availableSlots.filter(slot => !bookedSlots.includes(slot));
+    const maxCapacity = 10;
+    
+    return availableSlots.filter(slot => {
+      const bookingsForSlot = existingBookings.filter(
+        b => b.trainerId === trainerId && 
+             b.time === slot && 
+             b.status === 'confirmed'
+      );
+      return bookingsForSlot.length < maxCapacity; // Disponible si hay menos de 10 reservas
+    });
   }
 
   private validateBooking(booking: Omit<Booking, 'id'>): void {

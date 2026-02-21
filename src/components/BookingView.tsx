@@ -3,13 +3,15 @@
 import React, { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { useBookingViewModel } from '@/core/providers/ViewModelProvider';
+import { useData } from '@/core/providers/DataProvider';
 import CalendarStep from './CalendarStep';
 import SuccessModal from './SuccessModal';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const BookingView = observer(() => {
   const vm = useBookingViewModel();
+  const { refreshBookings } = useData();
 
   // Inicializar ViewModel después de la hidratación
   useEffect(() => {
@@ -31,6 +33,8 @@ const BookingView = observer(() => {
 
   const handleConfirmBooking = async () => {
     await vm.createBooking();
+    // Actualizar datos de bookings para reflejar el aforo en tiempo real
+    await refreshBookings();
     // El modal se abre automáticamente desde el ViewModel si la reserva es exitosa
   };
 
@@ -143,6 +147,26 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
   onConfirm,
   canConfirm
 }) => {
+  const { bookings } = useData();
+
+  // Function to calculate capacity for a specific time slot and trainer
+  const getSlotCapacity = (trainerId: string, time: string) => {
+    const trainerBookings = bookings.filter(booking => 
+      booking.trainerId === trainerId && 
+      isSameDay(booking.date, selectedDate) && 
+      booking.time === time &&
+      booking.status === 'confirmed'
+    );
+    
+    const currentCount = trainerBookings.length;
+    const maxCapacity = 10;
+    
+    return {
+      currentCount,
+      maxCapacity,
+      available: currentCount < maxCapacity
+    };
+  };
   return (
     <div className="border-t border-gray-200 pt-8">
       <div className="text-center mb-8">
@@ -158,21 +182,30 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
               <h3 className="text-lg font-semibold text-gray-900">Entrenador {trainer.name}</h3>
             </div>
             
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
               {trainer.availableSlots.map((time: string) => {
                 const isSelected = selectedTrainerName === `Entrenador ${trainer.name}` && selectedTime === time;
+                const capacity = getSlotCapacity(trainer.id, time);
                 
                 return (
                   <button
                     key={time}
                     onClick={() => onTimeSelect(`Entrenador ${trainer.name}`, time)}
+                    disabled={!capacity.available}
                     className={`px-3 py-2 text-sm font-medium rounded-md border transition-all duration-200 ${
                       isSelected
                         ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                        : !capacity.available
+                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
                         : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500 hover:bg-blue-50'
                     }`}
                   >
-                    {time}
+                    <div className="text-center">
+                      <div className="font-medium">{time}</div>
+                      <div className={`text-xs mt-1 ${isSelected ? 'text-blue-100' : !capacity.available ? 'text-gray-400' : 'text-gray-500'}`}>
+                        ({capacity.currentCount}/{capacity.maxCapacity})
+                      </div>
+                    </div>
                   </button>
                 );
               })}
