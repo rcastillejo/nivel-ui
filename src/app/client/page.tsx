@@ -5,7 +5,7 @@ import BookingView from '@/components/BookingView';
 
 export default function ClientPage() {
   return (
-    <main className="min-h-screen bg-gray-50 py-8">
+    <main className="min-h-screen bg-white py-8">
       <div className="max-w-4xl mx-auto px-4">
         <div className="flex justify-between items-center mb-8">
           <div className="text-center flex-1">
