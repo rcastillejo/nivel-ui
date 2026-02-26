@@ -2,12 +2,14 @@
 
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { ZoneType, ZONE_CONFIG } from '@/core/types';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
   selectedDate: Date;
   selectedTrainer: string;
   selectedTime: string;
+  selectedZone: ZoneType;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -17,6 +19,7 @@ export default function ConfirmationModal({
   selectedDate,
   selectedTrainer,
   selectedTime,
+  selectedZone,
   onConfirm,
   onCancel
 }: ConfirmationModalProps) {
@@ -48,7 +51,7 @@ export default function ConfirmationModal({
           </div>
 
           {/* Booking details */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+          <div className="bg-white rounded-lg p-4 mb-6">
             <h4 className="font-semibold text-gray-900 mb-3 text-center">Detalles de la reserva</h4>
             <div className="space-y-2">
               <div className="flex justify-between items-center">
@@ -62,6 +65,17 @@ export default function ConfirmationModal({
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Hora:</span>
                 <span className="font-medium text-gray-900">{selectedTime}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Zona:</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">
+                    {ZONE_CONFIG[selectedZone].icon}
+                  </span>
+                  <span className="font-medium text-gray-900 capitalize">
+                    {ZONE_CONFIG[selectedZone].name}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

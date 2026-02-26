@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { format, startOfWeek, addDays, isSameDay, addWeeks, subWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useData } from '@/core/providers/DataProvider';
+import { Booking } from '@/core/types';
+import { TimeSlotWithCapacity } from '@/core/types';
 
 interface Appointment {
   id: string;
@@ -13,63 +16,38 @@ interface Appointment {
   status: 'confirmed' | 'pending' | 'cancelled';
 }
 
-// Mock appointments data
-const mockAppointments: Appointment[] = [
-  {
-    id: '1',
-    clientName: 'María González',
-    date: new Date(2026, 0, 20), // January 20, 2026
-    time: '09:00',
-    duration: 60,
-    status: 'confirmed'
-  },
-  {
-    id: '2',
-    clientName: 'Carlos Ruiz',
-    date: new Date(2026, 0, 20), // January 20, 2026
-    time: '16:00',
-    duration: 60,
-    status: 'confirmed'
-  },
-  {
-    id: '3',
-    clientName: 'Ana Martín',
-    date: new Date(2026, 0, 22), // January 22, 2026
-    time: '10:00',
-    duration: 60,
-    status: 'cancelled'
-  },
-  {
-    id: '4',
-    clientName: 'Luis Torres',
-    date: new Date(2026, 0, 24), // January 24, 2026
-    time: '18:00',
-    duration: 60,
-    status: 'confirmed'
-  },
-  {
-    id: '5',
-    clientName: 'Patricia Vega',
-    date: new Date(2026, 0, 25), // January 25, 2026
-    time: '11:00',
-    duration: 60,
-    status: 'cancelled'
-  }
-];
-
 export default function TrainerAppointments() {
+  const { bookings, isLoading } = useData();
   const [currentWeek, setCurrentWeek] = useState(new Date());
-  const [appointments] = useState<Appointment[]>(mockAppointments);
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Start on Monday
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   const getAppointmentsForDay = (date: Date) => {
-    return appointments.filter(apt => isSameDay(apt.date, date));
+    return bookings.filter(apt => isSameDay(apt.date, date));
+  };
+
+  // Agrupar citas por hora y contar para el aforo
+  const getBookingsByTime = (date: Date): TimeSlotWithCapacity[] => {
+    const dayBookings = getAppointmentsForDay(date);
+    const bookingsByTime = dayBookings.reduce((acc, booking) => {
+      if (!acc[booking.time]) {
+        acc[booking.time] = [];
+      }
+      acc[booking.time].push(booking);
+      return acc;
+    }, {} as Record<string, Booking[]>);
+
+    return Object.entries(bookingsByTime).map(([time, timeBookings]) => ({
+      time,
+      count: timeBookings.filter(b => b.status === 'confirmed').length,
+      totalCapacity: 10,
+      bookings: timeBookings
+    }));
   };
 
   const getTotalAppointments = () => {
-    return appointments.filter(apt => 
+    return bookings.filter(apt => 
       apt.date >= weekStart && apt.date < addDays(weekStart, 7)
     ).length;
   };
@@ -99,6 +77,14 @@ export default function TrainerAppointments() {
         return '';
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500">Cargando citas...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -144,7 +130,7 @@ export default function TrainerAppointments() {
       {/* Calendar Grid */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         {/* Days header */}
-        <div className="grid grid-cols-7 bg-gray-50 border-b">
+        <div className="grid grid-cols-7 bg-white border-b">
           {weekDays.map((day, index) => (
             <div key={index} className="p-4 text-center">
               <div className="text-sm font-medium text-gray-700">
@@ -162,27 +148,29 @@ export default function TrainerAppointments() {
         {/* Appointments grid */}
         <div className="grid grid-cols-7 min-h-96">
           {weekDays.map((day, dayIndex) => {
-            const dayAppointments = getAppointmentsForDay(day);
+            const timeSlots = getBookingsByTime(day);
             
             return (
               <div key={dayIndex} className={`p-2 border-r border-gray-100 ${
                 isSameDay(day, new Date()) ? 'bg-blue-50' : ''
               }`}>
                 <div className="space-y-2">
-                  {dayAppointments.map((appointment) => (
+                  {timeSlots.map((timeSlot) => (
                     <div
-                      key={appointment.id}
-                      className={`p-2 rounded-md border text-xs ${getStatusColor(appointment.status)}`}
+                      key={timeSlot.time}
+                      className={`p-2 rounded-md border text-xs ${getStatusColor(timeSlot.bookings[0]?.status || 'confirmed')}`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium">{appointment.time}</span>
-                        <span className="text-xs">{getStatusIcon(appointment.status)}</span>
+                        <span className="font-medium">{timeSlot.time}</span>
+                        <span className="text-xs">{getStatusIcon(timeSlot.bookings[0]?.status || 'confirmed')}</span>
                       </div>
-                      <div className="font-semibold">{appointment.clientName}</div>
-                      <div className="text-xs opacity-75">{appointment.duration} min</div>
+                      <div className="font-semibold">
+                        {timeSlot.count}/{timeSlot.totalCapacity}
+                      </div>
+                      <div className="text-xs opacity-75">{timeSlot.bookings[0]?.duration || 60} min</div>
                     </div>
                   ))}
-                  {dayAppointments.length === 0 && (
+                  {timeSlots.length === 0 && (
                     <div className="text-gray-400 text-center py-8 text-xs">
                       Sin citas
                     </div>
@@ -207,9 +195,9 @@ export default function TrainerAppointments() {
       </div>
 
       {/* Detailed appointments list */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
         <h4 className="font-semibold text-gray-900 mb-3">Detalle de Citas</h4>
-        {appointments
+        {bookings
           .filter(apt => apt.date >= weekStart && apt.date < addDays(weekStart, 7))
           .sort((a, b) => a.date.getTime() - b.date.getTime() || a.time.localeCompare(b.time))
           .map((appointment) => (
@@ -233,7 +221,7 @@ export default function TrainerAppointments() {
             </div>
           ))
         }
-        {appointments.filter(apt => apt.date >= weekStart && apt.date < addDays(weekStart, 7)).length === 0 && (
+        {bookings.filter(apt => apt.date >= weekStart && apt.date < addDays(weekStart, 7)).length === 0 && (
           <div className="text-center text-gray-500 py-8">
             No tienes citas programadas para esta semana
           </div>

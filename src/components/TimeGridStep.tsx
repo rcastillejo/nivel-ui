@@ -3,13 +3,15 @@
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useData } from '@/core/providers/DataProvider';
-import { Trainer } from '@/core/types';
+import { Trainer, ZONE_CONFIG, ZoneType } from '@/core/types';
 
 interface TimeGridStepProps {
   selectedDate: Date;
   selectedTrainer: string | null;
   selectedTime: string | null;
+  selectedZone: ZoneType | null;
   onTimeSelect: (trainer: string, time: string) => void;
+  onZoneSelect: (zone: ZoneType) => void;
   onBack: () => void;
   onConfirm: () => void;
 }
@@ -18,7 +20,9 @@ export default function TimeGridStep({
   selectedDate,
   selectedTrainer,
   selectedTime,
+  selectedZone,
   onTimeSelect,
+  onZoneSelect,
   onBack,
   onConfirm
 }: TimeGridStepProps) {
@@ -101,6 +105,39 @@ export default function TimeGridStep({
             </div>
           </div>
 
+          {/* Zone Selection */}
+          <div className="bg-white rounded-lg p-4 mb-6 border border-gray-200">
+            <h6 className="font-semibold text-gray-900 mb-3 text-center">¿Dónde prefieres tu sesión?</h6>
+            <div className="grid grid-cols-2 gap-3">
+              {Object.values(ZONE_CONFIG).map((zone) => (
+                <button
+                  key={zone.id}
+                  onClick={() => onZoneSelect(zone.id)}
+                  className={`px-4 py-3 rounded-lg border font-medium transition-all duration-200 ${
+                    selectedZone === zone.id
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500 hover:bg-blue-50'
+                  }`}
+                >
+                  <div className="flex flex-col items-center">
+                    <span className="text-2xl mb-1">{zone.icon}</span>
+                    <span>{zone.name}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            {selectedZone && (
+              <div className="mt-3 text-center">
+                <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {ZONE_CONFIG[selectedZone].label}
+                </span>
+              </div>
+            )}
+          </div>
+
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="text-center">
               <h6 className="font-semibold text-blue-900 mb-2">Recuerda traer:</h6>
@@ -127,9 +164,14 @@ export default function TimeGridStep({
             </button>
             <button
               onClick={onConfirm}
-              className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-md"
+              disabled={!selectedZone}
+              className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-colors shadow-md ${
+                selectedZone
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
             >
-              Confirmar Reserva
+              {selectedZone ? 'Confirmar Reserva' : 'Selecciona una zona'}
             </button>
           </div>
         </div>

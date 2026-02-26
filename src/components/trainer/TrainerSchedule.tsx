@@ -139,7 +139,7 @@ export default function TrainerSchedule() {
 
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           {/* Time header */}
-          <div className="grid grid-cols-8 bg-gray-50 border-b">
+          <div className="grid grid-cols-8 bg-white border-b">
             <div className="p-3 font-medium text-gray-700 text-center">Horario</div>
             {daysOfWeek.map(day => (
               <div key={day} className="p-3 font-medium text-gray-700 text-center">

@@ -2,12 +2,14 @@
 
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { ZoneType, ZONE_CONFIG } from '@/core/types';
 
 interface SuccessModalProps {
   isOpen: boolean;
   selectedDate: Date;
   selectedTrainer: string;
   selectedTime: string;
+  selectedZone: ZoneType;
   onClose: () => void;
 }
 
@@ -16,6 +18,7 @@ export default function SuccessModal({
   selectedDate,
   selectedTrainer,
   selectedTime,
+  selectedZone,
   onClose
 }: SuccessModalProps) {
   if (!isOpen) return null;
@@ -49,6 +52,14 @@ export default function SuccessModal({
               <div className="text-green-800">
                 <div className="capitalize">{format(selectedDate, "EEEE, d 'de' MMMM", { locale: es })}</div>
                 <div className="text-xl font-bold text-green-800 mt-1">{selectedTime}</div>
+                <div className="flex items-center justify-center gap-2 mt-2">
+                  <span className="text-lg">
+                    {ZONE_CONFIG[selectedZone].icon}
+                  </span>
+                  <span className="font-medium text-green-900 capitalize">
+                    {ZONE_CONFIG[selectedZone].name}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
