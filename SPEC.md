@@ -20,11 +20,11 @@ Sistema de reservas para gimnasio.
 ## Funcionalidades
 
 ## Mis citas Reservadas (Vista de citas)
-Mostrar la cantidad / aforo en cada horario reservado. Ejemplo: en el horario de las 9 am: 3/10 (3 personas reservaron de 10)
+Mostrar la cantidad / aforo en cada horario reservado. Ejemplo: en el horario de las 9 am: 3/10 (3 personas reservaron de 10) (DONE)
 Mostrar listado de personas al seleccionar el detalle de un horario
 
 ## Registro Disponibilidad (Registro de horario)
-Cambiar nombre de "Registrar Horario" por "Registra tu disponibilidad"
+Cambiar nombre de "Registrar Horario" por "Registra tu disponibilidad" (DONE)
 
 ## Reserva Citas (Reserva en 2 pasos)
 Muestra el calendario

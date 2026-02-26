@@ -1,14 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { observer } from 'mobx-react-lite';
 import TrainerSchedule from '@/components/trainer/TrainerSchedule';
 import TrainerAppointments from '@/components/trainer/TrainerAppointments';
+import TrainerBookingWizard from '@/components/trainer/TrainerBookingWizard';
+import { useTrainerBookingViewModel } from '@/core/providers/ViewModelProvider';
+import { useData } from '@/core/providers/DataProvider';
 
-export type TrainerView = 'schedule' | 'appointments';
+export type TrainerView = 'schedule' | 'appointments' | 'booking';
 
-export default function TrainerDashboard() {
+function TrainerDashboardContent() {
   const [currentView, setCurrentView] = useState<TrainerView>('schedule');
+  const trainerBookingVM = useTrainerBookingViewModel();
+  const { trainers } = useData();
+
+  // Inicializar el ViewModel cuando el componente se monte
+  useEffect(() => {
+    trainerBookingVM.initialize();
+  }, [trainerBookingVM]);
 
   return (
     <main className="min-h-screen bg-white py-8">
@@ -54,15 +65,37 @@ export default function TrainerDashboard() {
               >
                 Mis Citas Reservadas
               </button>
+              <button
+                onClick={() => setCurrentView('booking')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  currentView === 'booking'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Reservar para Cliente
+              </button>
             </nav>
           </div>
 
           <div className="p-6">
             {currentView === 'schedule' && <TrainerSchedule />}
             {currentView === 'appointments' && <TrainerAppointments />}
+            {currentView === 'booking' && (
+              <TrainerBookingWizard 
+                onCreateBooking={trainerBookingVM.createBookingForWizard}
+                trainers={trainers}
+              />
+            )}
           </div>
         </div>
       </div>
     </main>
+  );
+}
+
+export default function TrainerDashboard() {
+  return (
+    <TrainerDashboardContent />
   );
 }
