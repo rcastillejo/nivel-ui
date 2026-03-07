@@ -172,6 +172,54 @@ export function DataProvider({ children }) {
 - `BookingModel` depende de `IDataService`, no de `LocalStorageDataService`
 - Inyección de dependencias en toda la aplicación
 
+## Manejo de Errores
+
+### 1. **Domain Errors**
+- **Ubicación**: `src/core/types/errors.ts`
+- **Responsabilidad**: Definir errores específicos del dominio
+- **Patrón**: Heredar de `Error` con tipo específico
+
+```typescript
+// Estructura base para errores de dominio
+export class BookingCapacityError extends Error {
+  constructor(
+    public zone: ZoneType,
+    public current: number,
+    public max: number
+  ) {
+    super(`El ${ZONE_CONFIG[zone].name} está lleno (${current}/${max})`);
+  }
+}
+```
+
+### 2. **Flujo de Manejo de Errores**
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐    ┌──────────────────┐
+│   Components    │    │   ViewModels     │    │     Models      │    │   Repositories   │
+│  (React + UI)   │────│  (MobX State)    │────│ (Business Logic)│────│ (Data Access)    │
+└─────────────────┘    └──────────────────┘    └─────────────────┘    └──────────────────┘
+         │                        │                       │                       │
+         │                        │        (throws)       │                       │
+         │                        ◄───── DomainError ─────┤                       │
+         │                        │                       │                       │
+```
+
+### 3. **Responsabilidades por Capa**
+- **Model Layer**: 
+  - Única capa que lanza errores de dominio
+  - Define reglas específicas de validación
+- **ViewModel Layer**: 
+  - Maneja errores específicos del dominio
+  - Traduce a mensajes comprensibles para UI
+- **Presentation Layer**: 
+  - Muestra errores provenientes del ViewModel
+  - Nunca maneja lógica de errores
+
+### 4. **Principios Aplicados**
+- **SRP**: Cada clase tiene una única razón para cambiar
+- **OCP**: Extensible con nuevos tipos de error sin modificar existentes
+- **DIP**: Componentes dependen de abstracciones, no de implementaciones concretas
+
 ## Flujo de Datos
 
 ```
@@ -183,6 +231,10 @@ export function DataProvider({ children }) {
          │                        │                       │                       │
     User Events              Observable State        Domain Rules            Data Persistence
   (clicks, inputs)          (auto re-render)       (validations)           (localStorage)
+         │                        │                       │                       │
+         │                        │        (throws)       │                       │
+         │                        ◄───── DomainError ─────┤                       │
+         │                        │                       │                       │
 ```
 
 ### Flujo Típico de Operación:

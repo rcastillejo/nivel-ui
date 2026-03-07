@@ -11,17 +11,27 @@ export const ZONE_CONFIG = {
     id: 'gym' as const,
     name: 'Gym',
     label: 'Entrenamiento en el gym',
-    icon: '🏋️'
+    icon: '🏋️',
+    maxCapacity: 10 // Capacidad por entrenador
   },
   gabinete: {
     id: 'gabinete' as const,
     name: 'Gabinete',
     label: 'Sesión en gabinete',
-    icon: '🏢'
+    icon: '🏢',
+    maxCapacity: 1 // Capacidad global
   }
 } as const;
 
 export type ZoneType = keyof typeof ZONE_CONFIG;
+
+export interface ZoneConfig {
+  id: string;
+  name: string;
+  label: string;
+  icon: string;
+  maxCapacity: number;
+}
 
 export interface Booking {
   id: string;

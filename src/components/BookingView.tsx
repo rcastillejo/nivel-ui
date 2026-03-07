@@ -12,12 +12,17 @@ import { ZoneType, ZONE_CONFIG } from '@/core/types';
 
 const BookingView = observer(() => {
   const vm = useBookingViewModel();
-  const { refreshBookings } = useData();
+  const { bookings, refreshBookings } = useData();
 
   // Inicializar ViewModel después de la hidratación
   useEffect(() => {
     vm.initialize();
   }, [vm]);
+
+  // Actualizar bookings en el ViewModel cuando cambian
+  useEffect(() => {
+    vm.setBookings(bookings);
+  }, [bookings, vm]);
 
   const handleDateSelect = (date: Date) => {
     vm.setDate(date);
@@ -37,9 +42,11 @@ const BookingView = observer(() => {
   };
 
   const handleConfirmBooking = async () => {
-    await vm.createBooking();
-    // Actualizar datos de bookings para reflejar el aforo en tiempo real
-    await refreshBookings();
+    const success = await vm.createBooking();
+    if (success) {
+      // Actualizar datos de bookings para reflejar el aforo en tiempo real
+      await refreshBookings();
+    }
     // El modal se abre automáticamente desde el ViewModel si la reserva es exitosa
   };
 
@@ -161,22 +168,37 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
 }) => {
   const { bookings } = useData();
 
-  // Function to calculate capacity for a specific time slot and trainer
-  const getSlotCapacity = (trainerId: string, time: string) => {
-    const trainerBookings = bookings.filter(booking => 
-      booking.trainerId === trainerId && 
+  // Function to calculate capacity for a specific zone, time slot and trainer
+  const getZoneCapacity = (trainerId: string, time: string, zone: ZoneType) => {
+    // Para GYM: capacidad por entrenador
+    if (zone === 'gym') {
+      const gymBookings = bookings.filter(booking => 
+        booking.trainerId === trainerId && 
+        isSameDay(booking.date, selectedDate) && 
+        booking.time === time &&
+        booking.zone === 'gym' &&
+        booking.status === 'confirmed'
+      );
+      
+      return {
+        current: gymBookings.length,
+        max: ZONE_CONFIG.gym.maxCapacity,
+        available: gymBookings.length < ZONE_CONFIG.gym.maxCapacity
+      };
+    }
+
+    // Para GABINETE: capacidad global
+    const gabineteBookings = bookings.filter(booking => 
       isSameDay(booking.date, selectedDate) && 
       booking.time === time &&
+      booking.zone === 'gabinete' &&
       booking.status === 'confirmed'
     );
     
-    const currentCount = trainerBookings.length;
-    const maxCapacity = 10;
-    
     return {
-      currentCount,
-      maxCapacity,
-      available: currentCount < maxCapacity
+      current: gabineteBookings.length,
+      max: ZONE_CONFIG.gabinete.maxCapacity,
+      available: gabineteBookings.length < ZONE_CONFIG.gabinete.maxCapacity
     };
   };
   return (
@@ -197,25 +219,33 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
               {trainer.availableSlots.map((time: string) => {
                 const isSelected = selectedTrainerName === `Entrenador ${trainer.name}` && selectedTime === time;
-                const capacity = getSlotCapacity(trainer.id, time);
+                const gymCapacity = getZoneCapacity(trainer.id, time, 'gym');
+                const gabineteCapacity = getZoneCapacity(trainer.id, time, 'gabinete');
                 
                 return (
                   <button
                     key={time}
                     onClick={() => onTimeSelect(`Entrenador ${trainer.name}`, time)}
-                    disabled={!capacity.available}
+                    disabled={!gymCapacity.available && !gabineteCapacity.available}
                     className={`px-3 py-2 text-sm font-medium rounded-md border transition-all duration-200 ${
                       isSelected
                         ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                        : !capacity.available
+                        : !gymCapacity.available && !gabineteCapacity.available
                         ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
                         : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500 hover:bg-blue-50'
                     }`}
                   >
                     <div className="text-center">
                       <div className="font-medium">{time}</div>
-                      <div className={`text-xs mt-1 ${isSelected ? 'text-blue-100' : !capacity.available ? 'text-gray-400' : 'text-gray-500'}`}>
-                        ({capacity.currentCount}/{capacity.maxCapacity})
+                      <div className={`text-xs mt-1 ${isSelected ? 'text-blue-100' : !gymCapacity.available && !gabineteCapacity.available ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <div className="flex justify-center gap-1">
+                          <span>{gymCapacity.current}/{gymCapacity.max}</span>
+                          <span>/</span>
+                          <span>{gabineteCapacity.current}/{gabineteCapacity.max}</span>
+                        </div>
+                        <div className="text-xs opacity-75">
+                          GYM / GABINETE
+                        </div>
                       </div>
                     </div>
                   </button>

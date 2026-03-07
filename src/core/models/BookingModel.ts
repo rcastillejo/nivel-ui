@@ -1,5 +1,7 @@
-import { Booking, Trainer } from '../types';
+import { Booking, Trainer, ZoneType, ZONE_CONFIG } from '../types';
+import { BookingCapacityError } from '../types/errors';
 import { IDataService } from '../repositories';
+import { isSameDay } from 'date-fns';
 
 export class BookingModel {
   constructor(private dataService: IDataService) {}
@@ -10,6 +12,9 @@ export class BookingModel {
     
     // Verificar disponibilidad
     await this.checkAvailability(booking.trainerId, booking.date, booking.time);
+    
+    // Validar capacidad en tiempo real
+    await this.validateCapacity(booking);
     
     const newBooking: Booking = {
       ...booking,
@@ -106,6 +111,26 @@ export class BookingModel {
     const availableSlots = await this.getAvailableSlots(trainerId, date);
     if (!availableSlots.includes(time)) {
       throw new Error('El horario seleccionado no está disponible');
+    }
+  }
+
+  private async validateCapacity(booking: Omit<Booking, 'id'>): Promise<void> {
+    const existingBookings = await this.getBookingsByDate(booking.date);
+    
+    // Filtrar reservas para la misma zona y horario
+    const sameZoneBookings = existingBookings.filter(
+      b => b.date === booking.date && 
+           b.time === booking.time && 
+           b.status === 'confirmed'
+    );
+    
+    // Obtener la capacidad máxima de la zona
+    const maxCapacity = ZONE_CONFIG[booking.zone].maxCapacity;
+    const currentOccupancy = sameZoneBookings.length;
+    
+    // Si la reserva excede la capacidad, lanzar error específico
+    if (currentOccupancy >= maxCapacity) {
+      throw new BookingCapacityError(booking.zone, currentOccupancy, maxCapacity);
     }
   }
 }

@@ -1,11 +1,14 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { BookingModel } from '../models/BookingModel';
-import { Booking, Trainer, ZoneType } from '../types';
+import { Booking, Trainer, ZoneType, ZONE_CONFIG } from '../types';
+import { BookingCapacityError } from '../types/errors';
+import { isSameDay } from 'date-fns';
 
 export class BookingViewModel {
   // Estado observable
   trainers: Trainer[] = [];
   availableSlots: string[] = [];
+  bookings: Booking[] = [];
   isLoading = false;
   error: string | null = null;
   
@@ -72,6 +75,11 @@ export class BookingViewModel {
       return false;
     }
 
+    // Validación de capacidad en tiempo real
+    if (!this.validateCapacity()) {
+      return false;
+    }
+
     this.setLoading(true);
     try {
       const bookingData: Omit<Booking, 'id'> = {
@@ -96,12 +104,43 @@ export class BookingViewModel {
       return true;
     } catch (err) {
       runInAction(() => {
-        this.error = err instanceof Error ? err.message : 'Error creando reserva';
+        if (err instanceof BookingCapacityError) {
+          this.error = err.message;
+        } else {
+          this.error = err instanceof Error ? err.message : 'Error creando reserva';
+        }
       });
       return false;
     } finally {
       this.setLoading(false);
     }
+  }
+
+  private validateCapacity(): boolean {
+    const currentCount = this.getCurrentBookingCount();
+    const maxCapacity = ZONE_CONFIG[this.selectedZone!].maxCapacity;
+    
+    if (currentCount >= maxCapacity) {
+      this.setError(`El ${ZONE_CONFIG[this.selectedZone!].name} está lleno para este horario. Aforo actual: ${currentCount}/${maxCapacity}`);
+      return false;
+    }
+    
+    return true;
+  }
+
+  private getCurrentBookingCount(): number {
+    return this.bookings.filter(booking => 
+      booking.zone === this.selectedZone &&
+      isSameDay(booking.date, this.selectedDate!) &&
+      booking.time === this.selectedTime &&
+      booking.status === 'confirmed' &&
+      // Para gym: filtrar por trainer, para gabinete: capacidad global
+      (this.selectedZone === 'gym' ? booking.trainerId === this.selectedTrainer!.id : true)
+    ).length;
+  }
+
+  setBookings(bookings: Booking[]) {
+    this.bookings = bookings;
   }
 
   openSuccessModal(booking: Booking) {
