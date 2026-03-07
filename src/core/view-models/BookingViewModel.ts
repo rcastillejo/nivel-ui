@@ -1,13 +1,30 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { BookingModel } from '../models/BookingModel';
-import { Booking, Trainer, ZoneType } from '../types';
+import { Booking, Trainer, ZoneType, ZONE_CONFIG } from '../types';
+import { BookingCapacityError } from '../types/errors';
+import { isSameDay } from 'date-fns';
+
+interface ZoneCapacity {
+  current: number;
+  max: number;
+  available: boolean;
+}
+
+interface ZonesCapacity {
+  gym: ZoneCapacity;
+  gabinete: ZoneCapacity;
+}
 
 export class BookingViewModel {
   // Estado observable
   trainers: Trainer[] = [];
   availableSlots: string[] = [];
+  bookings: Booking[] = [];
   isLoading = false;
   error: string | null = null;
+  
+  // Cache para capacidades (para acceso síncrono desde UI)
+  private capacityCache = new Map<string, ZonesCapacity>();
   
   // Estado del formulario
   selectedDate: Date | null = null;
@@ -52,7 +69,12 @@ export class BookingViewModel {
   async loadAvailableSlots(trainerId: string, date: Date) {
     this.setLoading(true);
     try {
+      // Pre-cargar capacidades para los slots disponibles
       const slots = await this.model.getAvailableSlots(trainerId, date);
+      
+      // Pre-cachear capacidades para todos los slots
+      await this.preloadCapacities(trainerId, date, slots);
+      
       runInAction(() => {
         this.availableSlots = slots;
         this.error = null;
@@ -69,6 +91,11 @@ export class BookingViewModel {
   async createBooking(): Promise<boolean> {
     if (!this.canCreateBooking) {
       this.setError('Faltan datos para crear la reserva');
+      return false;
+    }
+
+    // Validación de capacidad en tiempo real
+    if (!this.validateCapacity()) {
       return false;
     }
 
@@ -96,12 +123,104 @@ export class BookingViewModel {
       return true;
     } catch (err) {
       runInAction(() => {
-        this.error = err instanceof Error ? err.message : 'Error creando reserva';
+        if (err instanceof BookingCapacityError) {
+          this.error = err.message;
+        } else {
+          this.error = err instanceof Error ? err.message : 'Error creando reserva';
+        }
       });
       return false;
     } finally {
       this.setLoading(false);
     }
+  }
+
+  // Métodos unificados para obtener capacidades
+  async getZoneOccupancy(zone: ZoneType, date: Date, time: string, trainerId?: string): Promise<number> {
+    return await this.model.getZoneOccupancy(zone, date, time, trainerId);
+  }
+
+  async getAllZonesOccupancy(date: Date, time: string, trainerId?: string): Promise<ZonesCapacity> {
+    const cacheKey = `${date.toISOString()}-${time}-${trainerId || 'global'}`;
+    
+    // Verificar cache primero
+    if (this.capacityCache.has(cacheKey)) {
+      return this.capacityCache.get(cacheKey)!;
+    }
+
+    // Obtener del modelo
+    const occupancies = await this.model.getAllZonesOccupancy(date, time, trainerId);
+    
+    const capacities: ZonesCapacity = {
+      gym: {
+        current: occupancies.gym,
+        max: ZONE_CONFIG.gym.maxCapacity,
+        available: occupancies.gym < ZONE_CONFIG.gym.maxCapacity
+      },
+      gabinete: {
+        current: occupancies.gabinete,
+        max: ZONE_CONFIG.gabinete.maxCapacity,
+        available: occupancies.gabinete < ZONE_CONFIG.gabinete.maxCapacity
+      }
+    };
+
+    // Guardar en cache
+    runInAction(() => {
+      this.capacityCache.set(cacheKey, capacities);
+    });
+
+    return capacities;
+  }
+
+  // Versión síncrona para uso en componentes (usa cache)
+  getZonesCapacitySync(date: Date, time: string, trainerId?: string): ZonesCapacity | null {
+    const cacheKey = `${date.toISOString()}-${time}-${trainerId || 'global'}`;
+    return this.capacityCache.get(cacheKey) || null;
+  }
+
+  // Pre-cargar capacidades para múltiples slots
+  private async preloadCapacities(trainerId: string, date: Date, slots: string[]) {
+    const promises = slots.map(async (time) => {
+      await this.getAllZonesOccupancy(date, time, trainerId);
+    });
+    
+    await Promise.all(promises);
+  }
+
+  // Limpiar cache cuando cambian los bookings
+  clearCapacityCache() {
+    runInAction(() => {
+      this.capacityCache.clear();
+    });
+  }
+
+  private validateCapacity(): boolean {
+    const currentCount = this.getCurrentBookingCount();
+    const maxCapacity = ZONE_CONFIG[this.selectedZone!].maxCapacity;
+    
+    if (currentCount >= maxCapacity) {
+      this.setError(`El ${ZONE_CONFIG[this.selectedZone!].name} está lleno para este horario. Aforo actual: ${currentCount}/${maxCapacity}`);
+      return false;
+    }
+    
+    return true;
+  }
+
+  private getCurrentBookingCount(): number {
+    return this.bookings.filter(booking => 
+      booking.zone === this.selectedZone &&
+      isSameDay(booking.date, this.selectedDate!) &&
+      booking.time === this.selectedTime &&
+      booking.status === 'confirmed' &&
+      // Para gym: filtrar por trainer, para gabinete: capacidad global
+      (this.selectedZone === 'gym' ? booking.trainerId === this.selectedTrainer!.id : true)
+    ).length;
+  }
+
+  setBookings(bookings: Booking[]) {
+    this.bookings = bookings;
+    // Limpiar cache cuando cambian los bookings
+    this.clearCapacityCache();
   }
 
   openSuccessModal(booking: Booking) {
@@ -119,6 +238,7 @@ export class BookingViewModel {
   setDate(date: Date) {
     this.selectedDate = date;
     this.selectedTime = null; // Reset time when date changes
+    this.clearCapacityCache(); // Limpiar cache al cambiar fecha
     
     if (this.selectedTrainer) {
       this.loadAvailableSlots(this.selectedTrainer.id, date);
@@ -129,6 +249,7 @@ export class BookingViewModel {
     const trainer = this.trainers.find(t => t.id === trainerId);
     this.selectedTrainer = trainer || null;
     this.selectedTime = null; // Reset time when trainer changes
+    this.clearCapacityCache(); // Limpiar cache al cambiar trainer
     
     if (trainer && this.selectedDate) {
       this.loadAvailableSlots(trainer.id, this.selectedDate);
@@ -153,6 +274,7 @@ export class BookingViewModel {
     this.selectedTime = null;
     this.selectedZone = null;
     this.availableSlots = [];
+    this.clearCapacityCache();
   }
 
   clearError() {
