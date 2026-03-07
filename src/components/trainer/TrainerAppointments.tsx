@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { format, startOfWeek, addDays, isSameDay, addWeeks, subWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useData } from '@/core/providers/DataProvider';
-import { Booking } from '@/core/types';
+import { Booking, ZONE_CONFIG } from '@/core/types';
 import { TimeSlotWithCapacity } from '@/core/types';
 
 interface Appointment {
@@ -38,13 +38,24 @@ export default function TrainerAppointments() {
       return acc;
     }, {} as Record<string, Booking[]>);
 
-    return Object.entries(bookingsByTime).map(([time, timeBookings]) => ({
-      time,
-      count: timeBookings.filter(b => b.status === 'confirmed').length,
-      totalCapacity: 10,
-      bookings: timeBookings
-    }));
+    return Object.entries(bookingsByTime).map(([time, timeBookings]) => {
+      const confirmedBookings = timeBookings.filter(b => b.status === 'confirmed');
+      
+      // Calcular aforo por zona
+      const gymBookings = confirmedBookings.filter(b => b.zone === 'gym');
+      const gabineteBookings = confirmedBookings.filter(b => b.zone === 'gabinete');
+      
+      return {
+        time,
+        count: confirmedBookings.length,
+        totalCapacity: 10,
+        gymOccupancy: gymBookings.length,
+        gabineteOccupancy: gabineteBookings.length,
+        bookings: timeBookings
+      };
+    });
   };
+
 
   const getTotalAppointments = () => {
     return bookings.filter(apt => 
@@ -164,10 +175,22 @@ export default function TrainerAppointments() {
                         <span className="font-medium">{timeSlot.time}</span>
                         <span className="text-xs">{getStatusIcon(timeSlot.bookings[0]?.status || 'confirmed')}</span>
                       </div>
-                      <div className="font-semibold">
-                        {timeSlot.count}/{timeSlot.totalCapacity}
+                      <div className="flex flex-col gap-1">
+                        {/* Aforo dual - misma UX que cliente */}
+                        <div className="text-center mt-1">
+                          <div className="flex justify-center gap-1">
+                            <span className="text-xs">{timeSlot.gymOccupancy || 0}/{ZONE_CONFIG.gym.maxCapacity}</span>
+                            <span className="text-xs">/</span>
+                            <span className="text-xs">{timeSlot.gabineteOccupancy || 0}/{ZONE_CONFIG.gabinete.maxCapacity}</span>
+                          </div>
+                          <div className="text-xs opacity-75">
+                            GYM / GABINETE
+                          </div>
+                        </div>
+                        <div className="text-xs opacity-75 text-center">
+                          {timeSlot.bookings[0]?.duration || 60} min
+                        </div>
                       </div>
-                      <div className="text-xs opacity-75">{timeSlot.bookings[0]?.duration || 60} min</div>
                     </div>
                   ))}
                   {timeSlots.length === 0 && (

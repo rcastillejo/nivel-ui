@@ -201,6 +201,7 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
       available: gabineteBookings.length < ZONE_CONFIG.gabinete.maxCapacity
     };
   };
+
   return (
     <div className="border-t border-gray-200 pt-8">
       <div className="text-center mb-8">

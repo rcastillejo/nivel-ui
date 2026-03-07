@@ -133,4 +133,37 @@ export class BookingModel {
       throw new BookingCapacityError(booking.zone, currentOccupancy, maxCapacity);
     }
   }
+
+  async getZoneOccupancy(zone: ZoneType, date: Date, time: string, trainerId?: string): Promise<number> {
+    const existingBookings = await this.getBookingsByDate(date);
+    
+    // Para GYM: capacidad por zona y horario (filtrar por trainer si se especifica)
+    if (zone === 'gym') {
+      const gymBookings = existingBookings.filter(
+        b => isSameDay(b.date, date) &&
+             b.time === time &&
+             b.zone === 'gym' &&
+             b.status === 'confirmed' &&
+             // Filtrar por trainer SOLO si se especifica
+             (!trainerId || b.trainerId === trainerId)
+      );
+      return gymBookings.length;
+    }
+
+    // Para GABINETE: capacidad global por horario (ignora trainerId)
+    const gabineteBookings = existingBookings.filter(
+      b => isSameDay(b.date, date) &&
+           b.time === time &&
+           b.zone === 'gabinete' &&
+           b.status === 'confirmed'
+    );
+    return gabineteBookings.length;
+  }
+
+  async getAllZonesOccupancy(date: Date, time: string, trainerId?: string): Promise<Record<ZoneType, number>> {
+    return {
+      gym: await this.getZoneOccupancy('gym', date, time, trainerId),
+      gabinete: await this.getZoneOccupancy('gabinete', date, time)
+    };
+  }
 }

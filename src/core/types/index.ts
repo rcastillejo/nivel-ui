@@ -65,6 +65,8 @@ export interface TimeSlotWithCapacity {
   time: string;
   count: number;
   totalCapacity: number;
+  gymOccupancy?: number;
+  gabineteOccupancy?: number;
   bookings: Booking[];
 }
 
