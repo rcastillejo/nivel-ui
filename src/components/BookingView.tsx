@@ -83,6 +83,46 @@ const BookingView = observer(() => {
         </div>
       )}
 
+      {/* Program Status Alert */}
+      {(() => {
+        const activeProgram = vm.getActiveProgram();
+        if (!activeProgram) {
+          return (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-yellow-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div>
+                  <p className="text-yellow-800 font-medium">Sin programa activo</p>
+                  <p className="text-yellow-700 text-sm">Contacta a tu entrenador para activar tu programa de entrenamiento</p>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        
+        if (activeProgram.remainingSessions <= 3) {
+          return (
+            <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-orange-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-orange-800 font-medium">¡Quedan pocas sesiones!</p>
+                  <p className="text-orange-700 text-sm">
+                    Te quedan {activeProgram.remainingSessions} sesión{activeProgram.remainingSessions !== 1 ? 'es' : ''} en tu programa
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        
+        return null;
+      })()}
+
       {/* Progress indicator */}
       {vm.selectedDate && (
         <div className="text-center mb-6">

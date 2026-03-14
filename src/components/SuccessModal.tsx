@@ -1,8 +1,10 @@
 'use client';
 
+import React from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ZoneType, ZONE_CONFIG } from '@/core/types';
+import { ZoneType, ZONE_CONFIG, Program } from '@/core/types';
+import { useBookingViewModel } from '@/core/providers/ViewModelProvider';
 
 interface SuccessModalProps {
   isOpen: boolean;
@@ -21,9 +23,12 @@ export default function SuccessModal({
   selectedZone,
   onClose
 }: SuccessModalProps) {
+  const bookingVM = useBookingViewModel();
+  
   if (!isOpen) return null;
 
   const formattedDate = format(selectedDate, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
+  const activeProgram = bookingVM.getActiveProgram();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -44,6 +49,25 @@ export default function SuccessModal({
               </svg>
             </div>
           </div>
+
+          {/* Program sessions info */}
+          {activeProgram && activeProgram.remainingSessions > 0 && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-center">
+                <svg className="w-4 h-4 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <p className="text-blue-800 font-medium text-sm">
+                  Te quedan {activeProgram.remainingSessions} sesión{activeProgram.remainingSessions !== 1 ? 'es' : ''} en tu programa
+                </p>
+              </div>
+              {activeProgram.remainingSessions <= 3 && (
+                <p className="text-blue-700 text-xs text-center mt-1">
+                  💡 Considera renovar tu programa pronto
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Booking details - Simplified */}
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">

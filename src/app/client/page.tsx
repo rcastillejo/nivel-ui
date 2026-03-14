@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import BookingView from '@/components/BookingView';
+import { ClientProgramInfo } from '@/components/ClientProgramInfo';
 
 export default function ClientPage() {
   return (
@@ -22,6 +23,11 @@ export default function ClientPage() {
           >
             ← Volver al Inicio
           </Link>
+        </div>
+
+        {/* Información del programa del cliente */}
+        <div className="mb-8">
+          <ClientProgramInfo clientId="client_001" />
         </div>
 
         <BookingView />

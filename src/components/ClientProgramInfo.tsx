@@ -10,13 +10,63 @@ export const ClientProgramInfo: React.FC<ClientProgramInfoProps> = ({ clientId }
   const { trainerViewModel } = useViewModels();
 
   useEffect(() => {
+    console.log('ClientProgramInfo: clientId:', clientId);
     if (clientId) {
       trainerViewModel.loadClientPrograms(clientId);
     }
   }, [trainerViewModel, clientId]);
 
+  // Forzar inicialización de datos de ejemplo para el cliente
+  useEffect(() => {
+    const initializeSampleData = async () => {
+      try {
+        const { ProgramModel } = await import('../core/models/ProgramModel');
+        
+        // Verificar si ya existen programas
+        const existingPrograms = ProgramModel.getPrograms();
+        console.log('ClientProgramInfo: Existing programs before initialization:', existingPrograms);
+        
+        if (existingPrograms.length === 0) {
+          // Crear programa de ejemplo para el cliente actual
+          const sampleProgram = ProgramModel.createProgram({
+            clientId: clientId || 'client_001',
+            trainerId: 'trainer_001',
+            clientName: 'Cliente Ejemplo',
+            trainerName: 'Juan Pérez',
+            totalSessions: 12,
+            minimumSessions: 8,
+            frequencyPerWeek: 3,
+            startDate: new Date().toISOString().split('T')[0],
+            endDate: (() => {
+              const date = new Date();
+              date.setDate(date.getDate() + 28);
+              return date.toISOString().split('T')[0];
+            })(),
+            price: 300,
+            programType: 'strength'
+          });
+          
+          console.log('ClientProgramInfo: Sample program created:', sampleProgram);
+          
+          // Forzar recarga de datos después de crear el programa
+          if (clientId) {
+            trainerViewModel.loadClientPrograms(clientId);
+          }
+        }
+      } catch (error) {
+        console.error('ClientProgramInfo: Error initializing sample data:', error);
+      }
+    };
+
+    console.log('ClientProgramInfo: Initializing with clientId:', clientId);
+    initializeSampleData();
+  }, [clientId, trainerViewModel]);
+
   const activePrograms = trainerViewModel.getActiveProgramsByClient(clientId || '');
   const activeProgram = activePrograms.length > 0 ? activePrograms[0] : null;
+  
+  console.log('ClientProgramInfo: activePrograms:', activePrograms);
+  console.log('ClientProgramInfo: activeProgram:', activeProgram);
 
   const programStatus = useMemo(() => {
     if (!activeProgram) return null;

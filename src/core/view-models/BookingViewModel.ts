@@ -49,6 +49,8 @@ export class BookingViewModel {
     if (this.trainers.length === 0) {
       this.loadTrainers();
     }
+    // Cargar programas del cliente al inicializar
+    this.loadClientPrograms();
   }
 
   // Acciones
@@ -119,6 +121,13 @@ export class BookingViewModel {
       return false;
     }
 
+    // Validar programa activo
+    const programValidation = this.validateActiveProgram();
+    if (!programValidation.isValid) {
+      this.setError(programValidation.error);
+      return false;
+    }
+
     // Validación de capacidad en tiempo real
     if (!this.validateCapacity()) {
       return false;
@@ -126,7 +135,7 @@ export class BookingViewModel {
 
     this.setLoading(true);
     try {
-      const activeProgram = this.getActiveProgram();
+      const activeProgram = this.getActiveProgram()!;
       
       const bookingData: Omit<Booking, 'id'> = {
         clientName: this.clientName,
@@ -138,7 +147,7 @@ export class BookingViewModel {
         duration: 60,
         zone: this.selectedZone!,
         status: 'confirmed',
-        programId: activeProgram?.id
+        programId: activeProgram.id
       };
 
       const createdBooking = await this.model.createBooking(bookingData);
@@ -164,6 +173,39 @@ export class BookingViewModel {
     } finally {
       this.setLoading(false);
     }
+  }
+
+  private validateActiveProgram(): { isValid: boolean; error?: string } {
+    const activeProgram = this.getActiveProgram();
+    
+    if (!activeProgram) {
+      return {
+        isValid: false,
+        error: 'No tienes un programa activo. Por favor contacta a tu entrenador para activar un programa.'
+      };
+    }
+
+    if (activeProgram.remainingSessions <= 0) {
+      return {
+        isValid: false,
+        error: 'No tienes sesiones disponibles en tu programa actual. Por favor renueva tu programa.'
+      };
+    }
+
+    // Validar fecha de expiración
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expirationDate = new Date(activeProgram.endDate);
+    expirationDate.setHours(0, 0, 0, 0);
+
+    if (expirationDate < today) {
+      return {
+        isValid: false,
+        error: 'Tu programa ha expirado. Por favor contacta a tu entrenador para renovarlo.'
+      };
+    }
+
+    return { isValid: true };
   }
 
   // Métodos unificados para obtener capacidades
