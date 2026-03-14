@@ -1,12 +1,13 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { BookingModel } from '../models/BookingModel';
-import { Booking, Trainer, ZoneType, DaySchedule, TrainerSchedule } from '../types';
+import { Booking, Trainer, ZoneType, DaySchedule, TrainerSchedule, Program, ProgramRenewal } from '../types';
 import { BookingCapacityError } from '../types/errors';
 import { isSameDay } from 'date-fns';
 
 export class TrainerViewModel {
   trainers: Trainer[] = [];
   bookings: Booking[] = [];
+  clientPrograms: Program[] = [];
   isLoading = false;
   error: string | null = null;
   
@@ -51,6 +52,70 @@ export class TrainerViewModel {
     } finally {
       this.setLoading(false);
     }
+  }
+
+  async loadClientPrograms(clientId?: string) {
+    this.setLoading(true);
+    try {
+      const { ProgramModel } = await import('../models/ProgramModel');
+      const programs = clientId 
+        ? ProgramModel.getProgramsByClient(clientId)
+        : ProgramModel.getPrograms();
+      runInAction(() => {
+        this.clientPrograms = programs;
+        this.error = null;
+      });
+    } catch (err) {
+      runInAction(() => {
+        this.error = err instanceof Error ? err.message : 'Error cargando programas';
+      });
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async renewClientProgram(programId: string, renewalData: { newTotalSessions: number; reason?: string; renewedBy?: string }): Promise<boolean> {
+    this.setLoading(true);
+    try {
+      const { ProgramModel } = await import('../models/ProgramModel');
+      const renewedProgram = ProgramModel.renewProgram({
+        programId,
+        newTotalSessions: renewalData.newTotalSessions,
+        newEndDate: (() => {
+          const date = new Date();
+          date.setDate(date.getDate() + 90); // Default 90 days from now
+          return date.toISOString().split('T')[0];
+        })(),
+        reason: renewalData.reason || 'Renovación estándar',
+        renewedBy: renewalData.renewedBy || this.selectedTrainer?.name || 'Entrenador'
+      });
+      
+      if (renewedProgram) {
+        // Reload programs after renewal
+        await this.loadClientPrograms();
+      }
+      
+      runInAction(() => {
+        this.error = null;
+      });
+      
+      return !!renewedProgram;
+    } catch (err) {
+      runInAction(() => {
+        this.error = err instanceof Error ? err.message : 'Error renovando programa';
+      });
+      return false;
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  getActiveProgramsByClient(clientId: string): Program[] {
+    return this.clientPrograms.filter(p => p.clientId === clientId && p.status === 'active');
+  }
+
+  getProgramById(programId: string): Program | undefined {
+    return this.clientPrograms.find(p => p.id === programId);
   }
 
   // Acciones de configuración de horarios

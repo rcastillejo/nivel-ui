@@ -16,12 +16,23 @@ export class BookingModel {
     // Validar capacidad en tiempo real
     await this.validateCapacity(booking);
     
+    // Validar disponibilidad de sesiones si hay un programa asociado
+    if (booking.programId && booking.clientId) {
+      await this.validateProgramSession(booking.programId, booking.clientId);
+    }
+    
     const newBooking: Booking = {
       ...booking,
       id: `booking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     };
     
     await this.dataService.bookings.save(newBooking);
+
+    // Consumir una sesión del programa si aplica
+    if (booking.programId) {
+      await this.consumeProgramSession(booking.programId);
+    }
+
     return newBooking;
   }
 
@@ -165,5 +176,64 @@ export class BookingModel {
       gym: await this.getZoneOccupancy('gym', date, time, trainerId),
       gabinete: await this.getZoneOccupancy('gabinete', date, time)
     };
+  }
+
+  // Program Integration Methods
+  private async validateProgramSession(programId: string, clientId: string): Promise<void> {
+    // Import ProgramModel dynamically to avoid circular dependencies
+    const { ProgramModel } = await import('./ProgramModel');
+    
+    const program = ProgramModel.getProgramById(programId);
+    if (!program) {
+      throw new Error('Program not found');
+    }
+
+    if (program.clientId !== clientId) {
+      throw new Error('Program does not belong to this client');
+    }
+
+    if (program.status !== 'active') {
+      throw new Error('Program is not active');
+    }
+
+    if (program.remainingSessions <= 0) {
+      throw new Error('No sessions remaining in program');
+    }
+  }
+
+  private async consumeProgramSession(programId: string): Promise<void> {
+    // Import ProgramModel dynamically to avoid circular dependencies
+    const { ProgramModel } = await import('./ProgramModel');
+    
+    const success = ProgramModel.consumeProgramSession(programId);
+    if (!success) {
+      throw new Error('Failed to consume program session');
+    }
+  }
+
+  async getBookingsByProgram(programId: string): Promise<Booking[]> {
+    const allBookings = await this.dataService.bookings.getAll();
+    return allBookings.filter(booking => booking.programId === programId);
+  }
+
+  async getBookingsByClient(clientId: string): Promise<Booking[]> {
+    const allBookings = await this.dataService.bookings.getAll();
+    return allBookings.filter(booking => booking.clientId === clientId);
+  }
+
+  async cancelBooking(bookingId: string, restoreSession: boolean = true): Promise<void> {
+    const booking = await this.dataService.bookings.getById(bookingId);
+    if (!booking) {
+      throw new Error('Booking not found');
+    }
+
+    // Update booking status to cancelled
+    await this.dataService.bookings.update(bookingId, { status: 'cancelled' });
+
+    // Restore session if booking had a program
+    if (restoreSession && booking.programId) {
+      const { ProgramModel } = await import('./ProgramModel');
+      ProgramModel.addSession(booking.programId, 1);
+    }
   }
 }

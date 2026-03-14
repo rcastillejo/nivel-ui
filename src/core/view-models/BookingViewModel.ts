@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { BookingModel } from '../models/BookingModel';
-import { Booking, Trainer, ZoneType, ZONE_CONFIG } from '../types';
+import { Booking, Trainer, ZoneType, ZONE_CONFIG, Program } from '../types';
 import { BookingCapacityError } from '../types/errors';
 import { isSameDay } from 'date-fns';
 
@@ -20,6 +20,7 @@ export class BookingViewModel {
   trainers: Trainer[] = [];
   availableSlots: string[] = [];
   bookings: Booking[] = [];
+  programs: Program[] = [];
   isLoading = false;
   error: string | null = null;
   
@@ -32,6 +33,8 @@ export class BookingViewModel {
   selectedTime: string | null = null;
   selectedZone: ZoneType | null = null;
   clientName = 'Cliente Demo'; // En una app real vendría de un formulario
+  clientId = 'client_001'; // En una app real vendría de autenticación
+  selectedProgram: Program | null = null;
   
   // Estado de modales
   showSuccessModal = false;
@@ -64,6 +67,28 @@ export class BookingViewModel {
     } finally {
       this.setLoading(false);
     }
+  }
+
+  async loadClientPrograms() {
+    this.setLoading(true);
+    try {
+      const { ProgramModel } = await import('../models/ProgramModel');
+      const programs = ProgramModel.getProgramsByClient(this.clientId);
+      runInAction(() => {
+        this.programs = programs;
+        this.error = null;
+      });
+    } catch (err) {
+      runInAction(() => {
+        this.error = err instanceof Error ? err.message : 'Error cargando programas';
+      });
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  getActiveProgram(): Program | null {
+    return this.programs.find(p => p.status === 'active') || null;
   }
 
   async loadAvailableSlots(trainerId: string, date: Date) {
@@ -101,21 +126,27 @@ export class BookingViewModel {
 
     this.setLoading(true);
     try {
+      const activeProgram = this.getActiveProgram();
+      
       const bookingData: Omit<Booking, 'id'> = {
         clientName: this.clientName,
+        clientId: this.clientId,
         trainerId: this.selectedTrainer!.id,
         trainerName: `Entrenador ${this.selectedTrainer!.name}`,
         date: this.selectedDate!,
         time: this.selectedTime!,
         duration: 60,
         zone: this.selectedZone!,
-        status: 'confirmed'
+        status: 'confirmed',
+        programId: activeProgram?.id
       };
 
       const createdBooking = await this.model.createBooking(bookingData);
       
       runInAction(() => {
         this.error = null;
+        // Refrescar programas después de crear reserva
+        this.loadClientPrograms();
         // Mostrar modal de éxito con los datos de la reserva confirmada
         this.openSuccessModal(createdBooking);
       });

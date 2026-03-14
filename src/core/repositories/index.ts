@@ -25,3 +25,6 @@ export interface IDataService {
   initialize(): Promise<void>;
   clear(): Promise<void>;
 }
+
+// Export program repositories
+export * from './programRepository';
