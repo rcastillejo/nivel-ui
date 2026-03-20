@@ -7,7 +7,7 @@ interface ClientProgramInfoProps {
 }
 
 export const ClientProgramInfo: React.FC<ClientProgramInfoProps> = ({ clientId }) => {
-  const { trainerViewModel } = useViewModels();
+  const { trainerViewModel, programVM } = useViewModels();
 
   useEffect(() => {
     console.log('ClientProgramInfo: clientId:', clientId);
@@ -20,15 +20,13 @@ export const ClientProgramInfo: React.FC<ClientProgramInfoProps> = ({ clientId }
   useEffect(() => {
     const initializeSampleData = async () => {
       try {
-        const { ProgramModel } = await import('../core/models/ProgramModel');
-        
-        // Verificar si ya existen programas
-        const existingPrograms = ProgramModel.getPrograms();
+        // Verificar si ya existen programas del cliente
+        const existingPrograms = await programVM.getProgramsByClient(clientId || '');
         console.log('ClientProgramInfo: Existing programs before initialization:', existingPrograms);
         
         if (existingPrograms.length === 0) {
           // Crear programa de ejemplo para el cliente actual
-          const sampleProgram = ProgramModel.createProgram({
+          const sampleProgram = await programVM.createProgram({
             clientId: clientId || 'client_001',
             trainerId: 'trainer_001',
             clientName: 'Cliente Ejemplo',
@@ -41,9 +39,7 @@ export const ClientProgramInfo: React.FC<ClientProgramInfoProps> = ({ clientId }
               const date = new Date();
               date.setDate(date.getDate() + 28);
               return date.toISOString().split('T')[0];
-            })(),
-            price: 300,
-            programType: 'strength'
+            })()
           });
           
           console.log('ClientProgramInfo: Sample program created:', sampleProgram);
@@ -60,7 +56,7 @@ export const ClientProgramInfo: React.FC<ClientProgramInfoProps> = ({ clientId }
 
     console.log('ClientProgramInfo: Initializing with clientId:', clientId);
     initializeSampleData();
-  }, [clientId, trainerViewModel]);
+  }, [clientId, trainerViewModel, programVM]);
 
   const activePrograms = trainerViewModel.getActiveProgramsByClient(clientId || '');
   const activeProgram = activePrograms.length > 0 ? activePrograms[0] : null;

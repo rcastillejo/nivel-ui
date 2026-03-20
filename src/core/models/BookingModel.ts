@@ -1,10 +1,12 @@
 import { Booking, Trainer, ZoneType, ZONE_CONFIG } from '../types';
 import { BookingCapacityError } from '../types/errors';
 import { IDataService } from '../repositories';
+import { ProgramModel } from './ProgramModel';
 import { isSameDay } from 'date-fns';
 
 export class BookingModel {
   constructor(private dataService: IDataService) {}
+  // Removed direct dependency on ProgramModel - now handled by ViewModels
 
   async createBooking(booking: Omit<Booking, 'id'>): Promise<Booking> {
     // Validaciones de negocio
@@ -16,10 +18,8 @@ export class BookingModel {
     // Validar capacidad en tiempo real
     await this.validateCapacity(booking);
     
-    // Validar disponibilidad de sesiones si hay un programa asociado
-    if (booking.programId && booking.clientId) {
-      await this.validateProgramSession(booking.programId, booking.clientId);
-    }
+    // NOTA: La validación de programas se maneja en el ViewModel
+    // para mantener la separación de responsabilidades MVVM
     
     const newBooking: Booking = {
       ...booking,
@@ -28,10 +28,8 @@ export class BookingModel {
     
     await this.dataService.bookings.save(newBooking);
 
-    // Consumir una sesión del programa si aplica
-    if (booking.programId) {
-      await this.consumeProgramSession(booking.programId);
-    }
+    // NOTA: El consumo de sesiones se maneja en el ViewModel
+    // para mantener la separación de responsabilidades MVVM
 
     return newBooking;
   }
@@ -178,12 +176,9 @@ export class BookingModel {
     };
   }
 
-  // Program Integration Methods
-  private async validateProgramSession(programId: string, clientId: string): Promise<void> {
-    // Import ProgramModel dynamically to avoid circular dependencies
-    const { ProgramModel } = await import('./ProgramModel');
-    
-    const program = ProgramModel.getProgramById(programId);
+  // Program validation methods to be called from ViewModels
+  async validateProgramSession(programId: string, clientId: string, programModel: ProgramModel): Promise<void> {
+    const program = await programModel.getProgramById(programId);
     if (!program) {
       throw new Error('Program not found');
     }
@@ -201,11 +196,8 @@ export class BookingModel {
     }
   }
 
-  private async consumeProgramSession(programId: string): Promise<void> {
-    // Import ProgramModel dynamically to avoid circular dependencies
-    const { ProgramModel } = await import('./ProgramModel');
-    
-    const success = ProgramModel.consumeProgramSession(programId);
+  async consumeProgramSession(programId: string, programModel: ProgramModel): Promise<void> {
+    const success = await programModel.consumeProgramSession(programId);
     if (!success) {
       throw new Error('Failed to consume program session');
     }
@@ -221,7 +213,7 @@ export class BookingModel {
     return allBookings.filter(booking => booking.clientId === clientId);
   }
 
-  async cancelBooking(bookingId: string, restoreSession: boolean = true): Promise<void> {
+  async cancelBooking(bookingId: string): Promise<void> {
     const booking = await this.dataService.bookings.getById(bookingId);
     if (!booking) {
       throw new Error('Booking not found');
@@ -230,10 +222,7 @@ export class BookingModel {
     // Update booking status to cancelled
     await this.dataService.bookings.update(bookingId, { status: 'cancelled' });
 
-    // Restore session if booking had a program
-    if (restoreSession && booking.programId) {
-      const { ProgramModel } = await import('./ProgramModel');
-      ProgramModel.addSession(booking.programId, 1);
-    }
+    // NOTA: La restauración de sesiones se maneja en el ViewModel
+    // para mantener la separación de responsabilidades MVVM
   }
 }

@@ -111,10 +111,21 @@ export interface ProgramStats {
 }
 
 export interface ProgramRenewal {
+  id: string;
   programId: string;
+  previousTotalSessions: number;
   newTotalSessions: number;
-  newEndDate: string;
-  reason: string;
-  renewedBy: string;
-  renewedAt: string;
+  renewalType: RenewalType;
+  renewalDate: Date;
+  renewedBy: 'trainer' | 'system' | 'client';
+  reason?: string;
+  newEndDate: Date;
 }
+
+export type RenewalType = 
+  | 'expiration'     // Por expiración de fecha
+  | 'sessions_depleted' // Por agotamiento de sesiones
+  | 'trainer_decision'  // Por decisión del entrenador
+  | 'client_request'    // Por solicitud del cliente
+  | 'system_auto';      // Automática del sistema
+

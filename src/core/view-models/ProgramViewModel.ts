@@ -1,14 +1,20 @@
 import { Program, ProgramStatus, ProgramStats, ProgramRenewal } from '../types';
+import { IDataService } from '../repositories';
 import { ProgramModel } from '../models/ProgramModel';
 
 export class ProgramViewModel {
+  private model: ProgramModel;
   private listeners: (() => void)[] = [];
 
+  constructor(dataService: IDataService) {
+    this.model = new ProgramModel(dataService);
+  }
+
   // Program Management
-  createProgram(programData: Omit<Program, 'id' | 'usedSessions' | 'remainingSessions' | 'status' | 'createdAt' | 'updatedAt'>): { success: boolean; program?: Program; error?: string } {
+  async createProgram(programData: Omit<Program, 'id' | 'usedSessions' | 'remainingSessions' | 'status' | 'createdAt' | 'updatedAt'>): Promise<{ success: boolean; program?: Program; error?: string }> {
     try {
       // Validate program rules
-      const validation = ProgramModel.validateProgramRules(
+      const validation = this.model.validateProgramRules(
         programData.totalSessions,
         programData.minimumSessions,
         programData.frequencyPerWeek
@@ -19,12 +25,12 @@ export class ProgramViewModel {
       }
 
       // Check if client can create program
-      const canCreate = ProgramModel.canCreateProgram(programData.clientId, programData.trainerId);
+      const canCreate = await this.model.canCreateProgram(programData.clientId, programData.trainerId);
       if (!canCreate.canCreate) {
         return { success: false, error: canCreate.reason || 'Cannot create program' };
       }
 
-      const program = ProgramModel.createProgram(programData);
+      const program = await this.model.createProgram(programData);
       this.notifyListeners();
       
       return { success: true, program };
@@ -33,30 +39,30 @@ export class ProgramViewModel {
     }
   }
 
-  getPrograms(): Program[] {
-    return ProgramModel.getPrograms();
+  async getPrograms(): Promise<Program[]> {
+    return await this.model.getPrograms();
   }
 
-  getProgramById(id: string): Program | null {
-    return ProgramModel.getProgramById(id);
+  async getProgramById(id: string): Promise<Program | null> {
+    return await this.model.getProgramById(id);
   }
 
-  getProgramsByClient(clientId: string): Program[] {
-    return ProgramModel.getProgramsByClient(clientId);
+  async getProgramsByClient(clientId: string): Promise<Program[]> {
+    return await this.model.getProgramsByClient(clientId);
   }
 
-  getActiveProgramByClient(clientId: string): Program | null {
-    return ProgramModel.getActiveProgramByClient(clientId);
+  async getActiveProgramByClient(clientId: string): Promise<Program | null> {
+    return await this.model.getActiveProgramByClient(clientId);
   }
 
-  getProgramsByTrainer(trainerId: string): Program[] {
-    return ProgramModel.getProgramsByTrainer(trainerId);
+  async getProgramsByTrainer(trainerId: string): Promise<Program[]> {
+    return await this.model.getProgramsByTrainer(trainerId);
   }
 
   // Session Management
-  consumeSession(programId: string): { success: boolean; error?: string } {
+  async consumeSession(programId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const success = ProgramModel.useSession(programId);
+      const success = await this.model.consumeProgramSession(programId);
       if (success) {
         this.notifyListeners();
         return { success: true };
@@ -68,9 +74,9 @@ export class ProgramViewModel {
     }
   }
 
-  addSession(programId: string, additionalSessions: number): { success: boolean; error?: string } {
+  async addSession(programId: string, additionalSessions: number): Promise<{ success: boolean; error?: string }> {
     try {
-      const success = ProgramModel.addSession(programId, additionalSessions);
+      const success = await this.model.addSession(programId, additionalSessions);
       if (success) {
         this.notifyListeners();
         return { success: true };
@@ -83,9 +89,9 @@ export class ProgramViewModel {
   }
 
   // Program Renewal
-  renewProgram(renewalData: Omit<ProgramRenewal, 'renewedAt'>): { success: boolean; program?: Program; error?: string } {
+  async renewProgram(renewalData: Omit<ProgramRenewal, 'renewalDate'>): Promise<{ success: boolean; program?: Program; error?: string }> {
     try {
-      const program = ProgramModel.renewProgram(renewalData);
+      const program = await this.model.renewProgram(renewalData);
       if (program) {
         this.notifyListeners();
         return { success: true, program };
@@ -98,13 +104,13 @@ export class ProgramViewModel {
   }
 
   // Program Status Management
-  checkExpiringPrograms(): Program[] {
-    return ProgramModel.checkExpiringPrograms();
+  async checkExpiringPrograms(): Promise<Program[]> {
+    return await this.model.checkExpiringPrograms();
   }
 
-  expirePrograms(): { success: boolean; expiredPrograms: Program[] } {
+  async expirePrograms(): Promise<{ success: boolean; expiredPrograms: Program[] }> {
     try {
-      const expiredPrograms = ProgramModel.expirePrograms();
+      const expiredPrograms = await this.model.expirePrograms();
       this.notifyListeners();
       return { success: true, expiredPrograms };
     } catch (error) {
@@ -113,9 +119,9 @@ export class ProgramViewModel {
     }
   }
 
-  suspendProgram(id: string, reason: string): { success: boolean; error?: string } {
+  async suspendProgram(id: string, reason: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const program = ProgramModel.suspendProgram(id, reason);
+      const program = await this.model.suspendProgram(id, reason);
       if (program) {
         this.notifyListeners();
         return { success: true };
@@ -127,9 +133,9 @@ export class ProgramViewModel {
     }
   }
 
-  reactivateProgram(id: string): { success: boolean; error?: string } {
+  async reactivateProgram(id: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const program = ProgramModel.reactivateProgram(id);
+      const program = await this.model.reactivateProgram(id);
       if (program) {
         this.notifyListeners();
         return { success: true };
@@ -142,8 +148,8 @@ export class ProgramViewModel {
   }
 
   // Statistics
-  getProgramStats(trainerId?: string): ProgramStats {
-    return ProgramModel.getProgramStats(trainerId);
+  async getProgramStats(trainerId?: string): Promise<ProgramStats> {
+    return await this.model.getProgramStats(trainerId);
   }
 
   // UI Helper Methods
@@ -219,12 +225,12 @@ export class ProgramViewModel {
   }
 
   // Validation
-  validateNewProgram(clientId: string, trainerId: string): { canCreate: boolean; reason?: string } {
-    return ProgramModel.canCreateProgram(clientId, trainerId);
+  async validateNewProgram(clientId: string, trainerId: string): Promise<{ canCreate: boolean; reason?: string }> {
+    return await this.model.canCreateProgram(clientId, trainerId);
   }
 
   validateProgramRules(totalSessions: number, minimumSessions: number, frequencyPerWeek: number): { isValid: boolean; errors: string[] } {
-    return ProgramModel.validateProgramRules(totalSessions, minimumSessions, frequencyPerWeek);
+    return this.model.validateProgramRules(totalSessions, minimumSessions, frequencyPerWeek);
   }
 
   // Lifecycle Methods

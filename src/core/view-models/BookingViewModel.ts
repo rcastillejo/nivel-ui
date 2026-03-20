@@ -3,6 +3,7 @@ import { BookingModel } from '../models/BookingModel';
 import { Booking, Trainer, ZoneType, ZONE_CONFIG, Program } from '../types';
 import { BookingCapacityError } from '../types/errors';
 import { isSameDay } from 'date-fns';
+import { ProgramViewModel } from './ProgramViewModel';
 
 interface ZoneCapacity {
   current: number;
@@ -40,7 +41,7 @@ export class BookingViewModel {
   showSuccessModal = false;
   confirmedBooking: Booking | null = null;
 
-  constructor(private model: BookingModel) {
+  constructor(private model: BookingModel, private programViewModel: ProgramViewModel) {
     makeAutoObservable(this);
     // No cargar automáticamente en constructor para evitar hydration issues
   }
@@ -74,8 +75,7 @@ export class BookingViewModel {
   async loadClientPrograms() {
     this.setLoading(true);
     try {
-      const { ProgramModel } = await import('../models/ProgramModel');
-      const programs = ProgramModel.getProgramsByClient(this.clientId);
+      const programs = await this.programViewModel.getProgramsByClient(this.clientId);
       runInAction(() => {
         this.programs = programs;
         this.error = null;
@@ -124,7 +124,7 @@ export class BookingViewModel {
     // Validar programa activo
     const programValidation = this.validateActiveProgram();
     if (!programValidation.isValid) {
-      this.setError(programValidation.error);
+      this.setError(programValidation.error || 'Error de validación del programa');
       return false;
     }
 

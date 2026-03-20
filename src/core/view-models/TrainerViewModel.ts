@@ -3,6 +3,7 @@ import { BookingModel } from '../models/BookingModel';
 import { Booking, Trainer, ZoneType, DaySchedule, TrainerSchedule, Program, ProgramRenewal } from '../types';
 import { BookingCapacityError } from '../types/errors';
 import { isSameDay } from 'date-fns';
+import { ProgramViewModel } from './ProgramViewModel';
 
 export class TrainerViewModel {
   trainers: Trainer[] = [];
@@ -15,7 +16,7 @@ export class TrainerViewModel {
   selectedTrainerId: string | null = null;
   selectedDayIndex: number = new Date().getDay() === 0 ? -1 : new Date().getDay() - 1;
 
-  constructor(private model: BookingModel) {
+  constructor(private model: BookingModel, private programViewModel: ProgramViewModel) {
     makeAutoObservable(this);
   }
 
@@ -57,10 +58,9 @@ export class TrainerViewModel {
   async loadClientPrograms(clientId?: string) {
     this.setLoading(true);
     try {
-      const { ProgramModel } = await import('../models/ProgramModel');
       const programs = clientId 
-        ? ProgramModel.getProgramsByClient(clientId)
-        : ProgramModel.getPrograms();
+        ? await this.programViewModel.getProgramsByClient(clientId)
+        : await this.programViewModel.getPrograms();
       runInAction(() => {
         this.clientPrograms = programs;
         this.error = null;
@@ -77,22 +77,33 @@ export class TrainerViewModel {
   async renewClientProgram(programId: string, renewalData: { newTotalSessions: number; reason?: string; renewedBy?: string }): Promise<boolean> {
     this.setLoading(true);
     try {
-      const { ProgramModel } = await import('../models/ProgramModel');
-      const renewedProgram = ProgramModel.renewProgram({
+      const currentProgram = await this.programViewModel.getProgramById(programId);
+      if (!currentProgram) {
+        throw new Error('Program not found');
+      }
+
+      const renewalDataForVM = {
+        id: `renewal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         programId,
+        previousTotalSessions: currentProgram.totalSessions,
         newTotalSessions: renewalData.newTotalSessions,
+        renewalType: 'trainer_decision' as const,
         newEndDate: (() => {
           const date = new Date();
           date.setDate(date.getDate() + 90); // Default 90 days from now
-          return date.toISOString().split('T')[0];
+          return date;
         })(),
         reason: renewalData.reason || 'Renovación estándar',
-        renewedBy: renewalData.renewedBy || this.selectedTrainer?.name || 'Entrenador'
-      });
+        renewedBy: 'trainer' as const
+      };
+
+      const renewedProgram = await this.programViewModel.renewProgram(renewalDataForVM);
       
       if (renewedProgram) {
         // Reload programs after renewal
-        await this.loadClientPrograms();
+        if (currentProgram.clientId) {
+          await this.loadClientPrograms(currentProgram.clientId);
+        }
       }
       
       runInAction(() => {

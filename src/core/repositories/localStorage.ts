@@ -1,5 +1,5 @@
-import { Trainer, Booking, TrainerSchedule } from '../types';
-import { ITrainerRepository, IBookingRepository, IDataService } from './index';
+import { Trainer, Booking, TrainerSchedule, Program, ProgramRenewal, ProgramStatus } from '../types';
+import { ITrainerRepository, IBookingRepository, IProgramRepository, IProgramRenewalRepository, IDataService } from './index';
 
 // Horarios preestablecidos por día (Lunes a Sábado)
 const getDefaultScheduleForDay = (dayIndex: number) => {
@@ -269,13 +269,195 @@ class LocalStorageBookingRepository implements IBookingRepository {
   }
 }
 
+class LocalStorageProgramRepository implements IProgramRepository {
+  private readonly key = 'nivel-programs';
+
+  async getAll(): Promise<Program[]> {
+    const data = localStorage.getItem(this.key);
+    if (!data) {
+      // Inicializar con datos de demo la primera vez
+      await this.initializeData();
+      return this.parsePrograms(JSON.stringify([]));
+    }
+    return this.parsePrograms(data);
+  }
+
+  async getById(id: string): Promise<Program | null> {
+    const programs = await this.getAll();
+    return programs.find(p => p.id === id) || null;
+  }
+
+  async getByClientId(clientId: string): Promise<Program[]> {
+    const programs = await this.getAll();
+    return programs.filter(p => p.clientId === clientId);
+  }
+
+  async getByTrainerId(trainerId: string): Promise<Program[]> {
+    const programs = await this.getAll();
+    return programs.filter(p => p.trainerId === trainerId);
+  }
+
+  async getActivePrograms(): Promise<Program[]> {
+    const programs = await this.getAll();
+    return programs.filter(p => p.status === 'active');
+  }
+
+  async getExpiringPrograms(days: number): Promise<Program[]> {
+    const programs = await this.getAll();
+    const today = new Date();
+    const expiryDate = new Date(today.getTime() + (days * 24 * 60 * 60 * 1000));
+    
+    return programs.filter(p => {
+      if (p.status !== 'active') return false;
+      const endDate = new Date(p.endDate);
+      return endDate <= expiryDate && endDate >= today;
+    });
+  }
+
+  async getByStatus(status: string): Promise<Program[]> {
+    const programs = await this.getAll();
+    return programs.filter(p => p.status === status);
+  }
+
+  async save(program: Program): Promise<void> {
+    const programs = await this.getAll();
+    const index = programs.findIndex(p => p.id === program.id);
+    
+    if (index >= 0) {
+      programs[index] = { ...programs[index], ...program, updatedAt: new Date().toISOString() };
+    } else {
+      programs.push({
+        ...program,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    }
+    
+    localStorage.setItem(this.key, JSON.stringify(programs));
+  }
+
+  async update(id: string, program: Partial<Program>): Promise<void> {
+    const programs = await this.getAll();
+    const index = programs.findIndex(p => p.id === id);
+    
+    if (index >= 0) {
+      programs[index] = { 
+        ...programs[index], 
+        ...program, 
+        updatedAt: new Date().toISOString() 
+      };
+      localStorage.setItem(this.key, JSON.stringify(programs));
+    }
+  }
+
+  async delete(id: string): Promise<void> {
+    const programs = await this.getAll();
+    const filtered = programs.filter(p => p.id !== id);
+    localStorage.setItem(this.key, JSON.stringify(filtered));
+  }
+
+  private parsePrograms(data: string): Program[] {
+    const parsed = JSON.parse(data);
+    return parsed.map((p: { createdAt: string | Date; updatedAt: string | Date; startDate: string | Date; endDate: string | Date }) => ({
+      ...p,
+      createdAt: typeof p.createdAt === 'string' ? p.createdAt : p.createdAt.toISOString(),
+      updatedAt: typeof p.updatedAt === 'string' ? p.updatedAt : p.updatedAt.toISOString(),
+      startDate: typeof p.startDate === 'string' ? p.startDate : p.startDate.toISOString().split('T')[0],
+      endDate: typeof p.endDate === 'string' ? p.endDate : p.endDate.toISOString().split('T')[0]
+    }));
+  }
+
+  private async initializeData(): Promise<void> {
+    // Inicializar con array vacío por ahora
+    localStorage.setItem(this.key, JSON.stringify([]));
+  }
+}
+
+class LocalStorageRenewalRepository implements IProgramRenewalRepository {
+  private readonly key = 'nivel-renewals';
+
+  async getAll(): Promise<ProgramRenewal[]> {
+    const data = localStorage.getItem(this.key);
+    if (!data) {
+      // Inicializar con datos de demo la primera vez
+      await this.initializeData();
+      return this.parseRenewals(JSON.stringify([]));
+    }
+    return this.parseRenewals(data);
+  }
+
+  async getById(id: string): Promise<ProgramRenewal | null> {
+    const renewals = await this.getAll();
+    return renewals.find(r => r.id === id) || null;
+  }
+
+  async getByProgramId(programId: string): Promise<ProgramRenewal[]> {
+    const renewals = await this.getAll();
+    return renewals.filter(r => r.programId === programId);
+  }
+
+  async getByClientId(clientId: string): Promise<ProgramRenewal[]> {
+    const renewals = await this.getAll();
+    // Necesitamos obtener el clientId a través del programa
+    const result: ProgramRenewal[] = [];
+    for (const renewal of renewals) {
+      // Aquí necesitaríamos acceder al programa para obtener el clientId
+      // Por ahora retornamos vacío hasta que implementemos la lógica correcta
+      // o delegamos este método a un servicio de más alto nivel
+    }
+    return result;
+  }
+
+  async getByType(renewalType: string): Promise<ProgramRenewal[]> {
+    const renewals = await this.getAll();
+    return renewals.filter(r => r.renewalType === renewalType);
+  }
+
+  async save(renewal: ProgramRenewal): Promise<void> {
+    const renewals = await this.getAll();
+    const index = renewals.findIndex(r => r.id === renewal.id);
+    
+    if (index >= 0) {
+      renewals[index] = renewal;
+    } else {
+      renewals.push(renewal);
+    }
+    
+    localStorage.setItem(this.key, JSON.stringify(renewals));
+  }
+
+  async delete(id: string): Promise<void> {
+    const renewals = await this.getAll();
+    const filtered = renewals.filter(r => r.id !== id);
+    localStorage.setItem(this.key, JSON.stringify(filtered));
+  }
+
+  private parseRenewals(data: string): ProgramRenewal[] {
+    const parsed = JSON.parse(data);
+    return parsed.map((r: { renewalDate: string | Date; newEndDate: string | Date }) => ({
+      ...r,
+      renewalDate: typeof r.renewalDate === 'string' ? new Date(r.renewalDate) : r.renewalDate,
+      newEndDate: typeof r.newEndDate === 'string' ? new Date(r.newEndDate) : r.newEndDate
+    }));
+  }
+
+  private async initializeData(): Promise<void> {
+    // Inicializar con array vacío por ahora
+    localStorage.setItem(this.key, JSON.stringify([]));
+  }
+}
+
 export class LocalStorageDataService implements IDataService {
   trainers: ITrainerRepository;
   bookings: IBookingRepository;
+  programs: IProgramRepository;
+  renewals: IProgramRenewalRepository;
 
   constructor() {
     this.trainers = new LocalStorageTrainerRepository();
     this.bookings = new LocalStorageBookingRepository();
+    this.programs = new LocalStorageProgramRepository();
+    this.renewals = new LocalStorageRenewalRepository();
   }
 
   async initialize(): Promise<void> {
@@ -296,7 +478,7 @@ export class LocalStorageDataService implements IDataService {
     }
   }
 
-  private async getAllSchedules(): Promise<any[]> {
+  private async getAllSchedules(): Promise<TrainerSchedule[]> {
     const data = localStorage.getItem('nivel-schedules');
     return data ? JSON.parse(data) : [];
   }

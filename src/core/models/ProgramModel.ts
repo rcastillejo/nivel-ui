@@ -1,11 +1,11 @@
 import { Program, ProgramStatus, ProgramRenewal, ProgramStats } from '../types';
+import { IDataService } from '../repositories';
 
 export class ProgramModel {
-  private static readonly STORAGE_KEY = 'nivel_programs';
-  private static readonly RENEWALS_KEY = 'nivel_program_renewals';
+  constructor(private dataService: IDataService) {}
 
   // Program Management
-  static createProgram(programData: Omit<Program, 'id' | 'usedSessions' | 'remainingSessions' | 'status' | 'createdAt' | 'updatedAt'>): Program {
+  async createProgram(programData: Omit<Program, 'id' | 'usedSessions' | 'remainingSessions' | 'status' | 'createdAt' | 'updatedAt'>): Promise<Program> {
     const now = new Date().toISOString();
     const program: Program = {
       ...programData,
@@ -17,47 +17,37 @@ export class ProgramModel {
       updatedAt: now
     };
 
-    const programs = this.getPrograms();
-    programs.push(program);
-    this.savePrograms(programs);
-
+    await this.dataService.programs.save(program);
     return program;
   }
 
-  static getPrograms(): Program[] {
-    try {
-      const data = localStorage.getItem(this.STORAGE_KEY);
-      return data ? JSON.parse(data) : this.getDefaultPrograms();
-    } catch (error) {
-      console.error('Error loading programs:', error);
-      return this.getDefaultPrograms();
-    }
+  async getPrograms(): Promise<Program[]> {
+    return await this.dataService.programs.getAll();
   }
 
-  static getProgramById(id: string): Program | null {
-    const programs = this.getPrograms();
-    return programs.find(p => p.id === id) || null;
+  async getProgramById(id: string): Promise<Program | null> {
+    return await this.dataService.programs.getById(id);
   }
 
-  static getProgramsByClient(clientId: string): Program[] {
-    const programs = this.getPrograms();
+  async getProgramsByClient(clientId: string): Promise<Program[]> {
+    const programs = await this.getPrograms();
     return programs.filter(p => p.clientId === clientId).sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
 
-  static getActiveProgramByClient(clientId: string): Program | null {
-    const programs = this.getProgramsByClient(clientId);
+  async getActiveProgramByClient(clientId: string): Promise<Program | null> {
+    const programs = await this.getProgramsByClient(clientId);
     return programs.find(p => p.status === 'active') || null;
   }
 
-  static getProgramsByTrainer(trainerId: string): Program[] {
-    const programs = this.getPrograms();
+  async getProgramsByTrainer(trainerId: string): Promise<Program[]> {
+    const programs = await this.getPrograms();
     return programs.filter(p => p.trainerId === trainerId);
   }
 
-  static updateProgram(id: string, updates: Partial<Program>): Program | null {
-    const programs = this.getPrograms();
+  async updateProgram(id: string, updates: Partial<Program>): Promise<Program | null> {
+    const programs = await this.getPrograms();
     const index = programs.findIndex(p => p.id === id);
     
     if (index === -1) return null;
@@ -68,17 +58,17 @@ export class ProgramModel {
       updatedAt: new Date().toISOString()
     };
 
-    this.savePrograms(programs);
+    await this.dataService.programs.save(programs[index]);
     return programs[index];
   }
 
-  static updateProgramStatus(id: string, status: ProgramStatus): Program | null {
-    return this.updateProgram(id, { status });
+  async updateProgramStatus(id: string, status: ProgramStatus): Promise<Program | null> {
+    return await this.updateProgram(id, { status });
   }
 
   // Session Management
-  static consumeProgramSession(programId: string): boolean {
-    const program = this.getProgramById(programId);
+  async consumeProgramSession(programId: string): Promise<boolean> {
+    const program = await this.getProgramById(programId);
     if (!program || program.remainingSessions <= 0) return false;
 
     const updatedProgram: Program = {
@@ -93,16 +83,16 @@ export class ProgramModel {
       updatedProgram.status = 'completed';
     }
 
-    return this.updateProgram(programId, updatedProgram) !== null;
+    return await this.updateProgram(programId, updatedProgram) !== null;
   }
 
   // Legacy method for backward compatibility
-  static useSession(programId: string): boolean {
-    return this.consumeProgramSession(programId);
+  async useSession(programId: string): Promise<boolean> {
+    return await this.consumeProgramSession(programId);
   }
 
-  static addSession(programId: string, additionalSessions: number): boolean {
-    const program = this.getProgramById(programId);
+  async addSession(programId: string, additionalSessions: number): Promise<boolean> {
+    const program = await this.getProgramById(programId);
     if (!program) return false;
 
     const updatedProgram = {
@@ -112,20 +102,20 @@ export class ProgramModel {
       updatedAt: new Date().toISOString()
     };
 
-    return this.updateProgram(programId, updatedProgram) !== null;
+    return await this.updateProgram(programId, updatedProgram) !== null;
   }
 
   // Program Renewal
-  static renewProgram(renewalData: Omit<ProgramRenewal, 'renewedAt'>): Program | null {
-    const program = this.getProgramById(renewalData.programId);
+  async renewProgram(renewalData: Omit<ProgramRenewal, 'renewalDate'>): Promise<Program | null> {
+    const program = await this.getProgramById(renewalData.programId);
     if (!program) return null;
 
     // Store renewal record
     const renewal: ProgramRenewal = {
       ...renewalData,
-      renewedAt: new Date().toISOString()
+      renewalDate: new Date()
     };
-    this.saveRenewal(renewal);
+    await this.dataService.renewals.save(renewal);
 
     // Update program
     const updatedProgram: Program = {
@@ -133,18 +123,18 @@ export class ProgramModel {
       totalSessions: renewal.newTotalSessions,
       usedSessions: 0,
       remainingSessions: renewal.newTotalSessions,
-      endDate: renewal.newEndDate,
+      endDate: renewal.newEndDate.toISOString(),
       status: 'active' as ProgramStatus,
       renewalDecision: renewal.reason as 'trainer' | 'expiration' | 'session_completion',
       updatedAt: new Date().toISOString()
     };
 
-    return this.updateProgram(renewalData.programId, updatedProgram);
+    return await this.updateProgram(renewalData.programId, updatedProgram);
   }
 
   // Program Status Management
-  static checkExpiringPrograms(): Program[] {
-    const programs = this.getPrograms();
+  async checkExpiringPrograms(): Promise<Program[]> {
+    const programs = await this.getPrograms();
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -154,34 +144,34 @@ export class ProgramModel {
     );
   }
 
-  static expirePrograms(): Program[] {
-    const expiringPrograms = this.checkExpiringPrograms();
+  async expirePrograms(): Promise<Program[]> {
+    const expiringPrograms = await this.checkExpiringPrograms();
     const expiredPrograms: Program[] = [];
 
-    expiringPrograms.forEach(program => {
-      const updated = this.updateProgramStatus(program.id, 'expired');
+    for (const program of expiringPrograms) {
+      const updated = await this.updateProgramStatus(program.id, 'expired');
       if (updated) expiredPrograms.push(updated);
-    });
+    }
 
     return expiredPrograms;
   }
 
-  static suspendProgram(id: string, reason: string): Program | null {
-    return this.updateProgram(id, { 
+  async suspendProgram(id: string, reason: string): Promise<Program | null> {
+    return await this.updateProgram(id, { 
       status: 'suspended',
       renewalDecision: reason as 'trainer' | 'expiration' | 'session_completion'
     });
   }
 
-  static reactivateProgram(id: string): Program | null {
-    return this.updateProgramStatus(id, 'active');
+  async reactivateProgram(id: string): Promise<Program | null> {
+    return await this.updateProgramStatus(id, 'active');
   }
 
   // Statistics
-  static getProgramStats(trainerId?: string): ProgramStats {
+  async getProgramStats(trainerId?: string): Promise<ProgramStats> {
     const programs = trainerId 
-      ? this.getProgramsByTrainer(trainerId)
-      : this.getPrograms();
+      ? await this.getProgramsByTrainer(trainerId)
+      : await this.getPrograms();
 
     const activePrograms = programs.filter(p => p.status === 'active');
     const expiredPrograms = programs.filter(p => p.status === 'expired');
@@ -216,8 +206,8 @@ export class ProgramModel {
   }
 
   // Validation
-  static canCreateProgram(clientId: string, trainerId: string): { canCreate: boolean; reason?: string } {
-    const activeProgram = this.getActiveProgramByClient(clientId);
+  async canCreateProgram(clientId: string, trainerId: string): Promise<{ canCreate: boolean; reason?: string }> {
+    const activeProgram = await this.getActiveProgramByClient(clientId);
     
     if (activeProgram) {
       return { canCreate: false, reason: 'Client already has an active program' };
@@ -226,7 +216,7 @@ export class ProgramModel {
     return { canCreate: true };
   }
 
-  static validateProgramRules(totalSessions: number, minimumSessions: number, frequencyPerWeek: number): { isValid: boolean; errors: string[] } {
+  validateProgramRules(totalSessions: number, minimumSessions: number, frequencyPerWeek: number): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
 
     if (totalSessions < minimumSessions) {
@@ -252,108 +242,7 @@ export class ProgramModel {
   }
 
   // Private Methods
-  private static savePrograms(programs: Program[]): void {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(programs));
-  }
-
-  private static saveRenewal(renewal: ProgramRenewal): void {
-    try {
-      const renewals = this.getRenewals();
-      renewals.push(renewal);
-      localStorage.setItem(this.RENEWALS_KEY, JSON.stringify(renewals));
-    } catch (error) {
-      console.error('Error saving renewal:', error);
-    }
-  }
-
-  private static getRenewals(): ProgramRenewal[] {
-    try {
-      const data = localStorage.getItem(this.RENEWALS_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error('Error loading renewals:', error);
-      return [];
-    }
-  }
-
-  private static generateId(): string {
+  private generateId(): string {
     return `program_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  private static getDefaultPrograms(): Program[] {
-    // Programas de ejemplo para demostración
-    return [
-      {
-        id: 'program_001',
-        clientId: 'client_001',
-        clientName: 'Juan Pérez',
-        trainerId: 'trainer_001',
-        trainerName: 'Diego Lamas',
-        totalSessions: 12,
-        usedSessions: 8,
-        remainingSessions: 4,
-        minimumSessions: 12,
-        frequencyPerWeek: 3,
-        startDate: '2024-01-15',
-        endDate: '2024-02-15',
-        status: 'active',
-        createdAt: '2024-01-15T10:00:00Z',
-        updatedAt: '2024-02-01T15:30:00Z',
-        renewalDecision: 'session_completion'
-      },
-      {
-        id: 'program_002',
-        clientId: 'client_001',
-        clientName: 'Juan Pérez',
-        trainerId: 'trainer_001',
-        trainerName: 'Diego Lamas',
-        totalSessions: 12,
-        usedSessions: 12,
-        remainingSessions: 0,
-        minimumSessions: 12,
-        frequencyPerWeek: 3,
-        startDate: '2023-12-01',
-        endDate: '2024-01-01',
-        status: 'renewed',
-        createdAt: '2023-12-01T10:00:00Z',
-        updatedAt: '2024-01-15T10:00:00Z',
-        renewalDecision: 'session_completion'
-      },
-      {
-        id: 'program_003',
-        clientId: 'client_002',
-        clientName: 'María García',
-        trainerId: 'trainer_001',
-        trainerName: 'Diego Lamas',
-        totalSessions: 24,
-        usedSessions: 18,
-        remainingSessions: 6,
-        minimumSessions: 12,
-        frequencyPerWeek: 3,
-        startDate: '2024-01-01',
-        endDate: '2024-03-01',
-        status: 'active',
-        createdAt: '2024-01-01T09:00:00Z',
-        updatedAt: '2024-02-10T16:45:00Z'
-      },
-      {
-        id: 'program_004',
-        clientId: 'client_003',
-        clientName: 'Carlos López',
-        trainerId: 'trainer_001',
-        trainerName: 'Diego Lamas',
-        totalSessions: 12,
-        usedSessions: 12,
-        remainingSessions: 0,
-        minimumSessions: 12,
-        frequencyPerWeek: 3,
-        startDate: '2023-11-01',
-        endDate: '2023-12-01',
-        status: 'expired',
-        createdAt: '2023-11-01T11:00:00Z',
-        updatedAt: '2023-12-01T18:00:00Z',
-        renewalDecision: 'expiration'
-      }
-    ];
   }
 }

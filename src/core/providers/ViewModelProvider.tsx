@@ -5,6 +5,7 @@ import { BookingViewModel } from '../view-models/BookingViewModel';
 import { TrainerViewModel } from '../view-models/TrainerViewModel';
 import { ProgramViewModel } from '../view-models/ProgramViewModel';
 import { BookingModel } from '../models/BookingModel';
+import { ProgramModel } from '../models/ProgramModel';
 import { useData } from './DataProvider';
 
 interface ViewModelContextType {
@@ -23,10 +24,11 @@ export function ViewModelProvider({ children }: ViewModelProviderProps) {
   const { service } = useData();
 
   const viewModels = useMemo(() => {
-    const bookingModel = new BookingModel(service);
-    const bookingVM = new BookingViewModel(bookingModel);
-    const trainerViewModel = new TrainerViewModel(bookingModel);
-    const programVM = new ProgramViewModel();
+    const programModel = new ProgramModel(service);
+    const bookingModel = new BookingModel(service); // Sin dependencia directa de ProgramModel
+    const programVM = new ProgramViewModel(service);
+    const bookingVM = new BookingViewModel(bookingModel, programVM);
+    const trainerViewModel = new TrainerViewModel(bookingModel, programVM);
 
     return {
       bookingVM,
