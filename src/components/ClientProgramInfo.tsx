@@ -12,6 +12,8 @@ export const ClientProgramInfo: React.FC<ClientProgramInfoProps> = ({ clientId }
     console.log('ClientProgramInfo: clientId:', clientId);
     if (clientId) {
       programMediator.loadProgramsForTrainer(clientId);
+      // También cargar programas para el BookingViewModel para validación de reservas
+      programMediator.loadProgramsForBooking(clientId);
     }
   }, [programMediator, clientId]);
 
@@ -46,6 +48,7 @@ export const ClientProgramInfo: React.FC<ClientProgramInfoProps> = ({ clientId }
           // Forzar recarga de datos después de crear el programa
           if (clientId) {
             programMediator.loadProgramsForTrainer(clientId);
+            programMediator.loadProgramsForBooking(clientId);
           }
         }
       } catch (error) {
