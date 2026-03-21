@@ -1,20 +1,19 @@
 import React, { useEffect, useMemo } from 'react';
 import { useViewModels } from '../core/providers/ViewModelProvider';
-import { Program } from '../core/types';
 
 interface ClientProgramInfoProps {
   clientId?: string;
 }
 
 export const ClientProgramInfo: React.FC<ClientProgramInfoProps> = ({ clientId }) => {
-  const { trainerViewModel, programVM } = useViewModels();
+  const { trainerViewModel, programVM, programMediator } = useViewModels();
 
   useEffect(() => {
     console.log('ClientProgramInfo: clientId:', clientId);
     if (clientId) {
-      trainerViewModel.loadClientPrograms(clientId);
+      programMediator.loadProgramsForTrainer(clientId);
     }
-  }, [trainerViewModel, clientId]);
+  }, [programMediator, clientId]);
 
   // Forzar inicialización de datos de ejemplo para el cliente
   useEffect(() => {
@@ -46,7 +45,7 @@ export const ClientProgramInfo: React.FC<ClientProgramInfoProps> = ({ clientId }
           
           // Forzar recarga de datos después de crear el programa
           if (clientId) {
-            trainerViewModel.loadClientPrograms(clientId);
+            programMediator.loadProgramsForTrainer(clientId);
           }
         }
       } catch (error) {

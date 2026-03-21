@@ -2,7 +2,7 @@
 
 ## 1. Arquitectura General
 
-Nivel UI sigue una arquitectura **MVVM (Model-View-ViewModel)** con **inyección de dependencias** y **separación de responsabilidades**.
+Nivel UI sigue una arquitectura **MVVM (Model-View-ViewModel)** con **Patrón Mediator** para coordinación, **inyección de dependencias** y **separación de responsabilidades**.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -36,13 +36,13 @@ Nivel UI sigue una arquitectura **MVVM (Model-View-ViewModel)** con **inyección
 │  │ • Formato datos │ │ • Formato datos │ │ • Formato datos │   │
 │  └─────────────────┘ └─────────────────┘ └─────────────────┘   │
 │         │                       │                   │          │
-│         └───────────────────────┼───────────────────┘          │
-│                                 │                              │
-│                                 ▼                              │
+│         ▼                       ▼                   ▼          │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │                   COMUNICACIÓN MVVM                     │   │
-│  │  Los ViewModels se comunican entre sí, no directamente │   │
-│  │  con los Models. Mantienen el estado y la lógica UI.    │   │
+│  │                 PROGRAM MEDIATOR                        │   │
+│  │  • Coordinación entre ViewModels                       │   │
+│  │  • Elimina dependencias directas                       │   │
+│  │  • Centraliza lógica de coordinación                   │   │
+│  │  • Métodos: loadPrograms(), create, update, delete     │   │
 │  └─────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
                                 │
@@ -84,19 +84,33 @@ Nivel UI sigue una arquitectura **MVVM (Model-View-ViewModel)** con **inyección
 </ViewModelProvider>
 ```
 
-### 2.2. Inyección de Dependencias
+### 2.2. Coordinación entre ViewModels
 
+Para resolver el problema de acoplamiento entre ViewModels, hemos implementado el **Patrón Mediator**.
+
+**📋 Para ver la implementación completa del Patrón Mediator, incluyendo:**
+- ✅ **Implementación completa** del ProgramMediator
+- ✅ **Ejemplos de uso** en componentes React  
+- ✅ **Guía de migración** paso a paso
+- ✅ **Testing completo** con ejemplos de tests
+- ✅ **Diagramas de arquitectura** y flujos de datos
+- ✅ **Análisis antes/después** con métricas
+
+**👉 Consulta el documento especializado: [ARQUITECTURA_VIEW_MODELS.md](./ARQUITECTURA_VIEW_MODELS.md)**
+
+#### Concepto Básico
 ```typescript
-// ViewModelProvider.tsx
+// ViewModels desacoplados con coordinación via Mediator
 const viewModels = useMemo(() => {
-  // Models con dependencias de DataService
-  const programModel = new ProgramModel(service);
-  const bookingModel = new BookingModel(service); // ✅ Sin dependencia directa
-  
-  // ViewModels con dependencias Models y entre ViewModels
+  // ViewModels solo dependen de sus Models
+  const bookingVM = new BookingViewModel(bookingModel);
+  const trainerVM = new TrainerViewModel(bookingModel);
   const programVM = new ProgramViewModel(service);
-  const bookingVM = new BookingViewModel(bookingModel, programVM);
-  const trainerViewModel = new TrainerViewModel(bookingModel, programVM);
+  
+  // Mediator coordina entre ViewModels
+  const mediator = new ProgramMediator(programVM, bookingVM, trainerViewModel);
+
+  return { bookingVM, trainerViewModel, programVM, mediator };
 }, [service]);
 ```
 

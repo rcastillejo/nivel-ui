@@ -3,7 +3,6 @@ import { BookingModel } from '../models/BookingModel';
 import { Booking, Trainer, ZoneType, DaySchedule, TrainerSchedule, Program, ProgramRenewal } from '../types';
 import { BookingCapacityError } from '../types/errors';
 import { isSameDay } from 'date-fns';
-import { ProgramViewModel } from './ProgramViewModel';
 
 export class TrainerViewModel {
   trainers: Trainer[] = [];
@@ -16,7 +15,7 @@ export class TrainerViewModel {
   selectedTrainerId: string | null = null;
   selectedDayIndex: number = new Date().getDay() === 0 ? -1 : new Date().getDay() - 1;
 
-  constructor(private model: BookingModel, private programViewModel: ProgramViewModel) {
+  constructor(private model: BookingModel) {
     makeAutoObservable(this);
   }
 
@@ -55,70 +54,14 @@ export class TrainerViewModel {
     }
   }
 
-  async loadClientPrograms(clientId?: string) {
-    this.setLoading(true);
-    try {
-      const programs = clientId 
-        ? await this.programViewModel.getProgramsByClient(clientId)
-        : await this.programViewModel.getPrograms();
-      runInAction(() => {
-        this.clientPrograms = programs;
-        this.error = null;
-      });
-    } catch (err) {
-      runInAction(() => {
-        this.error = err instanceof Error ? err.message : 'Error cargando programas';
-      });
-    } finally {
-      this.setLoading(false);
-    }
-  }
-
-  async renewClientProgram(programId: string, renewalData: { newTotalSessions: number; reason?: string; renewedBy?: string }): Promise<boolean> {
-    this.setLoading(true);
-    try {
-      const currentProgram = await this.programViewModel.getProgramById(programId);
-      if (!currentProgram) {
-        throw new Error('Program not found');
-      }
-
-      const renewalDataForVM = {
-        id: `renewal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        programId,
-        previousTotalSessions: currentProgram.totalSessions,
-        newTotalSessions: renewalData.newTotalSessions,
-        renewalType: 'trainer_decision' as const,
-        newEndDate: (() => {
-          const date = new Date();
-          date.setDate(date.getDate() + 90); // Default 90 days from now
-          return date;
-        })(),
-        reason: renewalData.reason || 'Renovación estándar',
-        renewedBy: 'trainer' as const
-      };
-
-      const renewedProgram = await this.programViewModel.renewProgram(renewalDataForVM);
-      
-      if (renewedProgram) {
-        // Reload programs after renewal
-        if (currentProgram.clientId) {
-          await this.loadClientPrograms(currentProgram.clientId);
-        }
-      }
-      
-      runInAction(() => {
-        this.error = null;
-      });
-      
-      return !!renewedProgram;
-    } catch (err) {
-      runInAction(() => {
-        this.error = err instanceof Error ? err.message : 'Error renovando programa';
-      });
-      return false;
-    } finally {
-      this.setLoading(false);
-    }
+  /**
+   * Método setter para que el mediator pueda establecer los programas
+   */
+  setClientPrograms(programs: Program[]) {
+    runInAction(() => {
+      this.clientPrograms = programs;
+      this.error = null;
+    });
   }
 
   getActiveProgramsByClient(clientId: string): Program[] {

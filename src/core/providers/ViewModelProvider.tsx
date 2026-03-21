@@ -6,12 +6,14 @@ import { TrainerViewModel } from '../view-models/TrainerViewModel';
 import { ProgramViewModel } from '../view-models/ProgramViewModel';
 import { BookingModel } from '../models/BookingModel';
 import { ProgramModel } from '../models/ProgramModel';
+import { ProgramMediator } from '../mediators/ProgramMediator';
 import { useData } from './DataProvider';
 
 interface ViewModelContextType {
   bookingVM: BookingViewModel;
   trainerViewModel: TrainerViewModel;
   programVM: ProgramViewModel;
+  programMediator: ProgramMediator;
 }
 
 const ViewModelContext = createContext<ViewModelContextType | null>(null);
@@ -26,14 +28,20 @@ export function ViewModelProvider({ children }: ViewModelProviderProps) {
   const viewModels = useMemo(() => {
     const programModel = new ProgramModel(service);
     const bookingModel = new BookingModel(service); // Sin dependencia directa de ProgramModel
+    
+    // ViewModels sin dependencias entre sí
     const programVM = new ProgramViewModel(service);
-    const bookingVM = new BookingViewModel(bookingModel, programVM);
-    const trainerViewModel = new TrainerViewModel(bookingModel, programVM);
+    const bookingVM = new BookingViewModel(bookingModel);
+    const trainerViewModel = new TrainerViewModel(bookingModel);
+    
+    // Mediator que coordina la comunicación entre ViewModels
+    const programMediator = new ProgramMediator(programVM, bookingVM, trainerViewModel);
 
     return {
       bookingVM,
       trainerViewModel,
-      programVM
+      programVM,
+      programMediator
     };
   }, [service]);
 
@@ -68,4 +76,10 @@ export function useTrainerViewModel() {
 export function useProgramViewModel() {
   const { programVM } = useViewModels();
   return programVM;
+}
+
+// Hook específico para el mediator
+export function useProgramMediator() {
+  const { programMediator } = useViewModels();
+  return programMediator;
 }

@@ -3,7 +3,6 @@ import { BookingModel } from '../models/BookingModel';
 import { Booking, Trainer, ZoneType, ZONE_CONFIG, Program } from '../types';
 import { BookingCapacityError } from '../types/errors';
 import { isSameDay } from 'date-fns';
-import { ProgramViewModel } from './ProgramViewModel';
 
 interface ZoneCapacity {
   current: number;
@@ -41,7 +40,7 @@ export class BookingViewModel {
   showSuccessModal = false;
   confirmedBooking: Booking | null = null;
 
-  constructor(private model: BookingModel, private programViewModel: ProgramViewModel) {
+  constructor(private model: BookingModel) {
     makeAutoObservable(this);
     // No cargar automáticamente en constructor para evitar hydration issues
   }
@@ -50,8 +49,7 @@ export class BookingViewModel {
     if (this.trainers.length === 0) {
       this.loadTrainers();
     }
-    // Cargar programas del cliente al inicializar
-    this.loadClientPrograms();
+    // Nota: Los programas ahora se cargan a través del ProgramMediator
   }
 
   // Acciones
@@ -72,21 +70,15 @@ export class BookingViewModel {
     }
   }
 
-  async loadClientPrograms() {
-    this.setLoading(true);
-    try {
-      const programs = await this.programViewModel.getProgramsByClient(this.clientId);
-      runInAction(() => {
-        this.programs = programs;
-        this.error = null;
-      });
-    } catch (err) {
-      runInAction(() => {
-        this.error = err instanceof Error ? err.message : 'Error cargando programas';
-      });
-    } finally {
-      this.setLoading(false);
-    }
+
+  /**
+   * Método setter para que el mediator pueda establecer los programas
+   */
+  setPrograms(programs: Program[]) {
+    runInAction(() => {
+      this.programs = programs;
+      this.error = null;
+    });
   }
 
   getActiveProgram(): Program | null {
@@ -154,8 +146,7 @@ export class BookingViewModel {
       
       runInAction(() => {
         this.error = null;
-        // Refrescar programas después de crear reserva
-        this.loadClientPrograms();
+        // Nota: Los programas se refrescan a través del ProgramMediator después de crear reserva
         // Mostrar modal de éxito con los datos de la reserva confirmada
         this.openSuccessModal(createdBooking);
       });

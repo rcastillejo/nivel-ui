@@ -16,7 +16,7 @@ interface RenewalData {
 }
 
 export const ProgramManager: React.FC = () => {
-  const { trainerViewModel } = useViewModels();
+  const { trainerViewModel, programMediator } = useViewModels();
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showRenewalModal, setShowRenewalModal] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
@@ -35,14 +35,14 @@ export const ProgramManager: React.FC = () => {
 
   useEffect(() => {
     trainerViewModel.loadTrainers();
-    trainerViewModel.loadClientPrograms();
-  }, [trainerViewModel]);
+    programMediator.loadProgramsForTrainer();
+  }, [trainerViewModel, programMediator]);
 
   useEffect(() => {
     if (selectedClient) {
-      trainerViewModel.loadClientPrograms(selectedClient.id);
+      programMediator.loadProgramsForTrainer(selectedClient.id);
     }
-  }, [selectedClient, trainerViewModel]);
+  }, [selectedClient, programMediator]);
 
   const handleRenewProgram = async (program: Program) => {
     setSelectedProgram(program);
@@ -58,17 +58,17 @@ export const ProgramManager: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const success = await trainerViewModel.renewClientProgram(selectedProgram.id, {
+      const success = await programMediator.renewClientProgram(selectedProgram.id, {
         newTotalSessions: renewalData.newTotalSessions,
         reason: renewalData.reason,
-        renewedBy: trainerViewModel.selectedTrainer?.name || 'Entrenador'
+        renewedBy: 'trainer' as const
       });
 
       if (success) {
         setShowRenewalModal(false);
         setSelectedProgram(null);
-        // Recargar programas
-        trainerViewModel.loadClientPrograms(selectedClient.id);
+        // Recargar programas usando el mediator
+        programMediator.loadProgramsForTrainer(selectedClient.id);
       }
     } catch (error) {
       console.error('Error renovando programa:', error);

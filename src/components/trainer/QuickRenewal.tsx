@@ -8,7 +8,7 @@ interface QuickRenewalProps {
 }
 
 export const QuickRenewal: React.FC<QuickRenewalProps> = ({ program, onSuccess }) => {
-  const { trainerViewModel } = useViewModels();
+  const { programMediator } = useViewModels();
   const [isRenewing, setIsRenewing] = useState(false);
   const [newSessions, setNewSessions] = useState(program.totalSessions);
   const [reason, setReason] = useState('');
@@ -16,10 +16,10 @@ export const QuickRenewal: React.FC<QuickRenewalProps> = ({ program, onSuccess }
   const handleRenewal = async () => {
     setIsRenewing(true);
     try {
-      const success = await trainerViewModel.renewClientProgram(program.id, {
+      const success = await programMediator.renewClientProgram(program.id, {
         newTotalSessions: newSessions,
         reason: reason || 'Renovación estándar',
-        renewedBy: trainerViewModel.selectedTrainer?.name || 'Entrenador'
+        renewedBy: 'trainer' as const
       });
       
       if (success) {
