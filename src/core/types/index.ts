@@ -1,4 +1,14 @@
 // Interfaces base del dominio
+
+export interface Client {
+  id: string;
+  name: string;         // Nombre completo
+  email: string;        // Correo para notificaciones
+  phone: string;        // Teléfono de contacto
+  status: 'active' | 'inactive'; // Estado de membresía
+  createdAt: Date;      // Fecha de registro
+}
+
 export interface Trainer {
   id: string;
   name: string;
@@ -35,6 +45,7 @@ export interface ZoneConfig {
 
 export interface Booking {
   id: string;
+  clientId?: string;    // Referencia al cliente (opcional para compatibilidad)
   clientName: string;
   trainerId: string;
   trainerName: string;
@@ -71,6 +82,7 @@ export interface TimeSlotWithCapacity {
 }
 
 export interface AppState {
+  clients: Client[];
   trainers: Trainer[];
   bookings: Booking[];
   trainerSchedules: TrainerSchedule[];
