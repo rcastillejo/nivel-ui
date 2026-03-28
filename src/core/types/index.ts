@@ -43,6 +43,8 @@ export interface Booking {
   duration: number; // minutos
   zone: ZoneType;
   status: 'confirmed' | 'cancelled' | 'pending';
+  programId?: string;
+  clientId?: string;
 }
 
 export interface TrainerSchedule {
@@ -74,4 +76,56 @@ export interface AppState {
   trainers: Trainer[];
   bookings: Booking[];
   trainerSchedules: TrainerSchedule[];
+  programs: Program[];
 }
+
+// Program Types
+export type ProgramStatus = 'active' | 'expired' | 'completed' | 'suspended' | 'renewed';
+
+export interface Program {
+  id: string;
+  clientId: string;
+  clientName: string;
+  trainerId: string;
+  trainerName: string;
+  totalSessions: number;
+  usedSessions: number;
+  remainingSessions: number;
+  minimumSessions: number;
+  frequencyPerWeek: number;
+  startDate: string;
+  endDate: string;
+  status: ProgramStatus;
+  createdAt: string;
+  updatedAt: string;
+  renewalDecision?: 'trainer' | 'expiration' | 'session_completion';
+}
+
+export interface ProgramStats {
+  totalPrograms: number;
+  activePrograms: number;
+  expiredPrograms: number;
+  completedPrograms: number;
+  totalSessionsThisWeek: number;
+  clientsNeedingRenewal: number;
+}
+
+export interface ProgramRenewal {
+  id: string;
+  programId: string;
+  previousTotalSessions: number;
+  newTotalSessions: number;
+  renewalType: RenewalType;
+  renewalDate: Date;
+  renewedBy: 'trainer' | 'system' | 'client';
+  reason?: string;
+  newEndDate: Date;
+}
+
+export type RenewalType = 
+  | 'expiration'     // Por expiración de fecha
+  | 'sessions_depleted' // Por agotamiento de sesiones
+  | 'trainer_decision'  // Por decisión del entrenador
+  | 'client_request'    // Por solicitud del cliente
+  | 'system_auto';      // Automática del sistema
+

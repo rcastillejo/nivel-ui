@@ -1,12 +1,13 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { BookingModel } from '../models/BookingModel';
-import { Booking, Trainer, ZoneType, DaySchedule, TrainerSchedule } from '../types';
+import { Booking, Trainer, ZoneType, DaySchedule, TrainerSchedule, Program, ProgramRenewal } from '../types';
 import { BookingCapacityError } from '../types/errors';
 import { isSameDay } from 'date-fns';
 
 export class TrainerViewModel {
   trainers: Trainer[] = [];
   bookings: Booking[] = [];
+  clientPrograms: Program[] = [];
   isLoading = false;
   error: string | null = null;
   
@@ -51,6 +52,24 @@ export class TrainerViewModel {
     } finally {
       this.setLoading(false);
     }
+  }
+
+  /**
+   * Método setter para que el mediator pueda establecer los programas
+   */
+  setClientPrograms(programs: Program[]) {
+    runInAction(() => {
+      this.clientPrograms = programs;
+      this.error = null;
+    });
+  }
+
+  getActiveProgramsByClient(clientId: string): Program[] {
+    return this.clientPrograms.filter(p => p.clientId === clientId && p.status === 'active');
+  }
+
+  getProgramById(programId: string): Program | undefined {
+    return this.clientPrograms.find(p => p.id === programId);
   }
 
   // Acciones de configuración de horarios

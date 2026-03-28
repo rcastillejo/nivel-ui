@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { BookingModel } from '../models/BookingModel';
-import { Booking, Trainer, ZoneType, ZONE_CONFIG } from '../types';
+import { Booking, Trainer, ZoneType, ZONE_CONFIG, Program } from '../types';
 import { BookingCapacityError } from '../types/errors';
 import { isSameDay } from 'date-fns';
 
@@ -20,6 +20,7 @@ export class BookingViewModel {
   trainers: Trainer[] = [];
   availableSlots: string[] = [];
   bookings: Booking[] = [];
+  programs: Program[] = [];
   isLoading = false;
   error: string | null = null;
   
@@ -32,6 +33,8 @@ export class BookingViewModel {
   selectedTime: string | null = null;
   selectedZone: ZoneType | null = null;
   clientName = 'Cliente Demo'; // En una app real vendría de un formulario
+  clientId = 'client_001'; // En una app real vendría de autenticación
+  selectedProgram: Program | null = null;
   
   // Estado de modales
   showSuccessModal = false;
@@ -46,6 +49,7 @@ export class BookingViewModel {
     if (this.trainers.length === 0) {
       this.loadTrainers();
     }
+    // Nota: Los programas ahora se cargan a través del ProgramMediator
   }
 
   // Acciones
@@ -64,6 +68,21 @@ export class BookingViewModel {
     } finally {
       this.setLoading(false);
     }
+  }
+
+
+  /**
+   * Método setter para que el mediator pueda establecer los programas
+   */
+  setPrograms(programs: Program[]) {
+    runInAction(() => {
+      this.programs = programs;
+      this.error = null;
+    });
+  }
+
+  getActiveProgram(): Program | null {
+    return this.programs.find(p => p.status === 'active') || null;
   }
 
   async loadAvailableSlots(trainerId: string, date: Date) {
@@ -94,6 +113,13 @@ export class BookingViewModel {
       return false;
     }
 
+    // Validar programa activo
+    const programValidation = this.validateActiveProgram();
+    if (!programValidation.isValid) {
+      this.setError(programValidation.error || 'Error de validación del programa');
+      return false;
+    }
+
     // Validación de capacidad en tiempo real
     if (!this.validateCapacity()) {
       return false;
@@ -101,21 +127,26 @@ export class BookingViewModel {
 
     this.setLoading(true);
     try {
+      const activeProgram = this.getActiveProgram()!;
+      
       const bookingData: Omit<Booking, 'id'> = {
         clientName: this.clientName,
+        clientId: this.clientId,
         trainerId: this.selectedTrainer!.id,
         trainerName: `Entrenador ${this.selectedTrainer!.name}`,
         date: this.selectedDate!,
         time: this.selectedTime!,
         duration: 60,
         zone: this.selectedZone!,
-        status: 'confirmed'
+        status: 'confirmed',
+        programId: activeProgram.id
       };
 
       const createdBooking = await this.model.createBooking(bookingData);
       
       runInAction(() => {
         this.error = null;
+        // Nota: Los programas se refrescan a través del ProgramMediator después de crear reserva
         // Mostrar modal de éxito con los datos de la reserva confirmada
         this.openSuccessModal(createdBooking);
       });
@@ -133,6 +164,39 @@ export class BookingViewModel {
     } finally {
       this.setLoading(false);
     }
+  }
+
+  private validateActiveProgram(): { isValid: boolean; error?: string } {
+    const activeProgram = this.getActiveProgram();
+    
+    if (!activeProgram) {
+      return {
+        isValid: false,
+        error: 'No tienes un programa activo. Por favor contacta a tu entrenador para activar un programa.'
+      };
+    }
+
+    if (activeProgram.remainingSessions <= 0) {
+      return {
+        isValid: false,
+        error: 'No tienes sesiones disponibles en tu programa actual. Por favor renueva tu programa.'
+      };
+    }
+
+    // Validar fecha de expiración
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expirationDate = new Date(activeProgram.endDate);
+    expirationDate.setHours(0, 0, 0, 0);
+
+    if (expirationDate < today) {
+      return {
+        isValid: false,
+        error: 'Tu programa ha expirado. Por favor contacta a tu entrenador para renovarlo.'
+      };
+    }
+
+    return { isValid: true };
   }
 
   // Métodos unificados para obtener capacidades

@@ -30,7 +30,7 @@ src/components/
 - **Tecnología**: MobX para estado reactivo
 
 ```typescript
-// BookingViewModel.ts - Estado reactivo con MobX
+// BookingViewModel.ts - Estado reactivo para flujo de clientes
 export class BookingViewModel {
   // Estado observable
   trainers: Trainer[] = [];
@@ -43,10 +43,36 @@ export class BookingViewModel {
   selectedTrainer: Trainer | null = null;
   selectedTime: string | null = null;
   
+  // Métodos unificados de capacidad con soporte para trainerId
+  async validateBookingLimit(time: string, trainerId?: string): Promise<boolean>
+  async getZonesOccupancyForSlot(time: string, trainerId?: string): Promise<Record<ZoneType, number>>
+  
   // Computed values
   get canCreateBooking() {
     return !!(this.selectedDate && this.selectedTrainer && this.selectedTime);
   }
+}
+
+// TrainerViewModel.ts - Estado reactivo para gestión del entrenador
+export class TrainerViewModel {
+  // Estado observable específico del entrenador
+  trainers: Trainer[] = [];
+  bookings: Booking[] = [];
+  isLoading = false;
+  error: string | null = null;
+  
+  // Estado de gestión del entrenador
+  selectedDate: Date = new Date();
+  selectedTrainerId: string | null = null;
+  selectedDayIndex: number = 0;
+  
+  // Métodos heredados y unificados del BookingModel
+  async getZoneOccupancy(zone: ZoneType, date: Date, time: string, trainerId?: string): Promise<number>
+  async getAllZonesOccupancy(date: Date, time: string, trainerId?: string): Promise<Record<ZoneType, number>>
+  
+  // Métodos específicos de gestión del entrenador
+  async saveSchedule(scheduleData: TrainerSchedule): Promise<boolean>
+  async deleteBooking(bookingId: string): Promise<boolean>
 }
 ```
 
@@ -56,13 +82,30 @@ export class BookingViewModel {
 - **Patrón**: Domain Models con lógica encapsulada
 
 ```typescript
-// BookingModel.ts - Lógica de negocio
+// BookingModel.ts - Lógica de negocio unificada
 export class BookingModel {
+  // Métodos unificados de capacidad con soporte opcional para trainerId
+  async getZoneOccupancy(
+    zone: ZoneType, 
+    date: Date, 
+    time: string, 
+    trainerId?: string
+  ): Promise<number> {
+    // Filtra reservas por zona, fecha, hora y opcionalmente por entrenador
+    // Calcula ocupación actual basada en configuración de ZONE_CONFIG
+  }
+  
+  async validateBookingLimit(
+    time: string, 
+    trainerId?: string
+  ): Promise<boolean> {
+    // Valida límites de capacidad para GYM y GABINETE
+    // Lanza BookingCapacityError si se excede el límite
+  }
+  
   async createBooking(booking: Omit<Booking, 'id'>): Promise<Booking> {
-    // Validaciones de negocio
+    // Validaciones de negocio unificadas
     this.validateBooking(booking);
-    
-    // Verificar disponibilidad
     await this.checkAvailability(booking.trainerId, booking.date, booking.time);
     
     // Crear reserva
@@ -149,8 +192,9 @@ export function DataProvider({ children }) {
 
 ### 1. **Single Responsibility Principle (SRP)**
 - Cada clase tiene una responsabilidad única
-- `BookingModel`: Solo lógica de negocio de reservas
-- `BookingViewModel`: Solo estado de UI de reservas
+- `BookingModel`: Solo lógica de negocio de reservas (unificada para clientes y entrenadores)
+- `BookingViewModel`: Solo estado de UI de reservas de clientes
+- `TrainerViewModel`: Solo estado de UI de gestión del entrenador
 - `BookingRepository`: Solo acceso a datos de reservas
 
 ### 2. **Open/Closed Principle (OCP)**
@@ -244,6 +288,62 @@ export class BookingCapacityError extends Error {
 4. **Repository**: Consulta datos desde localStorage
 5. **ViewModel**: Actualiza `availableSlots` observable
 6. **Component**: Re-renderiza automáticamente con nuevos datos
+
+## Manejo Unificado de Aforo
+
+### 1. **Estrategia de Unificación**
+El sistema implementa un enfoque unificado para el cálculo y visualización del aforo en ambas zonas (GYM y GABINETE), eliminando la duplicidad de código entre contextos de cliente y entrenador.
+
+### 2. **Métodos Centralizados en BookingModel**
+```typescript
+// Método principal que admite filtrado opcional por entrenador
+async getZoneOccupancy(
+  zone: ZoneType, 
+  date: Date, 
+  time: string, 
+  trainerId?: string
+): Promise<number>
+
+// Método de conveniencia para obtener ocupación de todas las zonas
+async getAllZonesOccupancy(
+  date: Date, 
+  time: string, 
+  trainerId?: string
+): Promise<Record<ZoneType, number>>
+```
+
+### 3. **Formato de Visualización Estándar**
+Ambas interfaces (cliente y entrenador) muestran el aforo en el formato:
+```
+2/10 / 0/1
+Aforo GYM / Aforo GABINETE
+```
+
+### 4. **Flujo de Datos Unificado**
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│ BookingViewModel│    │   BookingModel   │    │   Repositories  │
+│  (Clientes)     │────│  (Lógica Unificada)│────│  (Datos)        │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+         │                        │                       │
+┌─────────────────┐                │                       │
+│ TrainerViewModel│────────────────┘                       │
+│ (Entrenadores) │                                        │
+└─────────────────┘                                        │
+         │                                                │
+         └────────────────────────────────────────────────┘
+                              │
+                    ┌─────────────────┐
+                    │   ZONE_CONFIG   │
+                    │ ( Capacidades ) │
+                    └─────────────────┘
+```
+
+### 5. **Beneficios de la Unificación**
+- **Consistencia**: Mismo cálculo de aforo en todos los contextos
+- **Mantenibilidad**: Cambios en lógica de capacidad solo se hacen en un lugar
+- **Flexibilidad**: Soporte para vista general o filtrada por entrenador
+- **Eliminación de Duplicidad**: Un único método reutilizable
 
 ## Gestión de Estado
 

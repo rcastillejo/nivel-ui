@@ -1,4 +1,4 @@
-import { Trainer, Booking, TrainerSchedule } from '../types';
+import { Trainer, Booking, TrainerSchedule, Program, ProgramRenewal } from '../types';
 
 // Interfaces de repositorios para abstracción de datos
 export interface ITrainerRepository {
@@ -19,9 +19,34 @@ export interface IBookingRepository {
   delete(id: string): Promise<void>;
 }
 
+export interface IProgramRepository {
+  getAll(): Promise<Program[]>;
+  getById(id: string): Promise<Program | null>;
+  getByClientId(clientId: string): Promise<Program[]>;
+  getByTrainerId(trainerId: string): Promise<Program[]>;
+  getActivePrograms(): Promise<Program[]>;
+  getExpiringPrograms(days: number): Promise<Program[]>;
+  getByStatus(status: string): Promise<Program[]>;
+  save(program: Program): Promise<void>;
+  update(id: string, program: Partial<Program>): Promise<void>;
+  delete(id: string): Promise<void>;
+}
+
+export interface IProgramRenewalRepository {
+  getAll(): Promise<ProgramRenewal[]>;
+  getById(id: string): Promise<ProgramRenewal | null>;
+  getByProgramId(programId: string): Promise<ProgramRenewal[]>;
+  getByClientId(clientId: string): Promise<ProgramRenewal[]>;
+  getByType(renewalType: string): Promise<ProgramRenewal[]>;
+  save(renewal: ProgramRenewal): Promise<void>;
+  delete(id: string): Promise<void>;
+}
+
 export interface IDataService {
   trainers: ITrainerRepository;
   bookings: IBookingRepository;
+  programs: IProgramRepository;
+  renewals: IProgramRenewalRepository;
   initialize(): Promise<void>;
   clear(): Promise<void>;
 }

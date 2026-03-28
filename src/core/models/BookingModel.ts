@@ -1,10 +1,12 @@
 import { Booking, Trainer, ZoneType, ZONE_CONFIG } from '../types';
 import { BookingCapacityError } from '../types/errors';
 import { IDataService } from '../repositories';
+import { ProgramModel } from './ProgramModel';
 import { isSameDay } from 'date-fns';
 
 export class BookingModel {
   constructor(private dataService: IDataService) {}
+  // Removed direct dependency on ProgramModel - now handled by ViewModels
 
   async createBooking(booking: Omit<Booking, 'id'>): Promise<Booking> {
     // Validaciones de negocio
@@ -16,12 +18,19 @@ export class BookingModel {
     // Validar capacidad en tiempo real
     await this.validateCapacity(booking);
     
+    // NOTA: La validación de programas se maneja en el ViewModel
+    // para mantener la separación de responsabilidades MVVM
+    
     const newBooking: Booking = {
       ...booking,
       id: `booking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     };
     
     await this.dataService.bookings.save(newBooking);
+
+    // NOTA: El consumo de sesiones se maneja en el ViewModel
+    // para mantener la separación de responsabilidades MVVM
+
     return newBooking;
   }
 
@@ -165,5 +174,55 @@ export class BookingModel {
       gym: await this.getZoneOccupancy('gym', date, time, trainerId),
       gabinete: await this.getZoneOccupancy('gabinete', date, time)
     };
+  }
+
+  // Program validation methods to be called from ViewModels
+  async validateProgramSession(programId: string, clientId: string, programModel: ProgramModel): Promise<void> {
+    const program = await programModel.getProgramById(programId);
+    if (!program) {
+      throw new Error('Program not found');
+    }
+
+    if (program.clientId !== clientId) {
+      throw new Error('Program does not belong to this client');
+    }
+
+    if (program.status !== 'active') {
+      throw new Error('Program is not active');
+    }
+
+    if (program.remainingSessions <= 0) {
+      throw new Error('No sessions remaining in program');
+    }
+  }
+
+  async consumeProgramSession(programId: string, programModel: ProgramModel): Promise<void> {
+    const success = await programModel.consumeProgramSession(programId);
+    if (!success) {
+      throw new Error('Failed to consume program session');
+    }
+  }
+
+  async getBookingsByProgram(programId: string): Promise<Booking[]> {
+    const allBookings = await this.dataService.bookings.getAll();
+    return allBookings.filter(booking => booking.programId === programId);
+  }
+
+  async getBookingsByClient(clientId: string): Promise<Booking[]> {
+    const allBookings = await this.dataService.bookings.getAll();
+    return allBookings.filter(booking => booking.clientId === clientId);
+  }
+
+  async cancelBooking(bookingId: string): Promise<void> {
+    const booking = await this.dataService.bookings.getById(bookingId);
+    if (!booking) {
+      throw new Error('Booking not found');
+    }
+
+    // Update booking status to cancelled
+    await this.dataService.bookings.update(bookingId, { status: 'cancelled' });
+
+    // NOTA: La restauración de sesiones se maneja en el ViewModel
+    // para mantener la separación de responsabilidades MVVM
   }
 }
