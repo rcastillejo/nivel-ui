@@ -120,24 +120,42 @@ Seguir siempre el patrón establecido:
 
 ### Estructura de archivos de test
 
+Los tests viven en carpetas **separadas** de `src/`. El código de producción en `src/` no debe mezclarse con archivos de test.
+
 ```
-src/
-├── core/
-│   ├── models/
-│   │   ├── BookingModel.ts
-│   │   └── BookingModel.test.ts      ← Test unitario del Model
-│   ├── view-models/
-│   │   ├── BookingViewModel.ts
-│   │   └── BookingViewModel.test.ts  ← Test unitario del ViewModel
+nivel-ui/
+├── src/                          ← SOLO código de producción
+│   └── core/
+│       ├── models/
+│       │   └── BookingModel.ts
+│       └── view-models/
+│           ├── BookingViewModel.ts
+│           └── TrainerViewModel.ts
+│
+├── tests/                        ← Tests unitarios e integración
+│   ├── unit/
+│   │   └── core/
+│   │       ├── models/
+│   │       │   └── BookingModel.test.ts
+│   │       └── view-models/
+│   │           ├── BookingViewModel.test.ts
+│   │           └── TrainerViewModel.test.ts
+│   └── integration/
+│       └── BookingFlow.integration.test.ts
+│
+└── e2e/                          ← Tests funcionales / E2E (Playwright)
+    ├── booking-flow.spec.ts
+    ├── trainer-flow.spec.ts
+    └── capacity.spec.ts
 ```
 
 ### Ejemplo de test unitario para BookingModel
 
 ```typescript
-// BookingModel.test.ts
+// tests/unit/core/models/BookingModel.test.ts
 import { describe, it, expect, vi } from 'vitest';
-import { BookingModel } from './BookingModel';
-import { BookingCapacityError } from '../types/errors';
+import { BookingModel } from '@/core/models/BookingModel';
+import { BookingCapacityError } from '@/core/types/errors';
 
 const mockDataService = {
   bookings: {
@@ -189,7 +207,7 @@ describe('BookingModel.validateBooking', () => {
 ### Ejemplo
 
 ```typescript
-// BookingFlow.integration.test.ts
+// tests/integration/BookingFlow.integration.test.ts
 it('crea una reserva y la persiste en localStorage', async () => {
   const dataService = new LocalStorageDataService();
   await dataService.initialize();
