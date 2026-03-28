@@ -93,7 +93,7 @@ export default function BookingWizard() {
 
       // Crear la reserva usando el nuevo sistema
       const newBooking: Omit<Booking, 'id'> = {
-        clientName: 'Cliente Demo', // En una app real, esto vendría de un formulario
+        clientId: 'client1', // En una app real, esto vendría de un selector de clientes
         trainerId: trainer.id,
         trainerName: bookingData.selectedTrainer,
         date: bookingData.selectedDate,

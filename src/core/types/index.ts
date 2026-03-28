@@ -1,4 +1,13 @@
 // Interfaces base del dominio
+export interface Client {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: 'active' | 'inactive';
+  createdAt: Date;
+}
+
 export interface Trainer {
   id: string;
   name: string;
@@ -35,7 +44,7 @@ export interface ZoneConfig {
 
 export interface Booking {
   id: string;
-  clientName: string;
+  clientId: string;
   trainerId: string;
   trainerName: string;
   date: Date;

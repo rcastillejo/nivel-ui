@@ -3,13 +3,15 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { IDataService } from '../repositories';
 import { LocalStorageDataService } from '../repositories/localStorage';
-import { Trainer, Booking } from '../types';
+import { Trainer, Booking, Client } from '../types';
 
 interface DataContextType {
   service: IDataService;
+  clients: Client[];
   trainers: Trainer[];
   bookings: Booking[];
   isLoading: boolean;
+  refreshClients: () => Promise<void>;
   refreshTrainers: () => Promise<void>;
   refreshBookings: () => Promise<void>;
   createBooking: (booking: Omit<Booking, 'id'>) => Promise<void>;
@@ -31,9 +33,19 @@ interface DataProviderProps {
 
 export function DataProvider({ children }: DataProviderProps) {
   const [service] = useState<IDataService>(() => new LocalStorageDataService());
+  const [clients, setClients] = useState<Client[]>([]);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const refreshClients = async () => {
+    try {
+      const data = await service.clients.getAll();
+      setClients(data);
+    } catch (error) {
+      console.error('Error loading clients:', error);
+    }
+  };
 
   const refreshTrainers = async () => {
     try {
@@ -74,6 +86,7 @@ export function DataProvider({ children }: DataProviderProps) {
       try {
         await service.initialize();
         await Promise.all([
+          refreshClients(),
           refreshTrainers(),
           refreshBookings()
         ]);
@@ -89,9 +102,11 @@ export function DataProvider({ children }: DataProviderProps) {
 
   const value: DataContextType = {
     service,
+    clients,
     trainers,
     bookings,
     isLoading,
+    refreshClients,
     refreshTrainers,
     refreshBookings,
     createBooking
