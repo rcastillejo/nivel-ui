@@ -90,8 +90,8 @@ export class BookingModel {
   }
 
   private validateBooking(booking: Omit<Booking, 'id'>): void {
-    if (!booking.clientName.trim()) {
-      throw new Error('El nombre del cliente es requerido');
+    if (!booking.clientId.trim()) {
+      throw new Error('El cliente es requerido');
     }
     
     if (booking.duration < 30) {

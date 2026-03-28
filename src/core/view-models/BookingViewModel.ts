@@ -31,7 +31,7 @@ export class BookingViewModel {
   selectedTrainer: Trainer | null = null;
   selectedTime: string | null = null;
   selectedZone: ZoneType | null = null;
-  clientName = 'Cliente Demo'; // En una app real vendría de un formulario
+  clientId = 'client1'; // En una app real vendría de un selector de clientes
   
   // Estado de modales
   showSuccessModal = false;
@@ -102,7 +102,7 @@ export class BookingViewModel {
     this.setLoading(true);
     try {
       const bookingData: Omit<Booking, 'id'> = {
-        clientName: this.clientName,
+        clientId: this.clientId,
         trainerId: this.selectedTrainer!.id,
         trainerName: `Entrenador ${this.selectedTrainer!.name}`,
         date: this.selectedDate!,
@@ -264,8 +264,8 @@ export class BookingViewModel {
     this.selectedZone = zone;
   }
 
-  setClientName(name: string) {
-    this.clientName = name;
+  setClientId(id: string) {
+    this.clientId = id;
   }
 
   resetForm() {
@@ -296,7 +296,7 @@ export class BookingViewModel {
       this.selectedTrainer &&
       this.selectedTime &&
       this.selectedZone &&
-      this.clientName.trim()
+      this.clientId.trim()
     );
   }
 

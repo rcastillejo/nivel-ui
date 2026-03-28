@@ -1,6 +1,14 @@
-import { Trainer, Booking, TrainerSchedule } from '../types';
+import { Trainer, Booking, TrainerSchedule, Client } from '../types';
 
 // Interfaces de repositorios para abstracción de datos
+export interface IClientRepository {
+  getAll(): Promise<Client[]>;
+  getById(id: string): Promise<Client | null>;
+  getByEmail(email: string): Promise<Client | null>;
+  save(client: Client): Promise<void>;
+  delete(id: string): Promise<void>;
+}
+
 export interface ITrainerRepository {
   getAll(): Promise<Trainer[]>;
   getById(id: string): Promise<Trainer | null>;
@@ -20,6 +28,7 @@ export interface IBookingRepository {
 }
 
 export interface IDataService {
+  clients: IClientRepository;
   trainers: ITrainerRepository;
   bookings: IBookingRepository;
   initialize(): Promise<void>;

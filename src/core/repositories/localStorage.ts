@@ -1,5 +1,5 @@
-import { Trainer, Booking, TrainerSchedule } from '../types';
-import { ITrainerRepository, IBookingRepository, IDataService } from './index';
+import { Trainer, Booking, TrainerSchedule, Client } from '../types';
+import { IClientRepository, ITrainerRepository, IBookingRepository, IDataService } from './index';
 
 // Horarios preestablecidos por día (Lunes a Sábado)
 const getDefaultScheduleForDay = (dayIndex: number) => {
@@ -13,6 +13,17 @@ const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sába
 
 // Datos iniciales para demo coherente
 const initialData = {
+  clients: [
+    { id: 'client1', name: 'María González',  email: 'maria.gonzalez@email.com',   phone: '+34 611 000 001', status: 'active' as const, createdAt: new Date(2025, 0, 1) },
+    { id: 'client2', name: 'Carlos Ruiz',     email: 'carlos.ruiz@email.com',      phone: '+34 611 000 002', status: 'active' as const, createdAt: new Date(2025, 0, 2) },
+    { id: 'client3', name: 'Ana Martín',      email: 'ana.martin@email.com',       phone: '+34 611 000 003', status: 'active' as const, createdAt: new Date(2025, 0, 3) },
+    { id: 'client4', name: 'Luis Torres',     email: 'luis.torres@email.com',      phone: '+34 611 000 004', status: 'active' as const, createdAt: new Date(2025, 0, 4) },
+    { id: 'client5', name: 'Patricia Vega',   email: 'patricia.vega@email.com',    phone: '+34 611 000 005', status: 'active' as const, createdAt: new Date(2025, 0, 5) },
+    { id: 'client6', name: 'Roberto Silva',   email: 'roberto.silva@email.com',    phone: '+34 611 000 006', status: 'active' as const, createdAt: new Date(2025, 0, 6) },
+    { id: 'client7', name: 'Laura Mendoza',   email: 'laura.mendoza@email.com',    phone: '+34 611 000 007', status: 'active' as const, createdAt: new Date(2025, 0, 7) },
+    { id: 'client8', name: 'Diego Castro',    email: 'diego.castro@email.com',     phone: '+34 611 000 008', status: 'active' as const, createdAt: new Date(2025, 0, 8) },
+    { id: 'client9', name: 'Luis Castillejo', email: 'luis.castillejo@email.com',  phone: '+34 611 000 009', status: 'active' as const, createdAt: new Date(2025, 0, 9) },
+  ] as Client[],
   trainers: [
     {
       id: 'trainer1',
@@ -30,92 +41,101 @@ const initialData = {
   bookings: [
     {
       id: 'booking1',
-      clientName: 'María González',
+      clientId: 'client1',
       trainerId: 'trainer1',
       trainerName: 'Entrenador Diego Lamas',
       date: new Date(2026, 0, 22), // 22 enero 2026
       time: '09:00',
       duration: 60,
+      zone: 'gym' as const,
       status: 'confirmed' as const
     },
     {
       id: 'booking2',
-      clientName: 'Carlos Ruiz', 
+      clientId: 'client2',
       trainerId: 'trainer2',
       trainerName: 'Entrenador Jeanpierre Casas',
       date: new Date(2026, 0, 23), // 23 enero 2026
       time: '16:00',
       duration: 60,
+      zone: 'gym' as const,
       status: 'confirmed' as const
     },
     {
       id: 'booking3',
-      clientName: 'Ana Martín',
+      clientId: 'client3',
       trainerId: 'trainer1',
-      trainerName: 'Entrenador Diego Lamas', 
+      trainerName: 'Entrenador Diego Lamas',
       date: new Date(2026, 0, 24), // 24 enero 2026
       time: '10:00',
       duration: 60,
+      zone: 'gym' as const,
       status: 'cancelled' as const
     },
     {
       id: 'booking4',
-      clientName: 'Luis Torres',
+      clientId: 'client4',
       trainerId: 'trainer1',
       trainerName: 'Entrenador Diego Lamas',
       date: new Date(2026, 0, 22), // 22 enero 2026 - mismo día y hora que booking1
       time: '09:00',
       duration: 60,
+      zone: 'gym' as const,
       status: 'confirmed' as const
     },
     {
       id: 'booking5',
-      clientName: 'Patricia Vega',
+      clientId: 'client5',
       trainerId: 'trainer1',
       trainerName: 'Entrenador Diego Lamas',
       date: new Date(2026, 0, 22), // 22 enero 2026 - mismo día y hora que booking1
       time: '09:00',
       duration: 60,
+      zone: 'gym' as const,
       status: 'confirmed' as const
     },
     {
       id: 'booking6',
-      clientName: 'Roberto Silva',
+      clientId: 'client6',
       trainerId: 'trainer1',
       trainerName: 'Entrenador Diego Lamas',
       date: new Date(2026, 0, 22), // 22 enero 2026 - mismo día y hora que booking1
       time: '09:00',
       duration: 60,
+      zone: 'gym' as const,
       status: 'confirmed' as const
     },
     {
       id: 'booking7',
-      clientName: 'Laura Mendoza',
+      clientId: 'client7',
       trainerId: 'trainer2',
       trainerName: 'Entrenador Jeanpierre Casas',
       date: new Date(2026, 0, 23), // 23 enero 2026 - mismo día y hora que booking2
       time: '16:00',
       duration: 60,
+      zone: 'gym' as const,
       status: 'confirmed' as const
     },
     {
       id: 'booking8',
-      clientName: 'Diego Castro',
+      clientId: 'client8',
       trainerId: 'trainer2',
       trainerName: 'Entrenador Jeanpierre Casas',
       date: new Date(2026, 0, 23), // 23 enero 2026 - mismo día y hora que booking2
       time: '16:00',
       duration: 60,
+      zone: 'gym' as const,
       status: 'confirmed' as const
     },
     {
       id: 'booking9',
-      clientName: 'Luis Castillejo',
+      clientId: 'client9',
       trainerId: 'trainer2',
       trainerName: 'Entrenador Jeanpierre Casas',
       date: new Date(2026, 1, 23), // 23 febrero 2026 - mismo día y hora que booking2
       time: '16:00',
       duration: 60,
+      zone: 'gym' as const,
       status: 'confirmed' as const
     }
   ],
@@ -146,6 +166,60 @@ const initialData = {
     }
   ]
 };
+
+class LocalStorageClientRepository implements IClientRepository {
+  private readonly key = 'nivel-clients';
+
+  async getAll(): Promise<Client[]> {
+    const data = localStorage.getItem(this.key);
+    if (!data) {
+      await this.initializeData();
+      return this.parseClients(JSON.stringify(initialData.clients));
+    }
+    return this.parseClients(data);
+  }
+
+  async getById(id: string): Promise<Client | null> {
+    const clients = await this.getAll();
+    return clients.find(c => c.id === id) || null;
+  }
+
+  async getByEmail(email: string): Promise<Client | null> {
+    const clients = await this.getAll();
+    return clients.find(c => c.email === email) || null;
+  }
+
+  async save(client: Client): Promise<void> {
+    const clients = await this.getAll();
+    const index = clients.findIndex(c => c.id === client.id);
+
+    if (index >= 0) {
+      clients[index] = client;
+    } else {
+      clients.push(client);
+    }
+
+    localStorage.setItem(this.key, JSON.stringify(clients));
+  }
+
+  async delete(id: string): Promise<void> {
+    const clients = await this.getAll();
+    const filtered = clients.filter(c => c.id !== id);
+    localStorage.setItem(this.key, JSON.stringify(filtered));
+  }
+
+  private parseClients(data: string): Client[] {
+    const parsed = JSON.parse(data);
+    return parsed.map((c: Client) => ({
+      ...c,
+      createdAt: new Date(c.createdAt)
+    }));
+  }
+
+  private async initializeData(): Promise<void> {
+    localStorage.setItem(this.key, JSON.stringify(initialData.clients));
+  }
+}
 
 class LocalStorageTrainerRepository implements ITrainerRepository {
   private readonly key = 'nivel-trainers';
@@ -270,10 +344,12 @@ class LocalStorageBookingRepository implements IBookingRepository {
 }
 
 export class LocalStorageDataService implements IDataService {
+  clients: IClientRepository;
   trainers: ITrainerRepository;
   bookings: IBookingRepository;
 
   constructor() {
+    this.clients = new LocalStorageClientRepository();
     this.trainers = new LocalStorageTrainerRepository();
     this.bookings = new LocalStorageBookingRepository();
   }
@@ -302,6 +378,7 @@ export class LocalStorageDataService implements IDataService {
   }
 
   async clear(): Promise<void> {
+    localStorage.removeItem('nivel-clients');
     localStorage.removeItem('nivel-trainers');
     localStorage.removeItem('nivel-bookings');
     localStorage.removeItem('nivel-schedules');

@@ -7,18 +7,14 @@ import { useData } from '@/core/providers/DataProvider';
 import { Booking, ZONE_CONFIG } from '@/core/types';
 import { TimeSlotWithCapacity } from '@/core/types';
 
-interface Appointment {
-  id: string;
-  clientName: string;
-  date: Date;
-  time: string;
-  duration: number; // in minutes
-  status: 'confirmed' | 'pending' | 'cancelled';
-}
 
 export default function TrainerAppointments() {
-  const { bookings, isLoading } = useData();
+  const { bookings, clients, isLoading } = useData();
+
   const [currentWeek, setCurrentWeek] = useState(new Date());
+
+  const getClientName = (clientId: string) =>
+    clients.find(c => c.id === clientId)?.name ?? clientId;
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Start on Monday
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -63,7 +59,7 @@ export default function TrainerAppointments() {
     ).length;
   };
 
-  const getStatusColor = (status: Appointment['status']) => {
+  const getStatusColor = (status: Booking['status']) => {
     switch (status) {
       case 'confirmed':
         return 'bg-green-100 text-green-800 border-green-200';
@@ -76,7 +72,7 @@ export default function TrainerAppointments() {
     }
   };
 
-  const getStatusIcon = (status: Appointment['status']) => {
+  const getStatusIcon = (status: Booking['status']) => {
     switch (status) {
       case 'confirmed':
         return '✓';
@@ -229,7 +225,7 @@ export default function TrainerAppointments() {
               className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0"
             >
               <div>
-                <div className="font-medium text-gray-900">{appointment.clientName}</div>
+                <div className="font-medium text-gray-900">{getClientName(appointment.clientId)}</div>
                 <div className="text-sm text-gray-600">
                   {format(appointment.date, "EEEE, d 'de' MMMM", { locale: es })} a las {appointment.time}
                 </div>
