@@ -5,15 +5,15 @@ import { Booking, Trainer, ZoneType } from '@/core/types'
 import { BookingCapacityError } from '@/core/types/errors'
 
 // Mock del data service
-const mockTrainerRepository: ITrainerRepository = {
+const mockTrainerRepository = {
   getAll: vi.fn(),
   getById: vi.fn(),
   save: vi.fn(),
   saveSchedule: vi.fn(),
   getSchedule: vi.fn()
-}
+} as any
 
-const mockBookingRepository: IBookingRepository = {
+const mockBookingRepository = {
   getAll: vi.fn(),
   getById: vi.fn(),
   getByDate: vi.fn(),
@@ -21,7 +21,7 @@ const mockBookingRepository: IBookingRepository = {
   save: vi.fn(),
   update: vi.fn(),
   delete: vi.fn()
-}
+} as any
 
 const mockDataService: IDataService = {
   clients: {
@@ -132,12 +132,7 @@ describe('BookingModel', () => {
 
       const gabineteBooking = { ...validBookingData, zone: 'gabinete' as ZoneType }
 
-      try {
-        await bookingModel.createBooking(gabineteBooking)
-        fail('Expected BookingCapacityError to be thrown')
-      } catch (error) {
-        expect(error).toBeInstanceOf(BookingCapacityError)
-      }
+      await expect(bookingModel.createBooking(gabineteBooking)).rejects.toThrow(BookingCapacityError)
     })
   })
 
