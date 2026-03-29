@@ -84,3 +84,14 @@ export interface AppState {
   bookings: Booking[];
   trainerSchedules: TrainerSchedule[];
 }
+
+export interface Program {
+  id: string;
+  name: string;
+  description: string;
+  trainerId: string;
+  clientIds: string[];
+  startDate: Date;
+  endDate: Date;
+  status: 'active' | 'inactive' | 'expired';
+}
