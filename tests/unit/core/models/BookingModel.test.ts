@@ -33,6 +33,14 @@ const mockDataService: IDataService = {
   },
   trainers: mockTrainerRepository,
   bookings: mockBookingRepository,
+  programs: {
+    getAll: vi.fn(),
+    getById: vi.fn(),
+    getByTrainer: vi.fn(),
+    getByClient: vi.fn(),
+    save: vi.fn(),
+    delete: vi.fn()
+  },
   initialize: vi.fn(),
   clear: vi.fn()
 }
