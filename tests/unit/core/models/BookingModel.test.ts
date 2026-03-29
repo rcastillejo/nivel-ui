@@ -23,6 +23,15 @@ const mockBookingRepository = {
   delete: vi.fn()
 }
 
+const mockProgramRepository = {
+  getAll: vi.fn(),
+  getById: vi.fn(),
+  getByTrainer: vi.fn(),
+  getByClient: vi.fn(),
+  save: vi.fn(),
+  delete: vi.fn()
+}
+
 const mockDataService: IDataService = {
   clients: {
     getAll: vi.fn(),
@@ -33,6 +42,7 @@ const mockDataService: IDataService = {
   },
   trainers: mockTrainerRepository,
   bookings: mockBookingRepository,
+  programs: mockProgramRepository,
   initialize: vi.fn(),
   clear: vi.fn()
 }

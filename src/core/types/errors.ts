@@ -10,3 +10,17 @@ export class BookingCapacityError extends Error {
     this.name = 'BookingCapacityError';
   }
 }
+
+export class ProgramNotFoundError extends Error {
+  constructor(public programId: string) {
+    super(`El programa con id '${programId}' no fue encontrado`);
+    this.name = 'ProgramNotFoundError';
+  }
+}
+
+export class ProgramExpiredError extends Error {
+  constructor(public programId: string) {
+    super(`El programa con id '${programId}' ha expirado`);
+    this.name = 'ProgramExpiredError';
+  }
+}

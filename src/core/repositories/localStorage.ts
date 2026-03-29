@@ -1,5 +1,5 @@
-import { Trainer, Booking, TrainerSchedule, Client } from '../types';
-import { IClientRepository, ITrainerRepository, IBookingRepository, IDataService } from './index';
+import { Trainer, Booking, TrainerSchedule, Client, Program } from '../types';
+import { IClientRepository, ITrainerRepository, IBookingRepository, IProgramRepository, IDataService } from './index';
 
 // Horarios preestablecidos por día (Lunes a Sábado)
 const getDefaultScheduleForDay = (dayIndex: number) => {
@@ -343,15 +343,70 @@ class LocalStorageBookingRepository implements IBookingRepository {
   }
 }
 
+class LocalStorageProgramRepository implements IProgramRepository {
+  private readonly key = 'nivel-programs';
+
+  async getAll(): Promise<Program[]> {
+    const data = localStorage.getItem(this.key);
+    if (!data) return [];
+    return this.parsePrograms(data);
+  }
+
+  async getById(id: string): Promise<Program | null> {
+    const programs = await this.getAll();
+    return programs.find(p => p.id === id) || null;
+  }
+
+  async getByTrainer(trainerId: string): Promise<Program[]> {
+    const programs = await this.getAll();
+    return programs.filter(p => p.trainerId === trainerId);
+  }
+
+  async getByClient(clientId: string): Promise<Program[]> {
+    const programs = await this.getAll();
+    return programs.filter(p => p.clientIds.includes(clientId));
+  }
+
+  async save(program: Program): Promise<void> {
+    const programs = await this.getAll();
+    const index = programs.findIndex(p => p.id === program.id);
+
+    if (index >= 0) {
+      programs[index] = program;
+    } else {
+      programs.push(program);
+    }
+
+    localStorage.setItem(this.key, JSON.stringify(programs));
+  }
+
+  async delete(id: string): Promise<void> {
+    const programs = await this.getAll();
+    const filtered = programs.filter(p => p.id !== id);
+    localStorage.setItem(this.key, JSON.stringify(filtered));
+  }
+
+  private parsePrograms(data: string): Program[] {
+    const parsed = JSON.parse(data) as Array<Omit<Program, 'startDate' | 'endDate'> & { startDate: string; endDate: string }>;
+    return parsed.map(p => ({
+      ...p,
+      startDate: new Date(p.startDate),
+      endDate: new Date(p.endDate),
+    }));
+  }
+}
+
 export class LocalStorageDataService implements IDataService {
   clients: IClientRepository;
   trainers: ITrainerRepository;
   bookings: IBookingRepository;
+  programs: IProgramRepository;
 
   constructor() {
     this.clients = new LocalStorageClientRepository();
     this.trainers = new LocalStorageTrainerRepository();
     this.bookings = new LocalStorageBookingRepository();
+    this.programs = new LocalStorageProgramRepository();
   }
 
   async initialize(): Promise<void> {
@@ -382,5 +437,6 @@ export class LocalStorageDataService implements IDataService {
     localStorage.removeItem('nivel-trainers');
     localStorage.removeItem('nivel-bookings');
     localStorage.removeItem('nivel-schedules');
+    localStorage.removeItem('nivel-programs');
   }
 }
