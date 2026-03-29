@@ -27,7 +27,7 @@ describe('ProgramViewModel', () => {
   let programViewModel: ProgramViewModel;
 
   beforeEach(() => {
-    programViewModel = new ProgramViewModel(mockProgramModel as any);
+    programViewModel = new ProgramViewModel(mockProgramModel as unknown as ProgramModel);
     vi.clearAllMocks();
   });
 
