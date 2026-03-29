@@ -93,5 +93,8 @@ export interface Program {
   clientIds: string[];
   startDate: Date;
   endDate: Date;
+  totalSessions: number;
+  usedSessions: number;
   status: 'active' | 'inactive' | 'expired';
+  previousProgramId?: string; // Referencia al programa anterior en caso de renovación
 }

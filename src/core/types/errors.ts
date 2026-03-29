@@ -24,3 +24,30 @@ export class ProgramExpiredError extends Error {
     this.name = 'ProgramExpiredError';
   }
 }
+
+export class ActiveProgramAlreadyExistsError extends Error {
+  constructor(public clientId: string) {
+    super(`El cliente '${clientId}' ya tiene un programa activo. Debe expirar el anterior antes de crear uno nuevo`);
+    this.name = 'ActiveProgramAlreadyExistsError';
+  }
+}
+
+export class ProgramValidationError extends Error {
+  constructor(
+    public field: string,
+    message: string
+  ) {
+    super(message);
+    this.name = 'ProgramValidationError';
+  }
+}
+
+export class InvalidSessionCountError extends Error {
+  constructor(
+    public usedSessions: number,
+    public totalSessions: number
+  ) {
+    super(`Las sesiones usadas (${usedSessions}) no pueden exceder el total (${totalSessions})`);
+    this.name = 'InvalidSessionCountError';
+  }
+}
