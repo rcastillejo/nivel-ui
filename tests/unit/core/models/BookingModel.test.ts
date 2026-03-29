@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { BookingModel } from '@/core/models/BookingModel'
-import { IDataService, ITrainerRepository, IBookingRepository } from '@/core/repositories'
+import { IDataService } from '@/core/repositories'
 import { Booking, Trainer, ZoneType } from '@/core/types'
 import { BookingCapacityError } from '@/core/types/errors'
 
 // Mock del data service
-const mockTrainerRepository: ITrainerRepository = {
+const mockTrainerRepository = {
   getAll: vi.fn(),
   getById: vi.fn(),
   save: vi.fn(),
@@ -13,7 +13,7 @@ const mockTrainerRepository: ITrainerRepository = {
   getSchedule: vi.fn()
 }
 
-const mockBookingRepository: IBookingRepository = {
+const mockBookingRepository = {
   getAll: vi.fn(),
   getById: vi.fn(),
   getByDate: vi.fn(),
@@ -236,7 +236,7 @@ describe('BookingModel', () => {
       mockTrainerRepository.getSchedule.mockResolvedValue(null)
       
       // Create 10 bookings for 09:00 slot (at capacity)
-      const existingBookings: Booking[] = Array.from({ length: 10 }, (_, i) => ({
+      const existingBookings: Booking[] = Array.from({ length: 10 }, (_, i): Booking => ({
         id: `booking${i}`,
         clientId: `client${i}`,
         trainerId: 'trainer1',
