@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import BookingView from '@/components/BookingView';
+import ClientProgramView from '@/components/ClientProgramView';
 
 export default function ClientPage() {
   return (
@@ -24,6 +25,7 @@ export default function ClientPage() {
           </Link>
         </div>
 
+        <ClientProgramView />
         <BookingView />
       </div>
     </main>

@@ -22,6 +22,10 @@ export class BookingModel {
     };
     
     await this.dataService.bookings.save(newBooking);
+
+    // Si el cliente tiene un programa activo, incrementar sesiones usadas
+    await this.incrementProgramSessions(booking.clientId);
+
     return newBooking;
   }
 
@@ -87,6 +91,22 @@ export class BookingModel {
       );
       return bookingsForSlot.length < maxCapacity; // Disponible si hay menos de 10 reservas
     });
+  }
+
+  private async incrementProgramSessions(clientId: string): Promise<void> {
+    const programs = await this.dataService.programs.getByClient(clientId);
+    const activeProgram = programs.find(p => p.status === 'active');
+
+    if (!activeProgram) return;
+
+    // Solo incrementar si quedan sesiones pendientes
+    if (activeProgram.usedSessions < activeProgram.totalSessions) {
+      const updatedProgram = {
+        ...activeProgram,
+        usedSessions: activeProgram.usedSessions + 1
+      };
+      await this.dataService.programs.save(updatedProgram);
+    }
   }
 
   private validateBooking(booking: Omit<Booking, 'id'>): void {

@@ -1,6 +1,7 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { BookingModel } from '../models/BookingModel';
-import { Booking, Trainer, ZoneType, ZONE_CONFIG } from '../types';
+import { ProgramModel } from '../models/ProgramModel';
+import { Booking, Program, Trainer, ZoneType, ZONE_CONFIG } from '../types';
 import { BookingCapacityError } from '../types/errors';
 import { isSameDay } from 'date-fns';
 
@@ -20,6 +21,7 @@ export class BookingViewModel {
   trainers: Trainer[] = [];
   availableSlots: string[] = [];
   bookings: Booking[] = [];
+  activeProgram: Program | null = null;
   isLoading = false;
   error: string | null = null;
   
@@ -37,7 +39,7 @@ export class BookingViewModel {
   showSuccessModal = false;
   confirmedBooking: Booking | null = null;
 
-  constructor(private model: BookingModel) {
+  constructor(private model: BookingModel, private programModel: ProgramModel) {
     makeAutoObservable(this);
     // No cargar automáticamente en constructor para evitar hydration issues
   }
@@ -46,6 +48,7 @@ export class BookingViewModel {
     if (this.trainers.length === 0) {
       this.loadTrainers();
     }
+    this.loadActiveProgram(this.clientId);
   }
 
   // Acciones
@@ -63,6 +66,17 @@ export class BookingViewModel {
       });
     } finally {
       this.setLoading(false);
+    }
+  }
+
+  async loadActiveProgram(clientId: string): Promise<void> {
+    try {
+      const program = await this.programModel.getActiveProgram(clientId);
+      runInAction(() => {
+        this.activeProgram = program;
+      });
+    } catch {
+      // El programa es opcional — ignorar errores silenciosamente
     }
   }
 
@@ -113,7 +127,10 @@ export class BookingViewModel {
       };
 
       const createdBooking = await this.model.createBooking(bookingData);
-      
+
+      // Recargar el programa activo para reflejar la sesión descontada
+      await this.loadActiveProgram(this.clientId);
+
       runInAction(() => {
         this.error = null;
         // Mostrar modal de éxito con los datos de la reserva confirmada
@@ -310,5 +327,24 @@ export class BookingViewModel {
 
   get hasAvailableSlots() {
     return this.availableSlots.length > 0;
+  }
+
+  get hasActiveProgram(): boolean {
+    return this.activeProgram !== null && this.activeProgram.status === 'active';
+  }
+
+  get pendingSessions(): number | null {
+    if (!this.activeProgram) return null;
+    return this.activeProgram.totalSessions - this.activeProgram.usedSessions;
+  }
+
+  get activeProgramProgress(): number | null {
+    if (!this.activeProgram) return null;
+    return (this.activeProgram.usedSessions / this.activeProgram.totalSessions) * 100;
+  }
+
+  get hasLowSessions(): boolean {
+    const pending = this.pendingSessions;
+    return pending !== null && pending > 0 && pending < 3;
   }
 }

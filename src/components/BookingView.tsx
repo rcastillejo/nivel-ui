@@ -10,6 +10,44 @@ import { format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ZoneType, ZONE_CONFIG } from '@/core/types';
 
+// Muestra las sesiones pendientes del programa activo en la sección de confirmación
+const ProgramSessionInfo = observer(() => {
+  const vm = useBookingViewModel();
+
+  if (!vm.hasActiveProgram || vm.pendingSessions === null) {
+    return null;
+  }
+
+  const pendingAfterBooking = vm.pendingSessions - 1;
+  const isLow = pendingAfterBooking >= 0 && pendingAfterBooking < 3;
+
+  return (
+    <div className={`rounded-lg p-3 mb-4 border text-sm ${
+      isLow ? 'bg-orange-50 border-orange-200' : 'bg-indigo-50 border-indigo-200'
+    }`}>
+      <div className="flex items-center gap-2">
+        <svg className={`w-4 h-4 flex-shrink-0 ${isLow ? 'text-orange-500' : 'text-indigo-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        <p className={isLow ? 'text-orange-800' : 'text-indigo-800'}>
+          <span className="font-semibold">Mi Programa:</span>{' '}
+          {vm.pendingSessions === 0
+            ? 'No tienes sesiones pendientes. Habla con tu entrenador para renovar.'
+            : pendingAfterBooking <= 0
+            ? 'Esta será tu última sesión del programa.'
+            : (
+              <>
+                Después de esta reserva te quedarán{' '}
+                <span className="font-semibold">{pendingAfterBooking} sesión{pendingAfterBooking !== 1 ? 'es' : ''}</span>.
+                {isLow && ' ¡Considera renovar pronto!'}
+              </>
+            )}
+        </p>
+      </div>
+    </div>
+  );
+});
+
 const BookingView = observer(() => {
   const vm = useBookingViewModel();
   const { bookings, refreshBookings } = useData();
@@ -330,6 +368,9 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
               </p>
             </div>
           </div>
+
+          {/* Info del programa activo */}
+          <ProgramSessionInfo />
 
           <div className="flex flex-col sm:flex-row gap-3">
             <button

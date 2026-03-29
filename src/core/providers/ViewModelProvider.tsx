@@ -23,9 +23,9 @@ export function ViewModelProvider({ children }: ViewModelProviderProps) {
 
   const viewModels = useMemo(() => {
     const bookingModel = new BookingModel(service);
-    const bookingVM = new BookingViewModel(bookingModel);
-
     const programModel = new ProgramModel(service);
+    const bookingVM = new BookingViewModel(bookingModel, programModel);
+
     const programVM = new ProgramViewModel(programModel);
 
     return {
