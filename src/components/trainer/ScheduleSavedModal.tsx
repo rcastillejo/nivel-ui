@@ -63,7 +63,7 @@ export default function ScheduleSavedModal({
             <h5 className="font-semibold text-blue-900 mb-2">Próximos pasos:</h5>
             <ul className="text-sm text-blue-800 space-y-1">
               <li>• Los clientes pueden reservar citas en tu horario disponible</li>
-              <li>• Puedes ver tus citas en la sección "Mis Citas Reservadas"</li>
+              <li>• Puedes ver tus citas en la sección &quot;Mis Citas Reservadas&quot;</li>
               <li>• Modifica tu horario cuando necesites hacer cambios</li>
             </ul>
           </div>

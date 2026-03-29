@@ -331,8 +331,8 @@ class LocalStorageBookingRepository implements IBookingRepository {
   }
 
   private parseBookings(data: string): Booking[] {
-    const parsed = JSON.parse(data);
-    return parsed.map((b: any) => ({
+    const parsed = JSON.parse(data) as Array<Omit<Booking, 'date'> & { date: string }>;
+    return parsed.map((b) => ({
       ...b,
       date: new Date(b.date)
     }));
@@ -372,7 +372,7 @@ export class LocalStorageDataService implements IDataService {
     }
   }
 
-  private async getAllSchedules(): Promise<any[]> {
+  private async getAllSchedules(): Promise<TrainerSchedule[]> {
     const data = localStorage.getItem('nivel-schedules');
     return data ? JSON.parse(data) : [];
   }
