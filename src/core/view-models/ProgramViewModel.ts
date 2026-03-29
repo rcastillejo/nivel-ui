@@ -98,6 +98,18 @@ export class ProgramViewModel {
   }
 
   async createProgram(): Promise<boolean> {
+    if (
+      !this.formData.clientIds.length ||
+      !this.formData.trainerId ||
+      !this.formData.startDate ||
+      !this.formData.endDate ||
+      !this.formData.totalSessions
+    ) {
+      runInAction(() => {
+        this.error = 'Faltan datos para crear el programa';
+      });
+      return false;
+    }
     this.setLoading(true);
     try {
       const programData = {

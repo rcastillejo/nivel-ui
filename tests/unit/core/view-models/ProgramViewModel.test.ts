@@ -268,7 +268,7 @@ describe('ProgramViewModel', () => {
       const result = await programViewModel.createProgram();
 
       expect(result).toBe(true);
-      expect(programViewModel.programs).toContain(newProgram);
+      expect(programViewModel.programs).toContainEqual(newProgram);
       expect(programViewModel.error).toBeNull();
       expect(programViewModel.showSuccessModal).toBe(true);
       expect(programViewModel.createdProgram).toEqual(newProgram);
@@ -362,7 +362,7 @@ describe('ProgramViewModel', () => {
 
       expect(result).toBe(true);
       expect(programViewModel.error).toBeNull();
-      expect(programViewModel.programs).toContain(renewedProgram);
+      expect(programViewModel.programs).toContainEqual(renewedProgram);
       // Old program should be marked as expired
       const updatedOldProgram = programViewModel.programs.find(p => p.id === 'program1');
       expect(updatedOldProgram?.status).toBe('expired');
