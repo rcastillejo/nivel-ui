@@ -1,5 +1,11 @@
 import { Program } from '../types';
-import { ProgramNotFoundError, ProgramExpiredError, ActiveProgramAlreadyExistsError } from '../types/errors';
+import {
+  ProgramNotFoundError,
+  ProgramExpiredError,
+  ActiveProgramAlreadyExistsError,
+  ProgramValidationError,
+  InvalidSessionCountError
+} from '../types/errors';
 import { IDataService } from '../repositories';
 
 export class ProgramModel {
@@ -112,7 +118,7 @@ export class ProgramModel {
     }
 
     if (usedSessions > program.totalSessions) {
-      throw new Error('Las sesiones usadas no pueden exceder el total');
+      throw new InvalidSessionCountError(usedSessions, program.totalSessions);
     }
 
     const updatedProgram: Program = {
@@ -151,31 +157,31 @@ export class ProgramModel {
     totalSessions: number;
   }): void {
     if (!data.name.trim()) {
-      throw new Error('El nombre del programa es requerido');
+      throw new ProgramValidationError('name', 'El nombre del programa es requerido');
     }
 
     if (!data.description.trim()) {
-      throw new Error('La descripción del programa es requerida');
+      throw new ProgramValidationError('description', 'La descripción del programa es requerida');
     }
 
     if (!data.trainerId.trim()) {
-      throw new Error('El entrenador es requerido');
+      throw new ProgramValidationError('trainerId', 'El entrenador es requerido');
     }
 
     if (data.clientIds.length === 0) {
-      throw new Error('Al menos un cliente es requerido');
+      throw new ProgramValidationError('clientIds', 'Al menos un cliente es requerido');
     }
 
     if (data.totalSessions < 1) {
-      throw new Error('El programa debe tener al menos 1 sesión');
+      throw new ProgramValidationError('totalSessions', 'El programa debe tener al menos 1 sesión');
     }
 
-    if (data.endDate <= data.startDate) {
-      throw new Error('La fecha de finalización debe ser posterior a la de inicio');
+    if (data.endDate.getTime() <= data.startDate.getTime()) {
+      throw new ProgramValidationError('endDate', 'La fecha de finalización debe ser posterior a la de inicio');
     }
 
-    if (data.startDate < new Date()) {
-      throw new Error('La fecha de inicio no puede ser en el pasado');
+    if (data.startDate.getTime() < new Date().getTime()) {
+      throw new ProgramValidationError('startDate', 'La fecha de inicio no puede ser en el pasado');
     }
   }
 }

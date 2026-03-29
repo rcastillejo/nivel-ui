@@ -1,7 +1,13 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { ProgramModel } from '../models/ProgramModel';
 import { Program } from '../types';
-import { ProgramNotFoundError, ProgramExpiredError, ActiveProgramAlreadyExistsError } from '../types/errors';
+import {
+  ProgramNotFoundError,
+  ProgramExpiredError,
+  ActiveProgramAlreadyExistsError,
+  ProgramValidationError,
+  InvalidSessionCountError
+} from '../types/errors';
 
 export class ProgramViewModel {
   // Estado observable
@@ -123,6 +129,10 @@ export class ProgramViewModel {
       runInAction(() => {
         if (err instanceof ActiveProgramAlreadyExistsError) {
           this.error = err.message;
+        } else if (err instanceof ProgramValidationError) {
+          this.error = err.message;
+        } else if (err instanceof InvalidSessionCountError) {
+          this.error = err.message;
         } else {
           this.error = err instanceof Error ? err.message : 'Error creando programa';
         }
@@ -220,6 +230,8 @@ export class ProgramViewModel {
       runInAction(() => {
         if (err instanceof ProgramNotFoundError) {
           this.error = err.message;
+        } else if (err instanceof InvalidSessionCountError) {
+          this.error = err.message;
         } else {
           this.error = err instanceof Error ? err.message : 'Error actualizando sesiones';
         }
@@ -231,7 +243,7 @@ export class ProgramViewModel {
   }
 
   // Métodos para actualizar el formulario
-  setFormData(field: keyof typeof this.formData, value: any) {
+  setFormData<K extends keyof typeof this.formData>(field: K, value: typeof this.formData[K]): void {
     this.formData[field] = value;
   }
 
