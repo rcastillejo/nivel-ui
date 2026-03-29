@@ -5,15 +5,15 @@ import { Booking, Trainer, ZoneType } from '@/core/types'
 import { BookingCapacityError } from '@/core/types/errors'
 
 // Mock del data service
-const mockTrainerRepository = {
+const mockTrainerRepository: ITrainerRepository = {
   getAll: vi.fn(),
   getById: vi.fn(),
   save: vi.fn(),
   saveSchedule: vi.fn(),
   getSchedule: vi.fn()
-} as any
+}
 
-const mockBookingRepository = {
+const mockBookingRepository: IBookingRepository = {
   getAll: vi.fn(),
   getById: vi.fn(),
   getByDate: vi.fn(),
@@ -21,7 +21,7 @@ const mockBookingRepository = {
   save: vi.fn(),
   update: vi.fn(),
   delete: vi.fn()
-} as any
+}
 
 const mockDataService: IDataService = {
   clients: {
