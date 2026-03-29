@@ -24,3 +24,10 @@ export class ProgramExpiredError extends Error {
     this.name = 'ProgramExpiredError';
   }
 }
+
+export class ActiveProgramAlreadyExistsError extends Error {
+  constructor(public clientId: string) {
+    super(`El cliente '${clientId}' ya tiene un programa activo. Debe expirar el anterior antes de crear uno nuevo`);
+    this.name = 'ActiveProgramAlreadyExistsError';
+  }
+}
