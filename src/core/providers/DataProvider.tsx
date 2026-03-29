@@ -3,17 +3,19 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { IDataService } from '../repositories';
 import { LocalStorageDataService } from '../repositories/localStorage';
-import { Trainer, Booking, Client } from '../types';
+import { Trainer, Booking, Client, Program } from '../types';
 
 interface DataContextType {
   service: IDataService;
   clients: Client[];
   trainers: Trainer[];
   bookings: Booking[];
+  programs: Program[];
   isLoading: boolean;
   refreshClients: () => Promise<void>;
   refreshTrainers: () => Promise<void>;
   refreshBookings: () => Promise<void>;
+  refreshPrograms: () => Promise<void>;
   createBooking: (booking: Omit<Booking, 'id'>) => Promise<void>;
 }
 
@@ -36,6 +38,7 @@ export function DataProvider({ children }: DataProviderProps) {
   const [clients, setClients] = useState<Client[]>([]);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshClients = async () => {
@@ -65,6 +68,15 @@ export function DataProvider({ children }: DataProviderProps) {
     }
   };
 
+  const refreshPrograms = async () => {
+    try {
+      const data = await service.programs.getAll();
+      setPrograms(data);
+    } catch (error) {
+      console.error('Error loading programs:', error);
+    }
+  };
+
   const createBooking = async (bookingData: Omit<Booking, 'id'>) => {
     try {
       const newBooking: Booking = {
@@ -88,7 +100,8 @@ export function DataProvider({ children }: DataProviderProps) {
         await Promise.all([
           refreshClients(),
           refreshTrainers(),
-          refreshBookings()
+          refreshBookings(),
+          refreshPrograms()
         ]);
       } catch (error) {
         console.error('Error initializing data:', error);
@@ -105,10 +118,12 @@ export function DataProvider({ children }: DataProviderProps) {
     clients,
     trainers,
     bookings,
+    programs,
     isLoading,
     refreshClients,
     refreshTrainers,
     refreshBookings,
+    refreshPrograms,
     createBooking
   };
 
