@@ -98,11 +98,6 @@ export class ProgramViewModel {
   }
 
   async createProgram(): Promise<boolean> {
-    if (!this.canCreateProgram) {
-      this.setError('Faltan datos para crear el programa');
-      return false;
-    }
-
     this.setLoading(true);
     try {
       const programData = {

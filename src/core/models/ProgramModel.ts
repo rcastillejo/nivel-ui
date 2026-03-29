@@ -63,8 +63,10 @@ export class ProgramModel {
     // Validar que no exista otro programa activo para los mismos clientes
     // (necesitamos expirar el anterior primero)
     for (const clientId of previousProgram.clientIds) {
-      const activeProgram = await this.getActiveProgram(clientId);
-      if (activeProgram && activeProgram.id !== programId) {
+      const clientPrograms = await this.dataService.programs.getByClient(clientId);
+      const activePrograms = clientPrograms.filter(p => p.status === 'active');
+      // Si hay más de un programa activo, significa que hay otro además del que estamos renovando
+      if (activePrograms.length > 1) {
         throw new ActiveProgramAlreadyExistsError(clientId);
       }
     }
