@@ -193,7 +193,7 @@ export default function TrainerSchedule() {
 
         <div className="text-sm text-gray-500 mt-2">
           <p>• Haz clic en los círculos para marcar tu disponibilidad</p>
-          <p>• Usa "Seleccionar todo" para activar/desactivar todos los horarios de un día</p>
+          <p>• Usa &quot;Seleccionar todo&quot; para activar/desactivar todos los horarios de un día</p>
         </div>
       </div>
 
