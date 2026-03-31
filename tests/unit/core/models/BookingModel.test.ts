@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { BookingModel } from '@/core/models/BookingModel'
 import { IDataService } from '@/core/repositories'
-import { Booking, Program, Trainer, ZoneType } from '@/core/types'
+import { Booking, Trainer, ZoneType } from '@/core/types'
 import { BookingCapacityError } from '@/core/types/errors'
 
 // Mock del data service
@@ -78,7 +78,6 @@ describe('BookingModel', () => {
       mockTrainerRepository.getSchedule.mockResolvedValue(null)
       mockBookingRepository.getByDate.mockResolvedValue([])
       mockBookingRepository.save.mockResolvedValue(undefined)
-      mockProgramRepository.getByClient.mockResolvedValue([])
 
       const result = await bookingModel.createBooking(validBookingData)
 
@@ -88,93 +87,15 @@ describe('BookingModel', () => {
       expect(mockBookingRepository.save).toHaveBeenCalledWith(result)
     })
 
-    it('should increment usedSessions when client has an active program', async () => {
-      const activeProgram: Program = {
-        id: 'program1',
-        name: 'Programa Fuerza',
-        description: 'Programa de fuerza',
-        trainerId: 'trainer1',
-        clientIds: ['client1'],
-        startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        totalSessions: 20,
-        usedSessions: 5,
-        status: 'active'
-      }
-
+    it('should not touch the program repository when creating a booking', async () => {
       mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
       mockTrainerRepository.getSchedule.mockResolvedValue(null)
       mockBookingRepository.getByDate.mockResolvedValue([])
       mockBookingRepository.save.mockResolvedValue(undefined)
-      mockProgramRepository.getByClient.mockResolvedValue([activeProgram])
-      mockProgramRepository.save.mockResolvedValue(undefined)
 
       await bookingModel.createBooking(validBookingData)
 
-      expect(mockProgramRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'program1', usedSessions: 6 })
-      )
-    })
-
-    it('should not increment sessions when client has no active program', async () => {
-      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
-      mockTrainerRepository.getSchedule.mockResolvedValue(null)
-      mockBookingRepository.getByDate.mockResolvedValue([])
-      mockBookingRepository.save.mockResolvedValue(undefined)
-      mockProgramRepository.getByClient.mockResolvedValue([])
-
-      await bookingModel.createBooking(validBookingData)
-
-      expect(mockProgramRepository.save).not.toHaveBeenCalled()
-    })
-
-    it('should not increment sessions when program sessions are already exhausted', async () => {
-      const exhaustedProgram: Program = {
-        id: 'program1',
-        name: 'Programa Cardio',
-        description: 'Programa de cardio',
-        trainerId: 'trainer1',
-        clientIds: ['client1'],
-        startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        totalSessions: 10,
-        usedSessions: 10,
-        status: 'active'
-      }
-
-      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
-      mockTrainerRepository.getSchedule.mockResolvedValue(null)
-      mockBookingRepository.getByDate.mockResolvedValue([])
-      mockBookingRepository.save.mockResolvedValue(undefined)
-      mockProgramRepository.getByClient.mockResolvedValue([exhaustedProgram])
-
-      await bookingModel.createBooking(validBookingData)
-
-      expect(mockProgramRepository.save).not.toHaveBeenCalled()
-    })
-
-    it('should not increment sessions for expired programs', async () => {
-      const expiredProgram: Program = {
-        id: 'program1',
-        name: 'Programa Expirado',
-        description: 'Descripción',
-        trainerId: 'trainer1',
-        clientIds: ['client1'],
-        startDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-        endDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        totalSessions: 20,
-        usedSessions: 10,
-        status: 'expired'
-      }
-
-      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
-      mockTrainerRepository.getSchedule.mockResolvedValue(null)
-      mockBookingRepository.getByDate.mockResolvedValue([])
-      mockBookingRepository.save.mockResolvedValue(undefined)
-      mockProgramRepository.getByClient.mockResolvedValue([expiredProgram])
-
-      await bookingModel.createBooking(validBookingData)
-
+      expect(mockProgramRepository.getByClient).not.toHaveBeenCalled()
       expect(mockProgramRepository.save).not.toHaveBeenCalled()
     })
 
@@ -215,7 +136,6 @@ describe('BookingModel', () => {
     it('should throw BookingCapacityError when gabinete zone is at capacity', async () => {
       mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
       mockTrainerRepository.getSchedule.mockResolvedValue(null)
-      mockProgramRepository.getByClient.mockResolvedValue([])
 
       // Create 1 existing booking for gabinete zone (max capacity)
       const existingBookings: Booking[] = [{

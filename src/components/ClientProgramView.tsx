@@ -1,22 +1,34 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
-import { useBookingViewModel } from '@/core/providers/ViewModelProvider';
+import { useProgramViewModel, useBookingViewModel } from '@/core/providers/ViewModelProvider';
 
 const MINIMUM_SESSIONS_FOR_RESULTS = 12;
 
 const ClientProgramView = observer(() => {
-  const vm = useBookingViewModel();
+  const vm = useProgramViewModel();
+  const bookingVM = useBookingViewModel();
+
+  useEffect(() => {
+    vm.loadActiveProgram('client1');
+  }, [vm]);
+
+  // Recargar el programa cuando se confirma una reserva
+  useEffect(() => {
+    if (bookingVM.confirmedBooking) {
+      vm.loadActiveProgram('client1');
+    }
+  }, [bookingVM.confirmedBooking, vm]);
 
   if (!vm.hasActiveProgram || !vm.activeProgram) {
     return null;
   }
 
   const program = vm.activeProgram;
-  const pendingSessions = vm.pendingSessions!;
+  const pendingSessions = vm.activeProgramPendingSessions!;
   const progress = vm.activeProgramProgress!;
-  const hasLowSessions = vm.hasLowSessions;
+  const hasLowSessions = pendingSessions > 0 && pendingSessions < 3;
   const isCompleted = pendingSessions === 0;
   const reachedMinimum = program.usedSessions >= MINIMUM_SESSIONS_FOR_RESULTS;
 
