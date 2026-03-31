@@ -128,14 +128,8 @@ export class BookingViewModel {
 
       const createdBooking = await this.model.createBooking(bookingData);
 
-      // Coordinar con ProgramModel: incrementar sesión del programa activo
-      const activeProgram = await this.programModel.getActiveProgram(this.clientId);
-      if (activeProgram && activeProgram.usedSessions < activeProgram.totalSessions) {
-        await this.programModel.updateUsedSessions(
-          activeProgram.id,
-          activeProgram.usedSessions + 1
-        );
-      }
+      // Coordinar con ProgramModel: delegar el consumo de sesión completamente al Model
+      await this.programModel.consumeSessionForClient(this.clientId);
 
       // Recargar el programa activo para reflejar la sesión descontada
       await this.loadActiveProgram(this.clientId);

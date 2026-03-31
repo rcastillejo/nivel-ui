@@ -22,6 +22,8 @@ const mockProgramModel = {
   renewProgram: vi.fn(),
   expireProgram: vi.fn(),
   updateUsedSessions: vi.fn(),
+  consumeSession: vi.fn(),
+  consumeSessionForClient: vi.fn(),
   getProgramsByTrainer: vi.fn(),
   getProgramsByClient: vi.fn(),
   getPendingSessions: vi.fn()
@@ -190,7 +192,7 @@ describe('BookingViewModel', () => {
       vm.setZone('gym');
     };
 
-    it('increments active program sessions and reloads program after a successful booking', async () => {
+    it('delegates session consumption to ProgramModel and reloads program after a successful booking', async () => {
       await setupForBooking();
 
       const createdBooking: Booking = {
@@ -205,25 +207,20 @@ describe('BookingViewModel', () => {
         status: 'confirmed'
       };
 
-      const programBefore = makeActiveProgram({ usedSessions: 5 });
       const programAfter = makeActiveProgram({ usedSessions: 6 });
 
       mockBookingModel.createBooking.mockResolvedValue(createdBooking);
-      mockProgramModel.updateUsedSessions.mockResolvedValue(programAfter);
-      // First call: get active program for coordination; second call: reload after booking
-      mockProgramModel.getActiveProgram
-        .mockResolvedValueOnce(programBefore)
-        .mockResolvedValueOnce(programAfter);
+      mockProgramModel.consumeSessionForClient.mockResolvedValue(programAfter);
+      mockProgramModel.getActiveProgram.mockResolvedValue(programAfter);
 
       const success = await vm.createBooking();
 
       expect(success).toBe(true);
-      expect(mockProgramModel.getActiveProgram).toHaveBeenCalledWith('client1');
-      expect(mockProgramModel.updateUsedSessions).toHaveBeenCalledWith('program1', 6);
+      expect(mockProgramModel.consumeSessionForClient).toHaveBeenCalledWith('client1');
       expect(vm.activeProgram?.usedSessions).toBe(6);
     });
 
-    it('does not increment sessions when client has no active program', async () => {
+    it('succeeds and reloads program even when client has no active program', async () => {
       await setupForBooking();
 
       const createdBooking: Booking = {
@@ -239,42 +236,17 @@ describe('BookingViewModel', () => {
       };
 
       mockBookingModel.createBooking.mockResolvedValue(createdBooking);
+      mockProgramModel.consumeSessionForClient.mockResolvedValue(null);
       mockProgramModel.getActiveProgram.mockResolvedValue(null);
 
       const success = await vm.createBooking();
 
       expect(success).toBe(true);
-      expect(mockProgramModel.updateUsedSessions).not.toHaveBeenCalled();
+      expect(mockProgramModel.consumeSessionForClient).toHaveBeenCalledWith('client1');
+      expect(vm.activeProgram).toBeNull();
     });
 
-    it('does not increment sessions when program sessions are exhausted', async () => {
-      await setupForBooking();
-
-      const createdBooking: Booking = {
-        id: 'booking1',
-        clientId: 'client1',
-        trainerId: 'trainer1',
-        trainerName: 'Entrenador John',
-        date: vm.selectedDate!,
-        time: '09:00',
-        duration: 60,
-        zone: 'gym',
-        status: 'confirmed'
-      };
-
-      const exhaustedProgram = makeActiveProgram({ usedSessions: 20, totalSessions: 20 });
-      mockBookingModel.createBooking.mockResolvedValue(createdBooking);
-      mockProgramModel.getActiveProgram
-        .mockResolvedValueOnce(exhaustedProgram)
-        .mockResolvedValueOnce(exhaustedProgram);
-
-      const success = await vm.createBooking();
-
-      expect(success).toBe(true);
-      expect(mockProgramModel.updateUsedSessions).not.toHaveBeenCalled();
-    });
-
-    it('does not touch programs when booking fails', async () => {
+    it('does not call consumeSessionForClient when booking fails', async () => {
       await setupForBooking();
 
       mockBookingModel.createBooking.mockRejectedValue(new Error('Slot not available'));
@@ -282,8 +254,7 @@ describe('BookingViewModel', () => {
       const success = await vm.createBooking();
 
       expect(success).toBe(false);
-      expect(mockProgramModel.getActiveProgram).not.toHaveBeenCalled();
-      expect(mockProgramModel.updateUsedSessions).not.toHaveBeenCalled();
+      expect(mockProgramModel.consumeSessionForClient).not.toHaveBeenCalled();
     });
   });
 

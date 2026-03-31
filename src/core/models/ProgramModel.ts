@@ -140,6 +140,28 @@ export class ProgramModel {
     return this.dataService.programs.getByClient(clientId);
   }
 
+  async consumeSession(programId: string): Promise<Program | null> {
+    const program = await this.dataService.programs.getById(programId);
+    if (!program) {
+      throw new ProgramNotFoundError(programId);
+    }
+
+    if (program.usedSessions >= program.totalSessions) {
+      return null; // Sesiones agotadas — no es un error, simplemente no se consume
+    }
+
+    return this.updateUsedSessions(programId, program.usedSessions + 1);
+  }
+
+  async consumeSessionForClient(clientId: string): Promise<Program | null> {
+    const activeProgram = await this.getActiveProgram(clientId);
+    if (!activeProgram) {
+      return null; // Sin programa activo — estado válido, no es error
+    }
+
+    return this.consumeSession(activeProgram.id);
+  }
+
   private async validateNoActiveProgramExists(clientIds: string[]): Promise<void> {
     for (const clientId of clientIds) {
       const activeProgram = await this.getActiveProgram(clientId);
