@@ -1,6 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 
 // Helpers
+// Cambio minimo para forzar los wf
 
 function getFutureDate(daysAhead: number): string {
   const d = new Date();
