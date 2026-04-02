@@ -73,15 +73,15 @@ const CreateProgramForm = observer(function CreateProgramForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form data-testid="create-program-form" onSubmit={handleSubmit} className="space-y-5">
       {programVM.error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        <div data-testid="create-program-error" className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           {programVM.error}
         </div>
       )}
 
       {programVM.showSuccessModal && programVM.createdProgram && (
-        <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+        <div data-testid="create-program-success" className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
           Programa <strong>{programVM.createdProgram.name}</strong> creado exitosamente.
           <button
             type="button"
@@ -99,6 +99,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
             Nombre del programa <span className="text-red-500">*</span>
           </label>
           <input
+            data-testid="input-program-name"
             type="text"
             value={formData.name}
             onChange={e => programVM.setFormName(e.target.value)}
@@ -112,6 +113,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
             Total de sesiones <span className="text-red-500">*</span>
           </label>
           <input
+            data-testid="input-total-sessions"
             type="number"
             min={1}
             value={formData.totalSessions || ''}
@@ -128,6 +130,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
             Fecha de inicio <span className="text-red-500">*</span>
           </label>
           <input
+            data-testid="input-start-date"
             type="date"
             min={getTomorrow()}
             value={startDateStr}
@@ -145,6 +148,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
             Fecha de fin <span className="text-red-500">*</span>
           </label>
           <input
+            data-testid="input-end-date"
             type="date"
             min={startDateStr || getTomorrow()}
             value={endDateStr}
@@ -162,7 +166,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Frecuencia semanal estimada
         </label>
-        <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-600">
+        <div data-testid="weekly-frequency-display" className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-600">
           {weeklyFrequency}
         </div>
       </div>
@@ -172,6 +176,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
           Descripción <span className="text-red-500">*</span>
         </label>
         <textarea
+          data-testid="input-description"
           value={formData.description}
           onChange={e => programVM.setFormDescription(e.target.value)}
           placeholder="Objetivos y detalles del programa..."
@@ -184,13 +189,14 @@ const CreateProgramForm = observer(function CreateProgramForm() {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Cliente(s) <span className="text-red-500">*</span>
         </label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3">
+        <div data-testid="clients-checkbox-container" className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3">
           {clients.filter(c => c.status === 'active').map(client => (
             <label
               key={client.id}
               className="flex items-center space-x-2 cursor-pointer"
             >
               <input
+                data-testid={`client-checkbox-${client.id}`}
                 type="checkbox"
                 checked={formData.clientIds.includes(client.id)}
                 onChange={() => handleClientToggle(client.id)}
@@ -207,6 +213,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
 
       <div className="flex justify-end space-x-3 pt-2">
         <button
+          data-testid="btn-clear-form"
           type="button"
           onClick={() => {
             programVM.resetForm();
@@ -218,6 +225,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
           Limpiar
         </button>
         <button
+          data-testid="btn-submit-program"
           type="submit"
           disabled={programVM.isLoading || !programVM.canCreateProgram}
           className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

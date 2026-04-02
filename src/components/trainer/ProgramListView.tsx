@@ -68,7 +68,7 @@ const ProgramListView = observer(function ProgramListView() {
 
   if (programVM.isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div data-testid="program-list-loading" className="flex items-center justify-center h-64">
         <div className="text-gray-500">Cargando programas...</div>
       </div>
     );
@@ -78,40 +78,43 @@ const ProgramListView = observer(function ProgramListView() {
   const otherPrograms = programVM.programs.filter(p => p.status !== 'active');
 
   return (
-    <div className="space-y-6">
+    <div data-testid="program-list-view" className="space-y-6">
       {programVM.error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        <div data-testid="program-list-error" className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           {programVM.error}
         </div>
       )}
 
       {/* Active programs */}
-      <div>
-        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
+      <div data-testid="active-programs-section">
+        <h4 data-testid="active-programs-count" className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
           Programas Activos ({activePrograms.length})
         </h4>
         {activePrograms.length === 0 ? (
-          <div className="text-center text-gray-400 py-8 border border-dashed border-gray-200 rounded-lg">
+          <div data-testid="active-programs-empty" className="text-center text-gray-400 py-8 border border-dashed border-gray-200 rounded-lg">
             No hay programas activos. Crea uno desde el formulario.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div data-testid="active-programs-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {activePrograms.map(program => (
               <div
                 key={program.id}
+                data-testid={`program-card-${program.id}`}
                 className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"
               >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 truncate">{program.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5 truncate">
+                    <p data-testid={`program-card-name-${program.id}`} className="font-semibold text-gray-900 truncate">{program.name}</p>
+                    <p data-testid={`program-card-clients-${program.id}`} className="text-xs text-gray-500 mt-0.5 truncate">
                       {getClientNames(program.clientIds)}
                     </p>
                   </div>
-                  <StatusBadge status={program.status} />
+                  <span data-testid={`status-badge-${program.id}`}>
+                    <StatusBadge status={program.status} />
+                  </span>
                 </div>
 
-                <div className="my-3">
+                <div data-testid={`sessions-bar-${program.id}`} className="my-3">
                   <SessionsBar used={program.usedSessions} total={program.totalSessions} />
                 </div>
 
@@ -127,6 +130,7 @@ const ProgramListView = observer(function ProgramListView() {
                 </div>
 
                 <button
+                  data-testid={`renew-program-btn-${program.id}`}
                   onClick={() => setRenewTarget(program)}
                   className="w-full px-3 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
                 >
@@ -140,12 +144,12 @@ const ProgramListView = observer(function ProgramListView() {
 
       {/* Historical programs */}
       {otherPrograms.length > 0 && (
-        <div>
+        <div data-testid="historical-programs-section">
           <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
             Historial ({otherPrograms.length})
           </h4>
           <div className="overflow-x-auto border border-gray-200 rounded-lg">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <table data-testid="historical-programs-table" className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium text-gray-600">Programa</th>
@@ -157,7 +161,7 @@ const ProgramListView = observer(function ProgramListView() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
                 {otherPrograms.map(program => (
-                  <tr key={program.id} className="hover:bg-gray-50">
+                  <tr data-testid={`historical-program-row-${program.id}`} key={program.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium text-gray-900">{program.name}</td>
                     <td className="px-4 py-3 text-gray-600">{getClientNames(program.clientIds)}</td>
                     <td className="px-4 py-3 text-gray-600">
