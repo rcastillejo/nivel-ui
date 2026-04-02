@@ -22,6 +22,7 @@ export class BookingModel {
     };
     
     await this.dataService.bookings.save(newBooking);
+
     return newBooking;
   }
 

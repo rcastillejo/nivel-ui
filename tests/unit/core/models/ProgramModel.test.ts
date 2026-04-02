@@ -455,4 +455,93 @@ describe('ProgramModel', () => {
       expect(mockProgramRepository.getByClient).toHaveBeenCalledWith('client1');
     });
   });
+
+  describe('consumeSession', () => {
+    const program: Program = {
+      id: 'program1',
+      name: 'Program',
+      description: 'Test',
+      trainerId: 'trainer1',
+      clientIds: ['client1'],
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      totalSessions: 10,
+      usedSessions: 5,
+      status: 'active'
+    };
+
+    it('should increment usedSessions and return the updated program', async () => {
+      mockProgramRepository.getById.mockResolvedValue(program);
+      mockProgramRepository.save.mockResolvedValue(undefined);
+
+      const result = await programModel.consumeSession('program1');
+
+      expect(result).toMatchObject({ ...program, usedSessions: 6 });
+      expect(mockProgramRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ usedSessions: 6 })
+      );
+    });
+
+    it('should return null when sessions are exhausted (usedSessions >= totalSessions)', async () => {
+      const exhaustedProgram: Program = { ...program, usedSessions: 10, totalSessions: 10 };
+      mockProgramRepository.getById.mockResolvedValue(exhaustedProgram);
+
+      const result = await programModel.consumeSession('program1');
+
+      expect(result).toBeNull();
+      expect(mockProgramRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw ProgramNotFoundError when program does not exist', async () => {
+      mockProgramRepository.getById.mockResolvedValue(null);
+
+      await expect(programModel.consumeSession('nonexistent')).rejects.toThrow(ProgramNotFoundError);
+    });
+  });
+
+  describe('consumeSessionForClient', () => {
+    const activeProgram: Program = {
+      id: 'program1',
+      name: 'Program',
+      description: 'Test',
+      trainerId: 'trainer1',
+      clientIds: ['client1'],
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      totalSessions: 10,
+      usedSessions: 5,
+      status: 'active'
+    };
+
+    it('should consume a session when client has an active program with available sessions', async () => {
+      mockProgramRepository.getByClient.mockResolvedValue([activeProgram]);
+      mockProgramRepository.getById.mockResolvedValue(activeProgram);
+      mockProgramRepository.save.mockResolvedValue(undefined);
+
+      const result = await programModel.consumeSessionForClient('client1');
+
+      expect(result).toMatchObject({ ...activeProgram, usedSessions: 6 });
+      expect(mockProgramRepository.save).toHaveBeenCalled();
+    });
+
+    it('should return null when client has no active program', async () => {
+      mockProgramRepository.getByClient.mockResolvedValue([]);
+
+      const result = await programModel.consumeSessionForClient('client1');
+
+      expect(result).toBeNull();
+      expect(mockProgramRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should return null when client program has no sessions left', async () => {
+      const exhaustedProgram: Program = { ...activeProgram, usedSessions: 10, totalSessions: 10 };
+      mockProgramRepository.getByClient.mockResolvedValue([exhaustedProgram]);
+      mockProgramRepository.getById.mockResolvedValue(exhaustedProgram);
+
+      const result = await programModel.consumeSessionForClient('client1');
+
+      expect(result).toBeNull();
+      expect(mockProgramRepository.save).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -87,6 +87,18 @@ describe('BookingModel', () => {
       expect(mockBookingRepository.save).toHaveBeenCalledWith(result)
     })
 
+    it('should not touch the program repository when creating a booking', async () => {
+      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
+      mockTrainerRepository.getSchedule.mockResolvedValue(null)
+      mockBookingRepository.getByDate.mockResolvedValue([])
+      mockBookingRepository.save.mockResolvedValue(undefined)
+
+      await bookingModel.createBooking(validBookingData)
+
+      expect(mockProgramRepository.getByClient).not.toHaveBeenCalled()
+      expect(mockProgramRepository.save).not.toHaveBeenCalled()
+    })
+
     it('should throw error for missing client', async () => {
       const invalidBooking = { ...validBookingData, clientId: '' }
 
@@ -124,7 +136,7 @@ describe('BookingModel', () => {
     it('should throw BookingCapacityError when gabinete zone is at capacity', async () => {
       mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
       mockTrainerRepository.getSchedule.mockResolvedValue(null)
-      
+
       // Create 1 existing booking for gabinete zone (max capacity)
       const existingBookings: Booking[] = [{
         id: 'booking1',
