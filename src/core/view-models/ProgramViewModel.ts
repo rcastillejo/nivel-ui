@@ -343,4 +343,9 @@ export class ProgramViewModel {
   get hasActiveProgram(): boolean {
     return this.activeProgram !== null && this.activeProgram.status === 'active';
   }
+
+  get hasLowSessions(): boolean {
+    const pending = this.activeProgramPendingSessions;
+    return pending !== null && pending > 0 && pending < 3;
+  }
 }

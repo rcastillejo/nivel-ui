@@ -28,7 +28,7 @@ const ClientProgramView = observer(() => {
   const program = vm.activeProgram;
   const pendingSessions = vm.activeProgramPendingSessions!;
   const progress = vm.activeProgramProgress!;
-  const hasLowSessions = pendingSessions > 0 && pendingSessions < 3;
+  const hasLowSessions = vm.hasLowSessions;
   const isCompleted = pendingSessions === 0;
   const reachedMinimum = program.usedSessions >= MINIMUM_SESSIONS_FOR_RESULTS;
 
