@@ -2,6 +2,7 @@ name: Sync package-lock.json
 
 on:
   pull_request:
+    branches: [main, master]      # ✅ Fix menor: filtro de branches
     paths:
       - 'package.json'
 
@@ -19,20 +20,21 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'   # o pon la versión fija: node-version: '20'
+          node-version: '20'        # ✅ Consistente con ci.yml / deploy.yml
+          cache: 'npm'              # ✅ Cache para reducir tiempo de ejecución
 
       - name: Check if lock file is in sync
         id: check
         run: |
           npm install
           if git diff --quiet package-lock.json; then
-            echo "synced=false" >> $GITHUB_OUTPUT
+            echo "needs_update=false" >> $GITHUB_OUTPUT   # ✅ Semántica correcta
           else
-            echo "synced=true" >> $GITHUB_OUTPUT
+            echo "needs_update=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Commit updated lock file
-        if: steps.check.outputs.synced == 'true'
+        if: steps.check.outputs.needs_update == 'true'   # ✅ Variable renombrada
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
