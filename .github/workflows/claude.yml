@@ -48,12 +48,4 @@ jobs:
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
           # claude_args: '--allowed-tools Bash(gh pr:*)'
-      - name: Sync lock file if package.json changed
-        run: |
-          if git diff origin/HEAD --name-only | grep -q "package.json"; then
-            npm install
-            git add package-lock.json
-            git commit -m "chore: sync package-lock.json"
-            git push
-          fi
 
