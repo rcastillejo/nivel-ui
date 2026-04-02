@@ -33,11 +33,12 @@ const RenewProgramModal = observer(function RenewProgramModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div data-testid="renew-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Renovar Programa</h3>
           <button
+            data-testid="renew-modal-close-x"
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-xl font-bold"
           >
@@ -46,15 +47,15 @@ const RenewProgramModal = observer(function RenewProgramModal({
         </div>
 
         <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-          <p className="text-sm font-medium text-gray-700">{program.name}</p>
-          <p className="text-sm text-gray-500 mt-1">Cliente(s): {clientNames}</p>
-          <p className="text-sm text-gray-500">
+          <p data-testid="renew-modal-program-name" className="text-sm font-medium text-gray-700">{program.name}</p>
+          <p data-testid="renew-modal-clients" className="text-sm text-gray-500 mt-1">Cliente(s): {clientNames}</p>
+          <p data-testid="renew-modal-sessions-used" className="text-sm text-gray-500">
             Sesiones usadas: {program.usedSessions} / {program.totalSessions}
           </p>
         </div>
 
         {programVM.error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <div data-testid="renew-modal-error" className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
             {programVM.error}
           </div>
         )}
@@ -64,6 +65,7 @@ const RenewProgramModal = observer(function RenewProgramModal({
             Número de sesiones nuevas
           </label>
           <input
+            data-testid="input-new-sessions"
             type="number"
             min={1}
             value={newSessions}
@@ -74,12 +76,14 @@ const RenewProgramModal = observer(function RenewProgramModal({
 
         <div className="flex space-x-3">
           <button
+            data-testid="renew-modal-cancel"
             onClick={onClose}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Cancelar
           </button>
           <button
+            data-testid="renew-modal-submit"
             onClick={handleRenew}
             disabled={programVM.isLoading || newSessions < 1}
             className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

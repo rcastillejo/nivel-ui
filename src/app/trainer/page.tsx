@@ -37,6 +37,7 @@ export default function TrainerDashboard() {
           <div className="border-b border-gray-200">
             <nav className="flex">
               <button
+                data-testid="tab-schedule"
                 onClick={() => setCurrentView('schedule')}
                 className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                   currentView === 'schedule'
@@ -47,6 +48,7 @@ export default function TrainerDashboard() {
                 Registra tu disponibilidad
               </button>
               <button
+                data-testid="tab-appointments"
                 onClick={() => setCurrentView('appointments')}
                 className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                   currentView === 'appointments'
@@ -57,6 +59,7 @@ export default function TrainerDashboard() {
                 Mis Citas Reservadas
               </button>
               <button
+                data-testid="tab-programs"
                 onClick={() => setCurrentView('programs')}
                 className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                   currentView === 'programs'
@@ -74,13 +77,13 @@ export default function TrainerDashboard() {
             {currentView === 'appointments' && <TrainerAppointments />}
             {currentView === 'programs' && (
               <div className="space-y-8">
-                <div>
+                <div data-testid="section-program-list">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">
                     Programas de Clientes
                   </h3>
                   <ProgramListView />
                 </div>
-                <div className="border-t border-gray-200 pt-8">
+                <div data-testid="section-create-program" className="border-t border-gray-200 pt-8">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">
                     Crear Nuevo Programa
                   </h3>
