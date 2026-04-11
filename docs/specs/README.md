@@ -13,6 +13,10 @@ Cada spec describe:
 | Spec | Feature | Estado | Issue |
 |------|---------|--------|-------|
 | [booking-flow.spec.md](booking-flow.spec.md) | Flujo de Reserva del Cliente | implemented | — |
+| [supabase-schema.spec.md](supabase-schema.spec.md) | Schema SQL y Migraciones en Supabase | draft | TBD |
+| [supabase-data-service.spec.md](supabase-data-service.spec.md) | SupabaseDataService — Capa de Persistencia | draft | TBD |
+| [auth.spec.md](auth.spec.md) | Autenticación de Usuarios con Supabase Auth | draft | TBD |
+| [vercel-deployment.spec.md](vercel-deployment.spec.md) | Configurar Despliegue en Vercel | draft | TBD |
 
 ## Ciclo de Vida de una Spec
 
