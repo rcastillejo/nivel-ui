@@ -108,10 +108,11 @@ const BookingView = observer(() => {
     <div className="bg-white rounded-xl shadow-lg p-6">
       {/* Error Display */}
       {vm.error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div data-testid="booking-error" className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex justify-between items-center">
             <p className="text-red-800">{vm.error}</p>
             <button
+              data-testid="booking-error-dismiss"
               onClick={() => vm.clearError()}
               className="text-red-600 hover:text-red-800"
             >
@@ -250,20 +251,21 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
 
       <div className="space-y-6">
         {trainers.map((trainer) => (
-          <div key={trainer.id} className="border border-gray-200 rounded-lg p-4">
+          <div key={trainer.id} data-testid={`trainer-section-${trainer.id}`} className="border border-gray-200 rounded-lg p-4">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Entrenador {trainer.name}</h3>
             </div>
-            
+
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
               {trainer.availableSlots.map((time: string) => {
                 const isSelected = selectedTrainerName === `Entrenador ${trainer.name}` && selectedTime === time;
                 const gymCapacity = getZoneCapacity(trainer.id, time, 'gym');
                 const gabineteCapacity = getZoneCapacity(trainer.id, time, 'gabinete');
-                
+
                 return (
                   <button
                     key={time}
+                    data-testid={`trainer-slot-${trainer.id}-${time.replace(':', '-')}`}
                     onClick={() => onTimeSelect(`Entrenador ${trainer.name}`, time)}
                     disabled={!gymCapacity.available && !gabineteCapacity.available}
                     className={`px-3 py-2 text-sm font-medium rounded-md border transition-all duration-200 ${
@@ -326,6 +328,7 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
               {Object.entries(ZONE_CONFIG).map(([zone, config]) => (
                 <button
                   key={zone}
+                  data-testid={`zone-${zone}`}
                   onClick={() => onZoneSelect(zone as ZoneType)}
                   className={`px-4 py-3 rounded-lg border font-medium transition-all duration-200 ${
                     selectedZone === zone
@@ -374,12 +377,14 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
 
           <div className="flex flex-col sm:flex-row gap-3">
             <button
+              data-testid="modify-selection"
               onClick={onBack}
               className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
             >
               Modificar Selección
             </button>
             <button
+              data-testid="confirm-booking"
               onClick={onConfirm}
               disabled={!canConfirm}
               className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-colors shadow-md ${

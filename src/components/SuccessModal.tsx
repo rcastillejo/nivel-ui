@@ -26,7 +26,7 @@ export default function SuccessModal({
   const formattedDate = format(selectedDate, "EEEE, d 'de' MMMM 'de' yyyy", { locale: es });
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div data-testid="success-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
         {/* Header */}
         <div className="p-6 border-b border-gray-200">
@@ -78,6 +78,7 @@ export default function SuccessModal({
         {/* Actions */}
         <div className="p-6 border-t border-gray-200">
           <button
+            data-testid="success-modal-close"
             onClick={onClose}
             className="w-full px-4 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors"
           >
