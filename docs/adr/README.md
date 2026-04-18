@@ -20,6 +20,7 @@ No crear un ADR para decisiones de implementación rutinarias.
 |-----|--------|--------|-------|
 | [ADR-001](ADR-001-spec-driven-development.md) | Adoptar Spec Driven Development como metodología | Accepted | 2026-04-10 |
 | [ADR-002](ADR-002-produccion-mvp-deployment.md) | Estrategia de Despliegue a Producción para el MVP | Proposed | 2026-04-11 |
+| [ADR-003](ADR-003-arquitectura-capa-negocio-backend-mvp.md) | Arquitectura de Capa de Negocio Backend para el MVP | Proposed | 2026-04-18 |
 
 ## Cómo crear un ADR
 
