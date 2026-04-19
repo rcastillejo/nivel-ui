@@ -1,28 +1,30 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { BookingModel } from '../models/BookingModel';
-import { Booking, Trainer, ZoneType, DaySchedule, TrainerSchedule, AVAILABLE_TIME_SLOTS } from '../types';
-import { BookingCapacityError } from '../types/errors';
-import { isSameDay } from 'date-fns';
+import { TrainerModel } from '../models/TrainerModel';
+import { Booking, Trainer, ZoneType, DaySchedule, TrainerSchedule } from '../types';
 
 export class TrainerViewModel {
   trainers: Trainer[] = [];
   bookings: Booking[] = [];
+  currentSchedule: TrainerSchedule | null = null;
   isLoading = false;
   error: string | null = null;
-  
+
   selectedDate: Date = new Date();
   selectedTrainerId: string | null = null;
   selectedDayIndex: number = new Date().getDay() === 0 ? -1 : new Date().getDay() - 1;
 
-  constructor(private model: BookingModel) {
+  constructor(
+    private bookingModel: BookingModel,
+    private trainerModel: TrainerModel
+  ) {
     makeAutoObservable(this);
   }
 
-  // Acciones para trainers
-  async loadTrainers() {
+  async loadTrainers(): Promise<void> {
     this.setLoading(true);
     try {
-      const trainers = await this.model.getTrainers();
+      const trainers = await this.bookingModel.getTrainers();
       runInAction(() => {
         this.trainers = trainers;
         this.error = null;
@@ -36,10 +38,10 @@ export class TrainerViewModel {
     }
   }
 
-  async loadBookings(date: Date) {
+  async loadBookings(date: Date): Promise<void> {
     this.setLoading(true);
     try {
-      const bookings = await this.model.getBookingsByDate(date);
+      const bookings = await this.bookingModel.getBookingsByDate(date);
       runInAction(() => {
         this.bookings = bookings;
         this.error = null;
@@ -53,17 +55,30 @@ export class TrainerViewModel {
     }
   }
 
-  // Acciones de configuración de horarios
-  async saveSchedule(scheduleData: TrainerSchedule): Promise<boolean> {
+  async loadSchedule(trainerId: string): Promise<void> {
+    this.setLoading(true);
     try {
-      // Aquí iría la lógica para guardar el horario en el backend
-      // Por ahora simulamos éxito
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      const schedule = await this.trainerModel.getSchedule(trainerId);
       runInAction(() => {
+        this.currentSchedule = schedule;
         this.error = null;
       });
-      
+    } catch (err) {
+      runInAction(() => {
+        this.error = err instanceof Error ? err.message : 'Error cargando horario';
+      });
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  async saveSchedule(scheduleData: TrainerSchedule): Promise<boolean> {
+    try {
+      await this.trainerModel.saveSchedule(scheduleData.trainerId, scheduleData);
+      runInAction(() => {
+        this.currentSchedule = scheduleData;
+        this.error = null;
+      });
       return true;
     } catch (err) {
       runInAction(() => {
@@ -73,25 +88,21 @@ export class TrainerViewModel {
     }
   }
 
-  // Métodos unificados para obtener capacidades (reutilizados de BookingViewModel)
   async getZoneOccupancy(zone: ZoneType, date: Date, time: string, trainerId?: string): Promise<number> {
-    return await this.model.getZoneOccupancy(zone, date, time, trainerId);
+    return await this.bookingModel.getZoneOccupancy(zone, date, time, trainerId);
   }
 
   async getAllZonesOccupancy(date: Date, time: string, trainerId?: string): Promise<Record<ZoneType, number>> {
-    return await this.model.getAllZonesOccupancy(date, time, trainerId);
+    return await this.bookingModel.getAllZonesOccupancy(date, time, trainerId);
   }
 
-  // Métodos de utilidad para la vista
   async deleteBooking(bookingId: string): Promise<boolean> {
     try {
-      // Aquí iría la lógica para eliminar la reserva del backend
-      // Por ahora simulamos éxito y actualizamos el estado local
+      await this.trainerModel.cancelBooking(bookingId);
       runInAction(() => {
         this.bookings = this.bookings.filter(b => b.id !== bookingId);
         this.error = null;
       });
-      
       return true;
     } catch (err) {
       runInAction(() => {
@@ -101,29 +112,25 @@ export class TrainerViewModel {
     }
   }
 
-  // Getters computed
   get selectedTrainer(): Trainer | undefined {
     return this.trainers.find(t => t.id === this.selectedTrainerId);
   }
 
   get trainerBookings(): Booking[] {
     if (!this.selectedTrainerId) return [];
-    return this.bookings.filter(booking => 
+    return this.bookings.filter(booking =>
       booking.trainerId === this.selectedTrainerId &&
       booking.status === 'confirmed'
     );
   }
 
-  get trainerSchedule(): TrainerSchedule | undefined {
-    // Aquí iría la lógica para obtener el horario del trainer del backend
-    // Por ahora retornamos undefined para usar el horario por defecto
-    return undefined;
+  get trainerSchedule(): TrainerSchedule | null {
+    return this.currentSchedule;
   }
 
   get dailySlots(): DaySchedule {
     const schedule = this.trainerSchedule;
     if (!schedule || this.selectedDayIndex === -1) {
-      // Si no hay horario configurado o es domingo, usar disponibilidad general
       const trainer = this.selectedTrainer;
       if (trainer) {
         return {
@@ -134,46 +141,33 @@ export class TrainerViewModel {
       return { day: this.getDayName(this.selectedDayIndex), slots: [] };
     }
 
-    return schedule.weeklySchedule[this.selectedDayIndex] || { 
-      day: this.getDayName(this.selectedDayIndex), 
-      slots: [] 
+    return schedule.weeklySchedule[this.selectedDayIndex] || {
+      day: this.getDayName(this.selectedDayIndex),
+      slots: []
     };
   }
 
-  // Métodos para actualizar estado
-  setSelectedDate(date: Date) {
+  setSelectedDate(date: Date): void {
     this.selectedDate = date;
-    // Actualizar el día seleccionado basado en la nueva fecha
     const dayOfWeek = date.getDay();
     this.selectedDayIndex = dayOfWeek === 0 ? -1 : dayOfWeek - 1;
     this.loadBookings(date);
   }
 
-  setSelectedTrainer(trainerId: string) {
+  setSelectedTrainer(trainerId: string): void {
     this.selectedTrainerId = trainerId;
+    this.loadSchedule(trainerId);
   }
 
   generateDefaultSchedule(): TrainerSchedule {
-    const defaultSchedule: TrainerSchedule = {
-      trainerId: this.selectedTrainerId!,
-      trainerName: `Entrenador ${this.selectedTrainer?.name || ''}`,
-      weeklySchedule: []
-    };
-
-    // Generar horario por defecto para cada día laborable (Lunes a Sábado)
-    for (let dayIndex = 0; dayIndex < 6; dayIndex++) {
-      defaultSchedule.weeklySchedule[dayIndex] = {
-        day: this.getDayName(dayIndex),
-        slots: [...AVAILABLE_TIME_SLOTS].map(time => ({ time, available: true }))
-      };
-    }
-
-    return defaultSchedule;
+    return this.trainerModel.generateDefaultSchedule(
+      this.selectedTrainerId!,
+      this.selectedTrainer?.name || ''
+    );
   }
 
-  // Métodos para validación
   isTimeSlotValid(time: string): boolean {
-    return (AVAILABLE_TIME_SLOTS as readonly string[]).includes(time);
+    return this.trainerModel.isTimeSlotValid(time);
   }
 
   hasBookingsAtTime(time: string): boolean {
@@ -190,18 +184,16 @@ export class TrainerViewModel {
     }
   }
 
-  // Método para limpiar errores
-  clearError() {
+  clearError(): void {
     this.error = null;
   }
 
-  // Método auxiliar para obtener nombre del día
   private getDayName(dayIndex: number): string {
-    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     return dayIndex >= 0 && dayIndex < days.length ? days[dayIndex] : 'Día no válido';
   }
 
-  private setLoading(loading: boolean) {
+  private setLoading(loading: boolean): void {
     this.isLoading = loading;
   }
 }

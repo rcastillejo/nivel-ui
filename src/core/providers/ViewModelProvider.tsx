@@ -5,11 +5,14 @@ import { BookingViewModel } from '../view-models/BookingViewModel';
 import { BookingModel } from '../models/BookingModel';
 import { ProgramViewModel } from '../view-models/ProgramViewModel';
 import { ProgramModel } from '../models/ProgramModel';
+import { TrainerViewModel } from '../view-models/TrainerViewModel';
+import { TrainerModel } from '../models/TrainerModel';
 import { useData } from './DataProvider';
 
 interface ViewModelContextType {
   bookingVM: BookingViewModel;
   programVM: ProgramViewModel;
+  trainerVM: TrainerViewModel;
 }
 
 const ViewModelContext = createContext<ViewModelContextType | null>(null);
@@ -24,13 +27,16 @@ export function ViewModelProvider({ children }: ViewModelProviderProps) {
   const viewModels = useMemo(() => {
     const bookingModel = new BookingModel(service);
     const programModel = new ProgramModel(service);
-    const bookingVM = new BookingViewModel(bookingModel, programModel);
+    const trainerModel = new TrainerModel(service);
 
+    const bookingVM = new BookingViewModel(bookingModel, programModel);
     const programVM = new ProgramViewModel(programModel);
+    const trainerVM = new TrainerViewModel(bookingModel, trainerModel);
 
     return {
       bookingVM,
-      programVM
+      programVM,
+      trainerVM
     };
   }, [service]);
 
@@ -49,14 +55,17 @@ export function useViewModels(): ViewModelContextType {
   return context;
 }
 
-// Hook específico para booking
 export function useBookingViewModel() {
   const { bookingVM } = useViewModels();
   return bookingVM;
 }
 
-// Hook específico para programa
 export function useProgramViewModel() {
   const { programVM } = useViewModels();
   return programVM;
+}
+
+export function useTrainerViewModel() {
+  const { trainerVM } = useViewModels();
+  return trainerVM;
 }

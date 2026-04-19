@@ -58,3 +58,13 @@ export class InvalidSessionCountError extends Error {
     this.name = 'InvalidSessionCountError';
   }
 }
+
+export class TrainerValidationError extends Error {
+  constructor(
+    public field: string,
+    message: string
+  ) {
+    super(message);
+    this.name = 'TrainerValidationError';
+  }
+}
