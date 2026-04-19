@@ -63,12 +63,6 @@ describe('BookingModel', () => {
   })
 
   describe('createBooking', () => {
-    const mockTrainer: Trainer = {
-      id: 'trainer1',
-      name: 'John',
-      availableSlots: ['09:00', '10:00', '11:00']
-    }
-
     const validBookingData: Omit<Booking, 'id'> = {
       clientId: 'client1',
       trainerId: 'trainer1',
