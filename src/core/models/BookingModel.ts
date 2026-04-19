@@ -1,5 +1,5 @@
 import { Booking, Trainer, ZoneType, ZONE_CONFIG } from '../types';
-import { BookingCapacityError } from '../types/errors';
+import { BookingCapacityError, BookingValidationError } from '../types/errors';
 import { IDataService } from '../repositories';
 import { isSameDay } from 'date-fns';
 
@@ -92,19 +92,19 @@ export class BookingModel {
 
   private validateBooking(booking: Omit<Booking, 'id'>): void {
     if (!booking.clientId.trim()) {
-      throw new Error('El cliente es requerido');
+      throw new BookingValidationError('El cliente es requerido');
     }
-    
+
     if (booking.duration < 30) {
-      throw new Error('La duración mínima es 30 minutos');
+      throw new BookingValidationError('La duración mínima es 30 minutos');
     }
-    
+
     if (booking.duration > 180) {
-      throw new Error('La duración máxima es 180 minutos');
+      throw new BookingValidationError('La duración máxima es 180 minutos');
     }
-    
+
     if (booking.date < new Date()) {
-      throw new Error('No se pueden hacer reservas en el pasado');
+      throw new BookingValidationError('No se pueden hacer reservas en el pasado');
     }
   }
 
@@ -120,8 +120,9 @@ export class BookingModel {
     
     // Filtrar reservas para la misma zona y horario
     const sameZoneBookings = existingBookings.filter(
-      b => b.date === booking.date && 
-           b.time === booking.time && 
+      b => b.date === booking.date &&
+           b.time === booking.time &&
+           b.zone === booking.zone &&
            b.status === 'confirmed'
     );
     

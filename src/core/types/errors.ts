@@ -1,5 +1,12 @@
 import { ZoneType, ZONE_CONFIG } from './index';
 
+export class BookingValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'BookingValidationError';
+  }
+}
+
 export class BookingCapacityError extends Error {
   constructor(
     public zone: ZoneType,

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { BookingModel } from '@/core/models/BookingModel'
 import { IDataService } from '@/core/repositories'
 import { Booking, Trainer, ZoneType } from '@/core/types'
-import { BookingCapacityError } from '@/core/types/errors'
+import { BookingCapacityError, BookingValidationError } from '@/core/types/errors'
 
 // Mock del data service
 const mockTrainerRepository = {
@@ -105,6 +105,12 @@ describe('BookingModel', () => {
       await expect(bookingModel.createBooking(invalidBooking)).rejects.toThrow('El cliente es requerido')
     })
 
+    it('should throw BookingValidationError for missing client', async () => {
+      const invalidBooking = { ...validBookingData, clientId: '' }
+
+      await expect(bookingModel.createBooking(invalidBooking)).rejects.toThrow(BookingValidationError)
+    })
+
     it('should throw error for duration less than 30 minutes', async () => {
       const invalidBooking = { ...validBookingData, duration: 29 }
 
@@ -121,6 +127,12 @@ describe('BookingModel', () => {
       const invalidBooking = { ...validBookingData, date: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Yesterday
 
       await expect(bookingModel.createBooking(invalidBooking)).rejects.toThrow('No se pueden hacer reservas en el pasado')
+    })
+
+    it('should throw BookingValidationError for past date', async () => {
+      const invalidBooking = { ...validBookingData, date: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Yesterday
+
+      await expect(bookingModel.createBooking(invalidBooking)).rejects.toThrow(BookingValidationError)
     })
 
     it('should throw error for unavailable time slot', async () => {
@@ -155,6 +167,61 @@ describe('BookingModel', () => {
       const gabineteBooking = { ...validBookingData, zone: 'gabinete' as ZoneType }
 
       await expect(bookingModel.createBooking(gabineteBooking)).rejects.toThrow(BookingCapacityError)
+    })
+
+    it('should throw BookingCapacityError only when the correct zone is full', async () => {
+      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
+      mockTrainerRepository.getSchedule.mockResolvedValue(null)
+
+      // Fill gym zone (maxCapacity = 10)
+      const gymBookings: Booking[] = Array.from({ length: 10 }, (_, i): Booking => ({
+        id: `booking${i}`,
+        clientId: `client${i}`,
+        trainerId: 'trainer1',
+        trainerName: 'Entrenador John',
+        date: validBookingData.date,
+        time: '09:00',
+        duration: 60,
+        zone: 'gym',
+        status: 'confirmed'
+      }))
+
+      // First call (checkAvailability): no bookings so slot is available
+      mockBookingRepository.getByDate.mockResolvedValueOnce([])
+      // Second call (validateCapacity): gym is full
+      mockBookingRepository.getByDate.mockResolvedValue(gymBookings)
+
+      await expect(bookingModel.createBooking(validBookingData)).rejects.toThrow(BookingCapacityError)
+    })
+
+    it('should not throw BookingCapacityError when only a different zone is full', async () => {
+      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
+      mockTrainerRepository.getSchedule.mockResolvedValue(null)
+      mockBookingRepository.save.mockResolvedValue(undefined)
+
+      // Fill gym zone (maxCapacity = 10) but leave gabinete empty
+      const gymBookings: Booking[] = Array.from({ length: 10 }, (_, i): Booking => ({
+        id: `booking${i}`,
+        clientId: `client${i}`,
+        trainerId: 'trainer1',
+        trainerName: 'Entrenador John',
+        date: validBookingData.date,
+        time: '09:00',
+        duration: 60,
+        zone: 'gym',
+        status: 'confirmed'
+      }))
+
+      // First call (checkAvailability): no bookings so slot is available
+      mockBookingRepository.getByDate.mockResolvedValueOnce([])
+      // Second call (validateCapacity): gym is full but gabinete has none
+      mockBookingRepository.getByDate.mockResolvedValue(gymBookings)
+
+      // Booking gabinete should succeed — gym is full but gabinete is not
+      const gabineteBooking = { ...validBookingData, zone: 'gabinete' as ZoneType }
+      const result = await bookingModel.createBooking(gabineteBooking)
+
+      expect(result).toMatchObject(gabineteBooking)
     })
   })
 
