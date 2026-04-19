@@ -1,6 +1,7 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { BookingModel } from '../models/BookingModel';
 import { TrainerModel } from '../models/TrainerModel';
+import { ScheduleModel } from '../models/ScheduleModel';
 import { Booking, Trainer, ZoneType, DaySchedule, TrainerSchedule } from '../types';
 
 export class TrainerViewModel {
@@ -16,7 +17,8 @@ export class TrainerViewModel {
 
   constructor(
     private bookingModel: BookingModel,
-    private trainerModel: TrainerModel
+    private trainerModel: TrainerModel,
+    private scheduleModel: ScheduleModel
   ) {
     makeAutoObservable(this);
   }
@@ -58,7 +60,7 @@ export class TrainerViewModel {
   async loadSchedule(trainerId: string): Promise<void> {
     this.setLoading(true);
     try {
-      const schedule = await this.trainerModel.getSchedule(trainerId);
+      const schedule = await this.scheduleModel.getTrainerSchedule(trainerId);
       runInAction(() => {
         this.currentSchedule = schedule;
         this.error = null;
@@ -155,7 +157,10 @@ export class TrainerViewModel {
   }
 
   setSelectedTrainer(trainerId: string): void {
-    this.selectedTrainerId = trainerId;
+    runInAction(() => {
+      this.selectedTrainerId = trainerId;
+      this.currentSchedule = null;
+    });
     this.loadSchedule(trainerId);
   }
 
