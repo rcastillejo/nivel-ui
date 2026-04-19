@@ -1,10 +1,14 @@
 import { Booking, Trainer, ZoneType, ZONE_CONFIG } from '../types';
 import { BookingCapacityError, BookingValidationError } from '../types/errors';
 import { IDataService } from '../repositories';
+import { ScheduleModel } from './ScheduleModel';
 import { isSameDay } from 'date-fns';
 
 export class BookingModel {
-  constructor(private dataService: IDataService) {}
+  constructor(
+    private dataService: IDataService,
+    private scheduleModel: ScheduleModel
+  ) {}
 
   async createBooking(booking: Omit<Booking, 'id'>): Promise<Booking> {
     // Validaciones de negocio
@@ -39,54 +43,18 @@ export class BookingModel {
   }
 
   async getAvailableSlots(trainerId: string, date: Date): Promise<string[]> {
-    const trainer = await this.getTrainerById(trainerId);
-    if (!trainer) return [];
+    const scheduledSlots = await this.scheduleModel.getAvailableSlots(trainerId, date);
 
-    // Obtener el horario configurado del entrenador
-    const trainerSchedule = await this.dataService.trainers.getSchedule(trainerId);
-    if (!trainerSchedule) {
-      // Si no hay horario configurado, usar los slots por defecto del entrenador
-      const existingBookings = await this.getBookingsByDate(date);
-      const maxCapacity = 10;
-      
-      return trainer.availableSlots.filter(slot => {
-        const bookingsForSlot = existingBookings.filter(
-          b => b.trainerId === trainerId && 
-               b.time === slot && 
-               b.status === 'confirmed'
-        );
-        return bookingsForSlot.length < maxCapacity;
-      });
-    }
-
-    // Determinar qué día de la semana es
-    const dayOfWeek = date.getDay(); // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
-    const dayIndex = dayOfWeek === 0 ? -1 : dayOfWeek - 1; // Convertir a índice de días laborables (Lun=0, Sáb=5)
-    
-    // Si es domingo, no hay horarios disponibles
-    if (dayIndex < 0 || dayIndex > 5) {
-      return [];
-    }
-
-    const daySchedule = trainerSchedule.weeklySchedule[dayIndex];
-    if (!daySchedule) return [];
-
-    // Obtener solo los slots marcados como disponibles
-    const availableSlots = daySchedule.slots
-      .filter(slot => slot.available)
-      .map(slot => slot.time);
-
-    // Filtrar los que ya están llenos (capacidad máxima = 10)
     const existingBookings = await this.getBookingsByDate(date);
-    const maxCapacity = 10;
-    
-    return availableSlots.filter(slot => {
+    const maxCapacity = ZONE_CONFIG.gym.maxCapacity;
+
+    return scheduledSlots.filter(slot => {
       const bookingsForSlot = existingBookings.filter(
-        b => b.trainerId === trainerId && 
-             b.time === slot && 
+        b => b.trainerId === trainerId &&
+             b.time === slot &&
              b.status === 'confirmed'
       );
-      return bookingsForSlot.length < maxCapacity; // Disponible si hay menos de 10 reservas
+      return bookingsForSlot.length < maxCapacity;
     });
   }
 

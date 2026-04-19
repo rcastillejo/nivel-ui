@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { BookingModel } from '@/core/models/BookingModel'
+import { ScheduleModel } from '@/core/models/ScheduleModel'
 import { IDataService } from '@/core/repositories'
 import { Booking, Trainer, ZoneType } from '@/core/types'
 import { BookingCapacityError, BookingValidationError } from '@/core/types/errors'
@@ -47,21 +48,21 @@ const mockDataService: IDataService = {
   clear: vi.fn()
 }
 
+const mockScheduleModel = {
+  getAvailableSlots: vi.fn(),
+  isSlotAvailable: vi.fn(),
+  getTrainerSchedule: vi.fn()
+}
+
 describe('BookingModel', () => {
   let bookingModel: BookingModel
 
   beforeEach(() => {
-    bookingModel = new BookingModel(mockDataService)
+    bookingModel = new BookingModel(mockDataService, mockScheduleModel as unknown as ScheduleModel)
     vi.clearAllMocks()
   })
 
   describe('createBooking', () => {
-    const mockTrainer: Trainer = {
-      id: 'trainer1',
-      name: 'John',
-      availableSlots: ['09:00', '10:00', '11:00']
-    }
-
     const validBookingData: Omit<Booking, 'id'> = {
       clientId: 'client1',
       trainerId: 'trainer1',
@@ -74,8 +75,7 @@ describe('BookingModel', () => {
     }
 
     it('should create a booking successfully', async () => {
-      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
-      mockTrainerRepository.getSchedule.mockResolvedValue(null)
+      mockScheduleModel.getAvailableSlots.mockResolvedValue(['09:00', '10:00', '11:00'])
       mockBookingRepository.getByDate.mockResolvedValue([])
       mockBookingRepository.save.mockResolvedValue(undefined)
 
@@ -88,8 +88,7 @@ describe('BookingModel', () => {
     })
 
     it('should not touch the program repository when creating a booking', async () => {
-      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
-      mockTrainerRepository.getSchedule.mockResolvedValue(null)
+      mockScheduleModel.getAvailableSlots.mockResolvedValue(['09:00', '10:00', '11:00'])
       mockBookingRepository.getByDate.mockResolvedValue([])
       mockBookingRepository.save.mockResolvedValue(undefined)
 
@@ -136,8 +135,7 @@ describe('BookingModel', () => {
     })
 
     it('should throw error for unavailable time slot', async () => {
-      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
-      mockTrainerRepository.getSchedule.mockResolvedValue(null)
+      mockScheduleModel.getAvailableSlots.mockResolvedValue(['09:00', '10:00', '11:00'])
       mockBookingRepository.getByDate.mockResolvedValue([])
 
       const invalidBooking = { ...validBookingData, time: '12:00' } // Not in available slots
@@ -146,8 +144,7 @@ describe('BookingModel', () => {
     })
 
     it('should throw BookingCapacityError when gabinete zone is at capacity', async () => {
-      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
-      mockTrainerRepository.getSchedule.mockResolvedValue(null)
+      mockScheduleModel.getAvailableSlots.mockResolvedValue(['09:00', '10:00', '11:00'])
 
       // Create 1 existing booking for gabinete zone (max capacity)
       const existingBookings: Booking[] = [{
@@ -161,7 +158,7 @@ describe('BookingModel', () => {
         zone: 'gabinete',
         status: 'confirmed'
       }]
-      
+
       mockBookingRepository.getByDate.mockResolvedValue(existingBookings)
 
       const gabineteBooking = { ...validBookingData, zone: 'gabinete' as ZoneType }
@@ -170,8 +167,7 @@ describe('BookingModel', () => {
     })
 
     it('should throw BookingCapacityError only when the correct zone is full', async () => {
-      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
-      mockTrainerRepository.getSchedule.mockResolvedValue(null)
+      mockScheduleModel.getAvailableSlots.mockResolvedValue(['09:00', '10:00', '11:00'])
 
       // Fill gym zone (maxCapacity = 10)
       const gymBookings: Booking[] = Array.from({ length: 10 }, (_, i): Booking => ({
@@ -186,7 +182,7 @@ describe('BookingModel', () => {
         status: 'confirmed'
       }))
 
-      // First call (checkAvailability): no bookings so slot is available
+      // First call (getAvailableSlots capacity check): no bookings so slot is available
       mockBookingRepository.getByDate.mockResolvedValueOnce([])
       // Second call (validateCapacity): gym is full
       mockBookingRepository.getByDate.mockResolvedValue(gymBookings)
@@ -195,8 +191,7 @@ describe('BookingModel', () => {
     })
 
     it('should not throw BookingCapacityError when only a different zone is full', async () => {
-      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
-      mockTrainerRepository.getSchedule.mockResolvedValue(null)
+      mockScheduleModel.getAvailableSlots.mockResolvedValue(['09:00', '10:00', '11:00'])
       mockBookingRepository.save.mockResolvedValue(undefined)
 
       // Fill gym zone (maxCapacity = 10) but leave gabinete empty
@@ -212,7 +207,7 @@ describe('BookingModel', () => {
         status: 'confirmed'
       }))
 
-      // First call (checkAvailability): no bookings so slot is available
+      // First call (getAvailableSlots capacity check): no bookings so slot is available
       mockBookingRepository.getByDate.mockResolvedValueOnce([])
       // Second call (validateCapacity): gym is full but gabinete has none
       mockBookingRepository.getByDate.mockResolvedValue(gymBookings)
@@ -294,16 +289,19 @@ describe('BookingModel', () => {
   })
 
   describe('getAvailableSlots', () => {
-    const mockTrainer: Trainer = {
-      id: 'trainer1',
-      name: 'John',
-      availableSlots: ['09:00', '10:00', '11:00']
-    }
+    it('delega al ScheduleModel para obtener los slots configurados', async () => {
+      const date = new Date('2024-01-15')
+      mockScheduleModel.getAvailableSlots.mockResolvedValue(['09:00', '10:00', '11:00'])
+      mockBookingRepository.getByDate.mockResolvedValue([])
 
-    it('should return available slots when no schedule is set', async () => {
-      const date = new Date('2024-01-15') // Monday
-      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
-      mockTrainerRepository.getSchedule.mockResolvedValue(null)
+      await bookingModel.getAvailableSlots('trainer1', date)
+
+      expect(mockScheduleModel.getAvailableSlots).toHaveBeenCalledWith('trainer1', date)
+    })
+
+    it('should return available slots when schedule has no capacity issues', async () => {
+      const date = new Date('2024-01-15')
+      mockScheduleModel.getAvailableSlots.mockResolvedValue(['09:00', '10:00', '11:00'])
       mockBookingRepository.getByDate.mockResolvedValue([])
 
       const result = await bookingModel.getAvailableSlots('trainer1', date)
@@ -311,8 +309,9 @@ describe('BookingModel', () => {
       expect(result).toEqual(['09:00', '10:00', '11:00'])
     })
 
-    it('should return empty array when trainer not found', async () => {
-      mockTrainerRepository.getById.mockResolvedValue(null)
+    it('should return empty array when ScheduleModel returns no slots', async () => {
+      mockScheduleModel.getAvailableSlots.mockResolvedValue([])
+      mockBookingRepository.getByDate.mockResolvedValue([])
 
       const result = await bookingModel.getAvailableSlots('nonexistent', new Date())
 
@@ -320,10 +319,9 @@ describe('BookingModel', () => {
     })
 
     it('should filter out slots at capacity', async () => {
-      const date = new Date('2024-01-15') // Monday
-      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
-      mockTrainerRepository.getSchedule.mockResolvedValue(null)
-      
+      const date = new Date('2024-01-15')
+      mockScheduleModel.getAvailableSlots.mockResolvedValue(['09:00', '10:00', '11:00'])
+
       // Create 10 bookings for 09:00 slot (at capacity)
       const existingBookings: Booking[] = Array.from({ length: 10 }, (_, i): Booking => ({
         id: `booking${i}`,
@@ -336,7 +334,7 @@ describe('BookingModel', () => {
         zone: 'gym',
         status: 'confirmed'
       }))
-      
+
       mockBookingRepository.getByDate.mockResolvedValue(existingBookings)
 
       const result = await bookingModel.getAvailableSlots('trainer1', date)
