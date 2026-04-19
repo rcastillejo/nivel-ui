@@ -70,7 +70,7 @@ const TrainerScheduleComponent = observer(function TrainerSchedule() {
       });
       setSchedule(slotsByDay);
     }
-  }, [currentSchedule]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentSchedule]);
 
   const handleSlotToggle = (dayIndex: number, slotIndex: number) => {
     setSchedule(prev => prev.map((day, dIndex) =>
