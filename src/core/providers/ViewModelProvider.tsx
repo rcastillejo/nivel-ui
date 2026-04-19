@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useMemo, ReactNode } from 'react';
 import { BookingViewModel } from '../view-models/BookingViewModel';
 import { BookingModel } from '../models/BookingModel';
+import { ClientModel } from '../models/ClientModel';
 import { ProgramViewModel } from '../view-models/ProgramViewModel';
 import { ProgramModel } from '../models/ProgramModel';
 import { TrainerViewModel } from '../view-models/TrainerViewModel';
@@ -25,7 +26,8 @@ export function ViewModelProvider({ children }: ViewModelProviderProps) {
   const { service } = useData();
 
   const viewModels = useMemo(() => {
-    const bookingModel = new BookingModel(service);
+    const clientModel = new ClientModel(service);
+    const bookingModel = new BookingModel(service, clientModel);
     const programModel = new ProgramModel(service);
     const trainerModel = new TrainerModel(service);
 

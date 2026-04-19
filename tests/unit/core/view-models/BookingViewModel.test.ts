@@ -181,6 +181,7 @@ describe('BookingViewModel', () => {
       mockBookingModel.getTrainers.mockResolvedValue([mockTrainer]);
       await vm.loadTrainers();
 
+      vm.setClientId('client1');
       vm.setDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
       vm.setTrainer('trainer1');
 
