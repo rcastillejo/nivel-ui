@@ -2,8 +2,8 @@
 feature: "Schema SQL y Migraciones en Supabase"
 author: "rcastillejo"
 date: 2026-04-11
-status: draft
-issue: "TBD"
+status: accepted
+issue: "80"
 adr: ["ADR-002"]
 ---
 
@@ -208,9 +208,7 @@ erDiagram
 
 ## Notas de Implementación
 
-> Completar cuando esté implementado.
-
-- **Migraciones**: `supabase/migrations/`
-- **Seed**: `supabase/seed.sql`
+- **Migraciones**: `supabase/migrations/20260411000000_initial_schema.sql` (tablas + índices), `supabase/migrations/20260411000001_rls_policies.sql` (RLS)
+- **Seed**: `supabase/seed.sql` — 2 entrenadores del MVP (Carlos Rodríguez, María González)
 - **Tipos**: `src/core/types/supabase.ts`
-- **Tests**: `tests/integration/supabase-rls.integration.test.ts`
+- **Tests**: `tests/integration/supabase-rls.integration.test.ts` — verifica RLS con simulación TypeScript de las políticas SQL
