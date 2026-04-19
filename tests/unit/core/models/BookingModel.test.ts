@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { BookingModel } from '@/core/models/BookingModel'
+import { ClientModel } from '@/core/models/ClientModel'
 import { IDataService } from '@/core/repositories'
 import { Booking, Trainer, ZoneType } from '@/core/types'
 import { BookingCapacityError, BookingValidationError } from '@/core/types/errors'
@@ -47,12 +48,20 @@ const mockDataService: IDataService = {
   clear: vi.fn()
 }
 
+const mockClientModel = {
+  getClientById: vi.fn(),
+  validateClientExists: vi.fn(),
+  createClient: vi.fn(),
+  deactivateClient: vi.fn()
+}
+
 describe('BookingModel', () => {
   let bookingModel: BookingModel
 
   beforeEach(() => {
-    bookingModel = new BookingModel(mockDataService)
+    bookingModel = new BookingModel(mockDataService, mockClientModel as unknown as ClientModel)
     vi.clearAllMocks()
+    mockClientModel.validateClientExists.mockResolvedValue(undefined)
   })
 
   describe('createBooking', () => {

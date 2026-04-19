@@ -1,15 +1,22 @@
 import { Booking, Trainer, ZoneType, ZONE_CONFIG } from '../types';
 import { BookingCapacityError, BookingValidationError } from '../types/errors';
 import { IDataService } from '../repositories';
+import { ClientModel } from './ClientModel';
 import { isSameDay } from 'date-fns';
 
 export class BookingModel {
-  constructor(private dataService: IDataService) {}
+  constructor(
+    private dataService: IDataService,
+    private clientModel: ClientModel
+  ) {}
 
   async createBooking(booking: Omit<Booking, 'id'>): Promise<Booking> {
     // Validaciones de negocio
     this.validateBooking(booking);
-    
+
+    // Verificar que el cliente existe
+    await this.clientModel.validateClientExists(booking.clientId);
+
     // Verificar disponibilidad
     await this.checkAvailability(booking.trainerId, booking.date, booking.time);
     
