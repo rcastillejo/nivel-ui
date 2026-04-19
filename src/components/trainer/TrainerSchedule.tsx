@@ -1,18 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { observer } from 'mobx-react-lite';
 import SaveScheduleModal from './SaveScheduleModal';
 import ScheduleSavedModal from './ScheduleSavedModal';
-
-interface TimeSlot {
-  time: string;
-  available: boolean;
-}
-
-interface DaySchedule {
-  day: string;
-  slots: TimeSlot[];
-}
+import { useTrainerViewModel } from '@/core/providers/ViewModelProvider';
+import { DaySchedule, TrainerSchedule } from '@/core/types';
 
 const timeSlots = [
   '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
@@ -23,40 +16,69 @@ const daysOfWeek = [
   'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'
 ];
 
-// Horarios específicos por día
 const getTimeSlotsForDay = (dayIndex: number) => {
-  if (dayIndex === 5) { // Sábado (índice 5)
-    return timeSlots.slice(0, 8); // De 06:00 a 13:00 (último horario 12:00)
+  if (dayIndex === 5) {
+    return timeSlots.slice(0, 8);
   }
-  return timeSlots.slice(0, 15); // Lunes a Viernes: De 06:00 a 20:00 (último horario 8pm)
+  return timeSlots.slice(0, 15);
 };
 
-export default function TrainerSchedule() {
-  const [schedule, setSchedule] = useState<DaySchedule[]>(
-    daysOfWeek.map((day, dayIndex) => ({
-      day,
-      slots: getTimeSlotsForDay(dayIndex).map(time => ({
-        time,
-        available: false
-      }))
-    }))
-  );
+const buildDefaultSchedule = (): DaySchedule[] =>
+  daysOfWeek.map((day, dayIndex) => ({
+    day,
+    slots: getTimeSlotsForDay(dayIndex).map(time => ({ time, available: false }))
+  }));
 
-  const [trainerInfo, setTrainerInfo] = useState({
-    name: 'Diego Lamas',
-    specialization: ''
-  });
+const TrainerScheduleComponent = observer(function TrainerSchedule() {
+  const vm = useTrainerViewModel();
+  const currentSchedule = vm.currentSchedule;
 
+  const [schedule, setSchedule] = useState<DaySchedule[]>(buildDefaultSchedule);
+  const [trainerName, setTrainerName] = useState('Diego Lamas');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  useEffect(() => {
+    vm.loadTrainers();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Set trainer in ViewModel when trainers list loads or trainer name changes
+  useEffect(() => {
+    if (vm.trainers.length > 0 && trainerName) {
+      const trainer = vm.trainers.find(t => t.name === trainerName);
+      if (trainer && vm.selectedTrainerId !== trainer.id) {
+        vm.setSelectedTrainer(trainer.id);
+      }
+    }
+  }, [vm.trainers.length, trainerName]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Populate local schedule when the VM loads one from persistence
+  useEffect(() => {
+    if (currentSchedule) {
+      const slotsByDay: DaySchedule[] = daysOfWeek.map((day, dayIndex) => {
+        const storedDay = currentSchedule.weeklySchedule[dayIndex];
+        const slotMap = storedDay
+          ? Object.fromEntries(storedDay.slots.map(s => [s.time, s.available]))
+          : {};
+        return {
+          day,
+          slots: getTimeSlotsForDay(dayIndex).map(time => ({
+            time,
+            available: slotMap[time] ?? false
+          }))
+        };
+      });
+      setSchedule(slotsByDay);
+    }
+  }, [currentSchedule]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSlotToggle = (dayIndex: number, slotIndex: number) => {
-    setSchedule(prev => prev.map((day, dIndex) => 
-      dIndex === dayIndex 
+    setSchedule(prev => prev.map((day, dIndex) =>
+      dIndex === dayIndex
         ? {
             ...day,
-            slots: day.slots.map((slot, sIndex) => 
-              sIndex === slotIndex 
+            slots: day.slots.map((slot, sIndex) =>
+              sIndex === slotIndex
                 ? { ...slot, available: !slot.available }
                 : slot
             )
@@ -67,9 +89,8 @@ export default function TrainerSchedule() {
 
   const handleSelectAllDay = (dayIndex: number) => {
     const allSelected = schedule[dayIndex].slots.every(slot => slot.available);
-    
-    setSchedule(prev => prev.map((day, dIndex) => 
-      dIndex === dayIndex 
+    setSchedule(prev => prev.map((day, dIndex) =>
+      dIndex === dayIndex
         ? {
             ...day,
             slots: day.slots.map(slot => ({ ...slot, available: !allSelected }))
@@ -82,11 +103,24 @@ export default function TrainerSchedule() {
     setShowSaveModal(true);
   };
 
-  const handleConfirmSave = () => {
-    // Here you would save to a backend or local storage
-    console.log('Saving schedule:', { trainerInfo, schedule });
+  const handleConfirmSave = async () => {
+    const trainer = vm.trainers.find(t => t.name === trainerName);
+    if (!trainer) {
+      setShowSaveModal(false);
+      return;
+    }
+
+    const scheduleData: TrainerSchedule = {
+      trainerId: trainer.id,
+      trainerName: trainer.name,
+      weeklySchedule: schedule
+    };
+
+    const success = await vm.saveSchedule(scheduleData);
     setShowSaveModal(false);
-    setShowSuccessModal(true);
+    if (success) {
+      setShowSuccessModal(true);
+    }
   };
 
   const handleCancelSave = () => {
@@ -98,10 +132,14 @@ export default function TrainerSchedule() {
   };
 
   const getTotalAvailableSlots = () => {
-    return schedule.reduce((total, day) => 
+    return schedule.reduce((total, day) =>
       total + day.slots.filter(slot => slot.available).length, 0
     );
   };
+
+  const trainersToDisplay = vm.trainers.length > 0
+    ? vm.trainers
+    : [{ id: '', name: 'Diego Lamas' }, { id: '', name: 'Jeanpierre Casas' }];
 
   return (
     <div className="space-y-6">
@@ -114,13 +152,14 @@ export default function TrainerSchedule() {
               Entrenador
             </label>
             <select
-              value={trainerInfo.name}
-              onChange={(e) => setTrainerInfo(prev => ({ ...prev, name: e.target.value }))}
+              value={trainerName}
+              onChange={(e) => setTrainerName(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Selecciona un entrenador</option>
-              <option value="Diego Lamas">Diego Lamas</option>
-              <option value="Jeanpierre Casas">Jeanpierre Casas</option>
+              {trainersToDisplay.map(t => (
+                <option key={t.id || t.name} value={t.name}>{t.name}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -164,7 +203,7 @@ export default function TrainerSchedule() {
                 const daySlots = getTimeSlotsForDay(dayIndex);
                 const slot = schedule[dayIndex].slots[timeIndex];
                 const isTimeAvailable = timeIndex < daySlots.length;
-                
+
                 return (
                   <div key={`${day}-${time}`} className="p-2 text-center">
                     {isTimeAvailable ? (
@@ -212,9 +251,9 @@ export default function TrainerSchedule() {
         </div>
         <button
           onClick={handleSaveSchedule}
-          disabled={!trainerInfo.name || getTotalAvailableSlots() === 0}
+          disabled={!trainerName || getTotalAvailableSlots() === 0}
           className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
-            trainerInfo.name && getTotalAvailableSlots() > 0
+            trainerName && getTotalAvailableSlots() > 0
               ? 'bg-blue-600 text-white hover:bg-blue-700'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
@@ -226,8 +265,8 @@ export default function TrainerSchedule() {
       {/* Save Confirmation Modal */}
       <SaveScheduleModal
         isOpen={showSaveModal}
-        trainerName={trainerInfo.name}
-        specialization={trainerInfo.specialization}
+        trainerName={trainerName}
+        specialization=""
         totalHours={getTotalAvailableSlots()}
         onConfirm={handleConfirmSave}
         onCancel={handleCancelSave}
@@ -236,11 +275,13 @@ export default function TrainerSchedule() {
       {/* Success Modal */}
       <ScheduleSavedModal
         isOpen={showSuccessModal}
-        trainerName={trainerInfo.name}
-        specialization={trainerInfo.specialization}
+        trainerName={trainerName}
+        specialization=""
         totalHours={getTotalAvailableSlots()}
         onClose={handleCloseSuccess}
       />
     </div>
   );
-}
+});
+
+export default TrainerScheduleComponent;
