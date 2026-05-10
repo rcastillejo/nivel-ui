@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useProgramViewModel } from '@/core/providers/ViewModelProvider';
-import { useData } from '@/core/providers/DataProvider';
+import { useProgramViewModel, useClientViewModel } from '@/core/providers/ViewModelProvider';
 import { Program } from '@/core/types';
 import RenewProgramModal from './RenewProgramModal';
 
@@ -48,17 +47,14 @@ function StatusBadge({ status }: { status: Program['status'] }) {
 
 const ProgramListView = observer(function ProgramListView() {
   const programVM = useProgramViewModel();
-  const { clients } = useData();
+  const clientVM = useClientViewModel();
   const [renewTarget, setRenewTarget] = useState<Program | null>(null);
 
   useEffect(() => {
     programVM.loadPrograms(TRAINER_ID);
   }, [programVM]);
 
-  const getClientNames = (clientIds: string[]) =>
-    clientIds
-      .map(id => clients.find(c => c.id === id)?.name ?? id)
-      .join(', ');
+  const getClientNames = (clientIds: string[]) => clientVM.getClientNames(clientIds);
 
   const handleRenewSuccess = async () => {
     setRenewTarget(null);
