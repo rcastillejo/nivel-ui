@@ -111,7 +111,7 @@ export class BookingModel {
   private async checkAvailability(trainerId: string, date: Date, time: string): Promise<void> {
     const availableSlots = await this.getAvailableSlots(trainerId, date);
     if (!availableSlots.includes(time)) {
-      throw new Error('El horario seleccionado no está disponible');
+      throw new BookingValidationError('El horario seleccionado no está disponible');
     }
   }
 
@@ -120,7 +120,7 @@ export class BookingModel {
     
     // Filtrar reservas para la misma zona y horario
     const sameZoneBookings = existingBookings.filter(
-      b => b.date === booking.date &&
+      b => isSameDay(b.date, booking.date) &&
            b.time === booking.time &&
            b.zone === booking.zone &&
            b.status === 'confirmed'

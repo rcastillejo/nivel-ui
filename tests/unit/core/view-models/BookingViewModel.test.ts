@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BookingViewModel } from '@/core/view-models/BookingViewModel';
 import { BookingModel } from '@/core/models/BookingModel';
 import { ProgramModel } from '@/core/models/ProgramModel';
-import { Booking, Program, Trainer } from '@/core/types';
+import { Booking, Program, Trainer, ZoneType } from '@/core/types';
 
 // Mock de BookingModel
 const mockBookingModel = {
@@ -255,6 +255,49 @@ describe('BookingViewModel', () => {
 
       expect(success).toBe(false);
       expect(mockProgramModel.consumeSessionForClient).not.toHaveBeenCalled();
+    });
+
+    it('delegates capacity check entirely to BookingModel — does not short-circuit based on local bookings cache', async () => {
+      await setupForBooking();
+
+      // Fill local cache with 10 gym bookings for the same slot
+      // With the old duplicated logic, this would make validateCapacity() return false
+      // and createBooking() would return false without ever calling BookingModel
+      vm.setBookings(
+        Array.from({ length: 10 }, (_, i): Booking => ({
+          id: `b${i}`,
+          clientId: `c${i}`,
+          trainerId: 'trainer1',
+          trainerName: 'Entrenador John',
+          date: vm.selectedDate!,
+          time: '09:00',
+          duration: 60,
+          zone: 'gym' as ZoneType,
+          status: 'confirmed',
+        }))
+      );
+
+      const createdBooking: Booking = {
+        id: 'booking-new',
+        clientId: 'client1',
+        trainerId: 'trainer1',
+        trainerName: 'Entrenador John',
+        date: vm.selectedDate!,
+        time: '09:00',
+        duration: 60,
+        zone: 'gym',
+        status: 'confirmed',
+      };
+
+      mockBookingModel.createBooking.mockResolvedValue(createdBooking);
+      mockProgramModel.consumeSessionForClient.mockResolvedValue(null);
+      mockProgramModel.getActiveProgram.mockResolvedValue(null);
+
+      // BookingModel says ok — ViewModel must trust Model, not its own stale cache
+      const success = await vm.createBooking();
+
+      expect(success).toBe(true);
+      expect(mockBookingModel.createBooking).toHaveBeenCalledOnce();
     });
   });
 

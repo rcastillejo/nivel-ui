@@ -223,6 +223,44 @@ describe('BookingModel', () => {
 
       expect(result).toMatchObject(gabineteBooking)
     })
+
+    it('should throw BookingCapacityError when zone is full and existing booking has a different Date instance with same value', async () => {
+      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
+      mockTrainerRepository.getSchedule.mockResolvedValue(null)
+
+      // Different Date object, same calendar day — exposes the b.date === booking.date reference bug
+      const bookingDate = new Date(validBookingData.date.getTime())
+      const differentInstanceSameDay = new Date(validBookingData.date.getTime())
+
+      const existingBookings: Booking[] = [{
+        id: 'booking1',
+        clientId: 'client2',
+        trainerId: 'trainer1',
+        trainerName: 'Entrenador John',
+        date: differentInstanceSameDay,
+        time: '09:00',
+        duration: 60,
+        zone: 'gabinete',
+        status: 'confirmed'
+      }]
+
+      mockBookingRepository.getByDate.mockResolvedValueOnce([]) // checkAvailability
+      mockBookingRepository.getByDate.mockResolvedValue(existingBookings) // validateCapacity
+
+      const gabineteBooking = { ...validBookingData, date: bookingDate, zone: 'gabinete' as ZoneType }
+
+      await expect(bookingModel.createBooking(gabineteBooking)).rejects.toThrow(BookingCapacityError)
+    })
+
+    it('should throw BookingValidationError (not generic Error) when time slot is unavailable', async () => {
+      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
+      mockTrainerRepository.getSchedule.mockResolvedValue(null)
+      mockBookingRepository.getByDate.mockResolvedValue([])
+
+      const invalidBooking = { ...validBookingData, time: '12:00' } // not in available slots
+
+      await expect(bookingModel.createBooking(invalidBooking)).rejects.toThrow(BookingValidationError)
+    })
   })
 
   describe('getTrainers', () => {
