@@ -3,7 +3,6 @@ import { BookingModel } from '../models/BookingModel';
 import { ProgramModel } from '../models/ProgramModel';
 import { Booking, Program, Trainer, ZoneType, ZONE_CONFIG } from '../types';
 import { BookingCapacityError } from '../types/errors';
-import { isSameDay } from 'date-fns';
 
 interface ZoneCapacity {
   current: number;
@@ -108,11 +107,6 @@ export class BookingViewModel {
       return false;
     }
 
-    // Validación de capacidad en tiempo real
-    if (!this.validateCapacity()) {
-      return false;
-    }
-
     this.setLoading(true);
     try {
       const bookingData: Omit<Booking, 'id'> = {
@@ -123,7 +117,7 @@ export class BookingViewModel {
         time: this.selectedTime!,
         duration: 60,
         zone: this.selectedZone!,
-        status: 'confirmed'
+        status: 'confirmed',
       };
 
       const createdBooking = await this.model.createBooking(bookingData);
@@ -212,29 +206,6 @@ export class BookingViewModel {
     runInAction(() => {
       this.capacityCache.clear();
     });
-  }
-
-  private validateCapacity(): boolean {
-    const currentCount = this.getCurrentBookingCount();
-    const maxCapacity = ZONE_CONFIG[this.selectedZone!].maxCapacity;
-    
-    if (currentCount >= maxCapacity) {
-      this.setError(`El ${ZONE_CONFIG[this.selectedZone!].name} está lleno para este horario. Aforo actual: ${currentCount}/${maxCapacity}`);
-      return false;
-    }
-    
-    return true;
-  }
-
-  private getCurrentBookingCount(): number {
-    return this.bookings.filter(booking => 
-      booking.zone === this.selectedZone &&
-      isSameDay(booking.date, this.selectedDate!) &&
-      booking.time === this.selectedTime &&
-      booking.status === 'confirmed' &&
-      // Para gym: filtrar por trainer, para gabinete: capacidad global
-      (this.selectedZone === 'gym' ? booking.trainerId === this.selectedTrainer!.id : true)
-    ).length;
   }
 
   setBookings(bookings: Booking[]) {
