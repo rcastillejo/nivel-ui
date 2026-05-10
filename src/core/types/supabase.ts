@@ -39,6 +39,8 @@ export interface UserProfileRow {
   id: string;               // UUID, PK = auth.users.id
   role: UserRole;
   full_name: string | null;
+  email: string | null;     // Denormalized from auth.users for client-side reads
+  phone: string | null;     // Denormalized from auth.users for client-side reads
   created_at: string;
 }
 
