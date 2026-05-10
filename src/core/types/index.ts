@@ -1,3 +1,11 @@
+export type UserRole = 'client' | 'trainer';
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  role: UserRole;
+}
+
 export const AVAILABLE_TIME_SLOTS = [
   '06:00', '06:30', '07:00', '07:30', '08:00', '08:30',
   '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',

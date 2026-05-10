@@ -1,7 +1,7 @@
 // Row types that match exactly the Supabase PostgreSQL schema columns.
 // Used exclusively by mappers — domain code never imports these directly.
 
-export type UserRole = 'client' | 'trainer';
+import { UserRole } from '.';
 
 export interface TrainerRow {
   id: string;               // UUID, PK
