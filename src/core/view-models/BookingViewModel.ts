@@ -208,9 +208,21 @@ export class BookingViewModel {
     });
   }
 
+  async refreshBookings(): Promise<void> {
+    if (!this.selectedDate) return;
+    try {
+      const bookings = await this.model.getBookingsByDate(this.selectedDate);
+      runInAction(() => {
+        this.bookings = bookings;
+        this.clearCapacityCache();
+      });
+    } catch {
+      // silent — bookings son opcionales para el cálculo de aforo
+    }
+  }
+
   setBookings(bookings: Booking[]) {
     this.bookings = bookings;
-    // Limpiar cache cuando cambian los bookings
     this.clearCapacityCache();
   }
 

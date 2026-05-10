@@ -55,6 +55,23 @@ export class TrainerViewModel {
     }
   }
 
+  async loadAllBookings(): Promise<void> {
+    this.setLoading(true);
+    try {
+      const bookings = await this.bookingModel.getAllBookings();
+      runInAction(() => {
+        this.bookings = bookings;
+        this.error = null;
+      });
+    } catch (err) {
+      runInAction(() => {
+        this.error = err instanceof Error ? err.message : 'Error cargando reservas';
+      });
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
   async loadSchedule(trainerId: string): Promise<void> {
     this.setLoading(true);
     try {

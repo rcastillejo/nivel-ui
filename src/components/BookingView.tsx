@@ -3,12 +3,11 @@
 import React, { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { useBookingViewModel } from '@/core/providers/ViewModelProvider';
-import { useData } from '@/core/providers/DataProvider';
 import CalendarStep from './CalendarStep';
 import SuccessModal from './SuccessModal';
 import { format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ZoneType, ZONE_CONFIG } from '@/core/types';
+import { Booking, ZoneType, ZONE_CONFIG } from '@/core/types';
 
 // Muestra las sesiones pendientes del programa activo en la sección de confirmación
 const ProgramSessionInfo = observer(() => {
@@ -50,17 +49,11 @@ const ProgramSessionInfo = observer(() => {
 
 const BookingView = observer(() => {
   const vm = useBookingViewModel();
-  const { bookings, refreshBookings } = useData();
 
   // Inicializar ViewModel después de la hidratación
   useEffect(() => {
     vm.initialize();
   }, [vm]);
-
-  // Actualizar bookings en el ViewModel cuando cambian
-  useEffect(() => {
-    vm.setBookings(bookings);
-  }, [bookings, vm]);
 
   const handleDateSelect = (date: Date) => {
     vm.setDate(date);
@@ -82,10 +75,8 @@ const BookingView = observer(() => {
   const handleConfirmBooking = async () => {
     const success = await vm.createBooking();
     if (success) {
-      // Actualizar datos de bookings para reflejar el aforo en tiempo real
-      await refreshBookings();
+      await vm.refreshBookings();
     }
-    // El modal se abre automáticamente desde el ViewModel si la reserva es exitosa
   };
 
   const handleBackToCalendar = () => {
@@ -147,6 +138,7 @@ const BookingView = observer(() => {
           <TimeSelectionView
             selectedDate={vm.selectedDate}
             trainers={vm.trainers}
+            bookings={vm.bookings}
             selectedTrainerName={vm.selectedTrainerName}
             selectedTime={vm.selectedTime}
             selectedZone={vm.selectedZone}
@@ -182,6 +174,7 @@ interface TimeSelectionViewProps {
     name: string;
     availableSlots: string[];
   }>;
+  bookings: Booking[];
   selectedTrainerName: string | null;
   selectedTime: string | null;
   selectedZone: ZoneType | null;
@@ -195,6 +188,7 @@ interface TimeSelectionViewProps {
 const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
   selectedDate,
   trainers,
+  bookings,
   selectedTrainerName,
   selectedTime,
   selectedZone,
@@ -204,7 +198,6 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
   onConfirm,
   canConfirm
 }) => {
-  const { bookings } = useData();
 
   // Function to calculate capacity for a specific zone, time slot and trainer
   const getZoneCapacity = (trainerId: string, time: string, zone: ZoneType) => {

@@ -1,15 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { format, startOfWeek, addDays, isSameDay, addWeeks, subWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useData } from '@/core/providers/DataProvider';
+import { useTrainerViewModel } from '@/core/providers/ViewModelProvider';
 import { Booking, ZONE_CONFIG } from '@/core/types';
 import { TimeSlotWithCapacity } from '@/core/types';
 
 
 export default function TrainerAppointments() {
-  const { bookings, clients, isLoading } = useData();
+  const vm = useTrainerViewModel();
+  const { clients } = useData();
+  const { bookings, isLoading } = vm;
+
+  useEffect(() => {
+    vm.loadAllBookings();
+  }, [vm]);
 
   const [currentWeek, setCurrentWeek] = useState(new Date());
 
