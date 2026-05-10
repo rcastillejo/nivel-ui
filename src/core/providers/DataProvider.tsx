@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { IDataService } from '../repositories';
 import { LocalStorageDataService } from '../repositories/localStorage';
+import { SupabaseDataService } from '../services/SupabaseDataService';
+import { getSupabaseBrowserClient } from '@/lib/supabase';
 
 // Internal context — only for use by ViewModelProvider to access the service layer
 const DataServiceContext = createContext<IDataService | null>(null);
@@ -20,7 +22,10 @@ interface DataProviderProps {
 }
 
 export function DataProvider({ children }: DataProviderProps) {
-  const [service] = useState<IDataService>(() => new LocalStorageDataService());
+  const [service] = useState<IDataService>(() => {
+    const supabase = getSupabaseBrowserClient();
+    return supabase ? new SupabaseDataService(supabase) : new LocalStorageDataService();
+  });
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
