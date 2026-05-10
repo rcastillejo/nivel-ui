@@ -2,24 +2,16 @@
 
 import React, { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
-import { useProgramViewModel, useBookingViewModel } from '@/core/providers/ViewModelProvider';
+import { useProgramViewModel } from '@/core/providers/ViewModelProvider';
 
 const MINIMUM_SESSIONS_FOR_RESULTS = 12;
 
 const ClientProgramView = observer(() => {
   const vm = useProgramViewModel();
-  const bookingVM = useBookingViewModel();
 
   useEffect(() => {
     vm.loadActiveProgram('client1');
   }, [vm]);
-
-  // Recargar el programa cuando se confirma una reserva
-  useEffect(() => {
-    if (bookingVM.confirmedBooking) {
-      vm.loadActiveProgram('client1');
-    }
-  }, [bookingVM.confirmedBooking, vm]);
 
   if (!vm.hasActiveProgram || !vm.activeProgram) {
     return null;
