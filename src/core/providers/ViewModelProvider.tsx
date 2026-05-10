@@ -7,7 +7,7 @@ import { ProgramViewModel } from '../view-models/ProgramViewModel';
 import { ProgramModel } from '../models/ProgramModel';
 import { TrainerViewModel } from '../view-models/TrainerViewModel';
 import { TrainerModel } from '../models/TrainerModel';
-import { useData } from './DataProvider';
+import { useDataService } from './DataProvider';
 
 interface ViewModelContextType {
   bookingVM: BookingViewModel;
@@ -22,7 +22,7 @@ interface ViewModelProviderProps {
 }
 
 export function ViewModelProvider({ children }: ViewModelProviderProps) {
-  const { service } = useData();
+  const service = useDataService();
 
   const viewModels = useMemo(() => {
     const bookingModel = new BookingModel(service);

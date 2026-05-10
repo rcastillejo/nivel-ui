@@ -5,8 +5,18 @@ import { IDataService } from '../repositories';
 import { LocalStorageDataService } from '../repositories/localStorage';
 import { Trainer, Booking, Client, Program } from '../types';
 
+// Internal context — only for use by ViewModelProvider to access the service layer
+const DataServiceContext = createContext<IDataService | null>(null);
+
+export function useDataService(): IDataService {
+  const context = useContext(DataServiceContext);
+  if (!context) {
+    throw new Error('useDataService must be used within a DataProvider');
+  }
+  return context;
+}
+
 interface DataContextType {
-  service: IDataService;
   clients: Client[];
   trainers: Trainer[];
   bookings: Booking[];
@@ -16,7 +26,6 @@ interface DataContextType {
   refreshTrainers: () => Promise<void>;
   refreshBookings: () => Promise<void>;
   refreshPrograms: () => Promise<void>;
-  createBooking: (booking: Omit<Booking, 'id'>) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -77,21 +86,6 @@ export function DataProvider({ children }: DataProviderProps) {
     }
   };
 
-  const createBooking = async (bookingData: Omit<Booking, 'id'>) => {
-    try {
-      const newBooking: Booking = {
-        ...bookingData,
-        id: `booking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      };
-      
-      await service.bookings.save(newBooking);
-      await refreshBookings();
-    } catch (error) {
-      console.error('Error creating booking:', error);
-      throw error;
-    }
-  };
-
   useEffect(() => {
     const initializeData = async () => {
       setIsLoading(true);
@@ -114,7 +108,6 @@ export function DataProvider({ children }: DataProviderProps) {
   }, [service]);
 
   const value: DataContextType = {
-    service,
     clients,
     trainers,
     bookings,
@@ -124,12 +117,13 @@ export function DataProvider({ children }: DataProviderProps) {
     refreshTrainers,
     refreshBookings,
     refreshPrograms,
-    createBooking
   };
 
   return (
-    <DataContext.Provider value={value}>
-      {children}
-    </DataContext.Provider>
+    <DataServiceContext.Provider value={service}>
+      <DataContext.Provider value={value}>
+        {children}
+      </DataContext.Provider>
+    </DataServiceContext.Provider>
   );
 }
