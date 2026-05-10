@@ -27,6 +27,10 @@ export class BookingModel {
     return this.dataService.trainers.getById(id);
   }
 
+  async getAllBookings(): Promise<Booking[]> {
+    return this.dataService.bookings.getAll();
+  }
+
   async getBookingsByDate(date: Date): Promise<Booking[]> {
     return this.dataService.bookings.getByDate(date);
   }

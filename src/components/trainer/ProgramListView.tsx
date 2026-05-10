@@ -48,7 +48,7 @@ function StatusBadge({ status }: { status: Program['status'] }) {
 
 const ProgramListView = observer(function ProgramListView() {
   const programVM = useProgramViewModel();
-  const { clients, refreshPrograms } = useData();
+  const { clients } = useData();
   const [renewTarget, setRenewTarget] = useState<Program | null>(null);
 
   useEffect(() => {
@@ -63,7 +63,6 @@ const ProgramListView = observer(function ProgramListView() {
   const handleRenewSuccess = async () => {
     setRenewTarget(null);
     await programVM.loadPrograms(TRAINER_ID);
-    await refreshPrograms();
   };
 
   if (programVM.isLoading) {
