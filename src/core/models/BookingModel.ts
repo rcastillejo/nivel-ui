@@ -16,14 +16,7 @@ export class BookingModel {
     // Validar capacidad en tiempo real
     await this.validateCapacity(booking);
     
-    const newBooking: Booking = {
-      ...booking,
-      id: `booking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    };
-    
-    await this.dataService.bookings.save(newBooking);
-
-    return newBooking;
+    return this.dataService.bookings.create(booking);
   }
 
   async getTrainers(): Promise<Trainer[]> {

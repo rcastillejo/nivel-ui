@@ -18,6 +18,7 @@ const mockBookingRepository = {
   getById: vi.fn(),
   getByDate: vi.fn(),
   getByTrainer: vi.fn(),
+  create: vi.fn(),
   save: vi.fn(),
   update: vi.fn(),
   delete: vi.fn()
@@ -74,24 +75,26 @@ describe('BookingModel', () => {
     }
 
     it('should create a booking successfully', async () => {
+      const createdBooking = { ...validBookingData, id: 'generated-uuid' }
       mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
       mockTrainerRepository.getSchedule.mockResolvedValue(null)
       mockBookingRepository.getByDate.mockResolvedValue([])
-      mockBookingRepository.save.mockResolvedValue(undefined)
+      mockBookingRepository.create.mockResolvedValue(createdBooking)
 
       const result = await bookingModel.createBooking(validBookingData)
 
-      expect(result).toMatchObject(validBookingData)
+      expect(result).toEqual(createdBooking)
       expect(result.id).toBeDefined()
-      expect(result.id).toMatch(/^booking_\d+_[a-z0-9]+$/)
-      expect(mockBookingRepository.save).toHaveBeenCalledWith(result)
+      expect(mockBookingRepository.create).toHaveBeenCalledWith(validBookingData)
+      expect(mockBookingRepository.save).not.toHaveBeenCalled()
     })
 
     it('should not touch the program repository when creating a booking', async () => {
+      const createdBooking = { ...validBookingData, id: 'generated-uuid' }
       mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
       mockTrainerRepository.getSchedule.mockResolvedValue(null)
       mockBookingRepository.getByDate.mockResolvedValue([])
-      mockBookingRepository.save.mockResolvedValue(undefined)
+      mockBookingRepository.create.mockResolvedValue(createdBooking)
 
       await bookingModel.createBooking(validBookingData)
 
@@ -195,9 +198,11 @@ describe('BookingModel', () => {
     })
 
     it('should not throw BookingCapacityError when only a different zone is full', async () => {
+      const gabineteBooking = { ...validBookingData, zone: 'gabinete' as ZoneType }
+      const createdBooking = { ...gabineteBooking, id: 'generated-uuid' }
       mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
       mockTrainerRepository.getSchedule.mockResolvedValue(null)
-      mockBookingRepository.save.mockResolvedValue(undefined)
+      mockBookingRepository.create.mockResolvedValue(createdBooking)
 
       // Fill gym zone (maxCapacity = 10) but leave gabinete empty
       const gymBookings: Booking[] = Array.from({ length: 10 }, (_, i): Booking => ({
@@ -218,7 +223,6 @@ describe('BookingModel', () => {
       mockBookingRepository.getByDate.mockResolvedValue(gymBookings)
 
       // Booking gabinete should succeed — gym is full but gabinete is not
-      const gabineteBooking = { ...validBookingData, zone: 'gabinete' as ZoneType }
       const result = await bookingModel.createBooking(gabineteBooking)
 
       expect(result).toMatchObject(gabineteBooking)
