@@ -6,6 +6,8 @@ const baseRow: UserProfileRow = {
   id: 'uuid-client-1',
   role: 'client',
   full_name: 'Alice García',
+  email: 'alice@gym.com',
+  phone: null,
   created_at: '2026-01-15T10:00:00Z',
 }
 
