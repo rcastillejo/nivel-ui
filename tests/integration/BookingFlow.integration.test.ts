@@ -206,7 +206,7 @@ describe('BookingModel ↔ LocalStorageDataService', () => {
 
     it('reservas en gym no bloquean el gabinete ni viceversa', async () => {
       const date = tomorrow();
-      const time = '12:00';
+      const time = '16:00'; // '12:00' no está disponible en el horario de trainer1
 
       await model.createBooking(validBookingData({ date, time, clientId: 'client1', zone: 'gym' }));
       // El gabinete sigue disponible aunque gym tenga reservas
