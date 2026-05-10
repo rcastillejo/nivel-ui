@@ -3,15 +3,14 @@
 import { useEffect, useState } from 'react';
 import { format, startOfWeek, addDays, isSameDay, addWeeks, subWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useData } from '@/core/providers/DataProvider';
-import { useTrainerViewModel } from '@/core/providers/ViewModelProvider';
+import { useTrainerViewModel, useClientViewModel } from '@/core/providers/ViewModelProvider';
 import { Booking, ZONE_CONFIG } from '@/core/types';
 import { TimeSlotWithCapacity } from '@/core/types';
 
 
 export default function TrainerAppointments() {
   const vm = useTrainerViewModel();
-  const { clients } = useData();
+  const clientVM = useClientViewModel();
   const { bookings, isLoading } = vm;
 
   useEffect(() => {
@@ -20,8 +19,7 @@ export default function TrainerAppointments() {
 
   const [currentWeek, setCurrentWeek] = useState(new Date());
 
-  const getClientName = (clientId: string) =>
-    clients.find(c => c.id === clientId)?.name ?? clientId;
+  const getClientName = (clientId: string) => clientVM.getClientName(clientId);
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Start on Monday
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));

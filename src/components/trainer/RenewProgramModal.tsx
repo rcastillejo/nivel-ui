@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { observer } from 'mobx-react-lite';
-import { useProgramViewModel } from '@/core/providers/ViewModelProvider';
-import { useData } from '@/core/providers/DataProvider';
+import { useProgramViewModel, useClientViewModel } from '@/core/providers/ViewModelProvider';
 import { Program } from '@/core/types';
 
 interface RenewProgramModalProps {
@@ -18,12 +17,10 @@ const RenewProgramModal = observer(function RenewProgramModal({
   onSuccess
 }: RenewProgramModalProps) {
   const programVM = useProgramViewModel();
-  const { clients } = useData();
+  const clientVM = useClientViewModel();
   const [newSessions, setNewSessions] = useState(program.totalSessions);
 
-  const clientNames = program.clientIds
-    .map(id => clients.find(c => c.id === id)?.name ?? id)
-    .join(', ');
+  const clientNames = clientVM.getClientNames(program.clientIds);
 
   const handleRenew = async () => {
     const success = await programVM.renewProgram(program.id, newSessions);

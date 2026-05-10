@@ -3,8 +3,7 @@
 import { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { format } from 'date-fns';
-import { useProgramViewModel } from '@/core/providers/ViewModelProvider';
-import { useData } from '@/core/providers/DataProvider';
+import { useProgramViewModel, useClientViewModel } from '@/core/providers/ViewModelProvider';
 
 const TRAINER_ID = 'trainer1';
 
@@ -37,7 +36,7 @@ function computeWeeklyFrequency(
 
 const CreateProgramForm = observer(function CreateProgramForm() {
   const programVM = useProgramViewModel();
-  const { clients } = useData();
+  const clientVM = useClientViewModel();
 
   useEffect(() => {
     programVM.setFormTrainerId(TRAINER_ID);
@@ -189,8 +188,8 @@ const CreateProgramForm = observer(function CreateProgramForm() {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Cliente(s) <span className="text-red-500">*</span>
         </label>
-        <div data-testid="clients-checkbox-container" className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3">
-          {clients.filter(c => c.status === 'active').map(client => (
+        <div data-testid="clientVM.clients-checkbox-container" className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3">
+          {clientVM.clients.filter(c => c.status === 'active').map(client => (
             <label
               key={client.id}
               className="flex items-center space-x-2 cursor-pointer"
@@ -205,7 +204,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
               <span className="text-sm text-gray-700 truncate">{client.name}</span>
             </label>
           ))}
-          {clients.filter(c => c.status === 'active').length === 0 && (
+          {clientVM.clients.filter(c => c.status === 'active').length === 0 && (
             <p className="text-sm text-gray-400 col-span-full">No hay clientes activos</p>
           )}
         </div>

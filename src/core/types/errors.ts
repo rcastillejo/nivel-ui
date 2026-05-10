@@ -75,3 +75,10 @@ export class TrainerValidationError extends Error {
     this.name = 'TrainerValidationError';
   }
 }
+
+export class ClientNotFoundError extends Error {
+  constructor(public clientId: string) {
+    super(`Cliente no encontrado: ${clientId}`);
+    this.name = 'ClientNotFoundError';
+  }
+}
