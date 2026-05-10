@@ -10,11 +10,34 @@ describe('NoopAuthService', () => {
       expect(result).toMatchObject({ id: expect.any(String), email: expect.any(String) });
     });
 
-    it('returns an AuthUser with a valid role', async () => {
+    it('returns role=client for unknown emails', async () => {
       const service = new NoopAuthService();
       const result = await service.signIn('x@x.com', 'x');
 
-      expect(['client', 'trainer']).toContain(result.role);
+      expect(result.role).toBe('client');
+    });
+
+    it('returns role=trainer for trainer@nivel.gym', async () => {
+      const service = new NoopAuthService();
+      const result = await service.signIn('trainer@nivel.gym', 'anypassword');
+
+      expect(result.role).toBe('trainer');
+      expect(result.id).toBe('trainer1');
+    });
+
+    it('trainer email matching is case-insensitive', async () => {
+      const service = new NoopAuthService();
+      const result = await service.signIn('TRAINER@NIVEL.GYM', 'anypassword');
+
+      expect(result.role).toBe('trainer');
+    });
+
+    it('returns role=client for emails that are not trainer emails', async () => {
+      const service = new NoopAuthService();
+      const result = await service.signIn('cliente@nivel.gym', 'anypassword');
+
+      expect(result.role).toBe('client');
+      expect(result.id).toBe('client1');
     });
 
     it('never rejects', async () => {
