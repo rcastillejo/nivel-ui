@@ -35,7 +35,7 @@ describe('TrainerMapper', () => {
     })
 
     it('does not expose email, specialization, is_active or created_at on the domain entity', () => {
-      const result = TrainerMapper.toDomain(baseRow) as Record<string, unknown>
+      const result = TrainerMapper.toDomain(baseRow) as unknown as Record<string, unknown>
 
       expect(result['email']).toBeUndefined()
       expect(result['specialization']).toBeUndefined()

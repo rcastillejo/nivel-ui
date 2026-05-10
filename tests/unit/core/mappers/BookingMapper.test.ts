@@ -64,7 +64,7 @@ describe('BookingMapper', () => {
     })
 
     it('does not include created_at in the domain entity', () => {
-      const result = BookingMapper.toDomain(baseRow) as Record<string, unknown>
+      const result = BookingMapper.toDomain(baseRow) as unknown as Record<string, unknown>
 
       expect(result['created_at']).toBeUndefined()
     })
@@ -90,7 +90,7 @@ describe('BookingMapper', () => {
     })
 
     it('does not include id in the insert payload', () => {
-      const result = BookingMapper.toInsert(baseDomain) as Record<string, unknown>
+      const result = BookingMapper.toInsert(baseDomain) as unknown as Record<string, unknown>
 
       expect(result['id']).toBeUndefined()
     })

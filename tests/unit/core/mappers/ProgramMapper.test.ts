@@ -77,7 +77,7 @@ describe('ProgramMapper', () => {
     })
 
     it('does not expose created_at on the domain entity', () => {
-      const result = ProgramMapper.toDomain(baseRow) as Record<string, unknown>
+      const result = ProgramMapper.toDomain(baseRow) as unknown as Record<string, unknown>
 
       expect(result['created_at']).toBeUndefined()
     })
@@ -116,7 +116,7 @@ describe('ProgramMapper', () => {
     })
 
     it('does not include id in the insert payload', () => {
-      const result = ProgramMapper.toInsert(baseDomain) as Record<string, unknown>
+      const result = ProgramMapper.toInsert(baseDomain) as unknown as Record<string, unknown>
 
       expect(result['id']).toBeUndefined()
     })

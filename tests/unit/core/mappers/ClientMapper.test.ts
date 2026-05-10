@@ -63,7 +63,7 @@ describe('ClientMapper', () => {
     })
 
     it('does not expose role or created_at as raw strings on the domain entity', () => {
-      const result = ClientMapper.toDomain(baseRow, 'alice@gym.com') as Record<string, unknown>
+      const result = ClientMapper.toDomain(baseRow, 'alice@gym.com') as unknown as Record<string, unknown>
 
       expect(result['role']).toBeUndefined()
       expect(result['created_at']).toBeUndefined()

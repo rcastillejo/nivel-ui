@@ -206,8 +206,8 @@ describe('TrainerScheduleMapper', () => {
       const rows = TrainerScheduleMapper.toInsertRows(schedule, new Date('2026-05-25'))
 
       rows.forEach((r) => {
-        expect((r as Record<string, unknown>)['id']).toBeUndefined()
-        expect((r as Record<string, unknown>)['created_at']).toBeUndefined()
+        expect((r as unknown as Record<string, unknown>)['id']).toBeUndefined()
+        expect((r as unknown as Record<string, unknown>)['created_at']).toBeUndefined()
       })
     })
   })
