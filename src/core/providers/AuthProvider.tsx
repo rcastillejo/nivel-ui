@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useMemo, useEffect, ReactNode } from 'react';
+import { AuthModel } from '../models/AuthModel';
 import { AuthViewModel } from '../view-models/AuthViewModel';
 import { SupabaseAuthService } from '../services/SupabaseAuthService';
 import { NoopAuthService } from '../services/NoopAuthService';
@@ -11,10 +12,9 @@ const AuthContext = createContext<AuthViewModel | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const authVM = useMemo(() => {
     const supabase = getSupabaseBrowserClient();
-    const service = supabase
-      ? new SupabaseAuthService(supabase)
-      : new NoopAuthService();
-    return new AuthViewModel(service);
+    const service = supabase ? new SupabaseAuthService(supabase) : new NoopAuthService();
+    const model = new AuthModel(service);
+    return new AuthViewModel(model);
   }, []);
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { AuthUser } from '../types';
-import { IAuthService } from '../repositories';
+import { AuthModel } from '../models/AuthModel';
 
 export class AuthViewModel {
   currentUser: AuthUser | null = null;
@@ -9,21 +9,19 @@ export class AuthViewModel {
 
   private unsubscribe: (() => void) | null = null;
 
-  constructor(private readonly authService: IAuthService) {
+  constructor(private readonly authModel: AuthModel) {
     makeAutoObservable(this);
   }
 
   initialize(): void {
-    // Subscribe to real-time auth state changes
-    this.unsubscribe = this.authService.onAuthStateChange((user) => {
+    this.unsubscribe = this.authModel.onAuthStateChange((user) => {
       runInAction(() => {
         this.currentUser = user;
         this.isLoading = false;
       });
     });
 
-    // Also resolve current session on first load
-    this.authService.getCurrentUser().then((user) => {
+    this.authModel.getCurrentUser().then((user) => {
       runInAction(() => {
         this.currentUser = user;
         this.isLoading = false;
@@ -40,7 +38,7 @@ export class AuthViewModel {
     this.setLoading(true);
     this.clearError();
     try {
-      const user = await this.authService.signIn(email, password);
+      const user = await this.authModel.signIn(email, password);
       runInAction(() => {
         this.currentUser = user;
       });
@@ -59,7 +57,7 @@ export class AuthViewModel {
     this.setLoading(true);
     this.clearError();
     try {
-      await this.authService.signOut();
+      await this.authModel.signOut();
       runInAction(() => {
         this.currentUser = null;
       });
@@ -76,7 +74,6 @@ export class AuthViewModel {
     this.error = null;
   }
 
-  // Computed values
   get isAuthenticated(): boolean {
     return this.currentUser !== null;
   }

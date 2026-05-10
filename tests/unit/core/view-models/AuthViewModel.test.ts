@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuthViewModel } from '@/core/view-models/AuthViewModel';
-import { IAuthService } from '@/core/repositories';
+import { AuthModel } from '@/core/models/AuthModel';
 import { AuthUser } from '@/core/types';
 
 const makeUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
@@ -10,20 +10,23 @@ const makeUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
   ...overrides,
 });
 
-const makeMockAuthService = (): IAuthService => ({
-  signIn: vi.fn(),
-  signOut: vi.fn(),
-  getCurrentUser: vi.fn(),
-  onAuthStateChange: vi.fn().mockReturnValue(() => {}),
-});
+// AuthModel is a concrete class — mock its instance methods
+function makeMockAuthModel(): AuthModel {
+  return {
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+    getCurrentUser: vi.fn(),
+    onAuthStateChange: vi.fn().mockReturnValue(() => {}),
+  } as unknown as AuthModel;
+}
 
 describe('AuthViewModel', () => {
-  let authService: IAuthService;
+  let authModel: AuthModel;
   let vm: AuthViewModel;
 
   beforeEach(() => {
-    authService = makeMockAuthService();
-    vm = new AuthViewModel(authService);
+    authModel = makeMockAuthModel();
+    vm = new AuthViewModel(authModel);
     vi.clearAllMocks();
   });
 
@@ -50,16 +53,16 @@ describe('AuthViewModel', () => {
   // ---------------------------------------------------------------------------
 
   describe('initialize()', () => {
-    it('subscribes to auth state changes', () => {
-      vi.mocked(authService.getCurrentUser).mockResolvedValue(null);
+    it('subscribes to auth state changes via AuthModel', () => {
+      vi.mocked(authModel.getCurrentUser).mockResolvedValue(null);
       vm.initialize();
-      expect(authService.onAuthStateChange).toHaveBeenCalledOnce();
+      expect(authModel.onAuthStateChange).toHaveBeenCalledOnce();
     });
 
-    it('resolves currentUser from getCurrentUser() on mount', async () => {
+    it('resolves currentUser from AuthModel.getCurrentUser() on mount', async () => {
       const user = makeUser();
-      vi.mocked(authService.getCurrentUser).mockResolvedValue(user);
-      vi.mocked(authService.onAuthStateChange).mockReturnValue(() => {});
+      vi.mocked(authModel.getCurrentUser).mockResolvedValue(user);
+      vi.mocked(authModel.onAuthStateChange).mockReturnValue(() => {});
 
       vm.initialize();
       await vi.waitFor(() => expect(vm.isLoading).toBe(false));
@@ -68,7 +71,7 @@ describe('AuthViewModel', () => {
     });
 
     it('sets isLoading to false even when getCurrentUser returns null', async () => {
-      vi.mocked(authService.getCurrentUser).mockResolvedValue(null);
+      vi.mocked(authModel.getCurrentUser).mockResolvedValue(null);
 
       vm.initialize();
       await vi.waitFor(() => expect(vm.isLoading).toBe(false));
@@ -78,10 +81,10 @@ describe('AuthViewModel', () => {
 
     it('updates currentUser when onAuthStateChange fires', async () => {
       const user = makeUser();
-      vi.mocked(authService.getCurrentUser).mockResolvedValue(null);
+      vi.mocked(authModel.getCurrentUser).mockResolvedValue(null);
 
       let stateChangeCallback: ((u: AuthUser | null) => void) | null = null;
-      vi.mocked(authService.onAuthStateChange).mockImplementation((cb) => {
+      vi.mocked(authModel.onAuthStateChange).mockImplementation((cb) => {
         stateChangeCallback = cb;
         return () => {};
       });
@@ -101,8 +104,8 @@ describe('AuthViewModel', () => {
   describe('dispose()', () => {
     it('calls the unsubscribe function returned by onAuthStateChange', () => {
       const unsubscribe = vi.fn();
-      vi.mocked(authService.onAuthStateChange).mockReturnValue(unsubscribe);
-      vi.mocked(authService.getCurrentUser).mockResolvedValue(null);
+      vi.mocked(authModel.onAuthStateChange).mockReturnValue(unsubscribe);
+      vi.mocked(authModel.getCurrentUser).mockResolvedValue(null);
 
       vm.initialize();
       vm.dispose();
@@ -118,7 +121,7 @@ describe('AuthViewModel', () => {
   describe('signIn()', () => {
     it('returns true and sets currentUser on success', async () => {
       const user = makeUser();
-      vi.mocked(authService.signIn).mockResolvedValue(user);
+      vi.mocked(authModel.signIn).mockResolvedValue(user);
 
       const result = await vm.signIn('test@nivel.gym', 'secret');
 
@@ -128,33 +131,33 @@ describe('AuthViewModel', () => {
     });
 
     it('returns false and sets error on failure', async () => {
-      vi.mocked(authService.signIn).mockRejectedValue(new Error('Invalid credentials'));
+      vi.mocked(authModel.signIn).mockRejectedValue(new Error('Credenciales incorrectas'));
 
       const result = await vm.signIn('bad@email.com', 'wrong');
 
       expect(result).toBe(false);
       expect(vm.currentUser).toBeNull();
-      expect(vm.error).toBe('Invalid credentials');
+      expect(vm.error).toBe('Credenciales incorrectas');
     });
 
     it('clears a previous error before attempting sign-in', async () => {
-      vi.mocked(authService.signIn).mockRejectedValue(new Error('First error'));
+      vi.mocked(authModel.signIn).mockRejectedValue(new Error('First error'));
       await vm.signIn('a@b.com', 'x');
       expect(vm.error).toBe('First error');
 
-      vi.mocked(authService.signIn).mockResolvedValue(makeUser());
+      vi.mocked(authModel.signIn).mockResolvedValue(makeUser());
       await vm.signIn('a@b.com', 'x');
       expect(vm.error).toBeNull();
     });
 
     it('sets isLoading to false after sign-in resolves', async () => {
-      vi.mocked(authService.signIn).mockResolvedValue(makeUser());
+      vi.mocked(authModel.signIn).mockResolvedValue(makeUser());
       await vm.signIn('a@b.com', 'x');
       expect(vm.isLoading).toBe(false);
     });
 
     it('sets isLoading to false after sign-in rejects', async () => {
-      vi.mocked(authService.signIn).mockRejectedValue(new Error('fail'));
+      vi.mocked(authModel.signIn).mockRejectedValue(new Error('fail'));
       await vm.signIn('a@b.com', 'x');
       expect(vm.isLoading).toBe(false);
     });
@@ -166,23 +169,23 @@ describe('AuthViewModel', () => {
 
   describe('signOut()', () => {
     it('clears currentUser on success', async () => {
-      vi.mocked(authService.signIn).mockResolvedValue(makeUser());
+      vi.mocked(authModel.signIn).mockResolvedValue(makeUser());
       await vm.signIn('a@b.com', 'x');
 
-      vi.mocked(authService.signOut).mockResolvedValue();
+      vi.mocked(authModel.signOut).mockResolvedValue();
       await vm.signOut();
 
       expect(vm.currentUser).toBeNull();
     });
 
     it('sets error when signOut throws', async () => {
-      vi.mocked(authService.signOut).mockRejectedValue(new Error('Network error'));
+      vi.mocked(authModel.signOut).mockRejectedValue(new Error('Network error'));
       await vm.signOut();
       expect(vm.error).toBe('Network error');
     });
 
     it('sets isLoading to false after signOut', async () => {
-      vi.mocked(authService.signOut).mockResolvedValue();
+      vi.mocked(authModel.signOut).mockResolvedValue();
       await vm.signOut();
       expect(vm.isLoading).toBe(false);
     });
@@ -198,7 +201,7 @@ describe('AuthViewModel', () => {
     });
 
     it('is true after a successful signIn', async () => {
-      vi.mocked(authService.signIn).mockResolvedValue(makeUser());
+      vi.mocked(authModel.signIn).mockResolvedValue(makeUser());
       await vm.signIn('a@b.com', 'x');
       expect(vm.isAuthenticated).toBe(true);
     });
@@ -210,13 +213,13 @@ describe('AuthViewModel', () => {
     });
 
     it('is true when currentUser has role trainer', async () => {
-      vi.mocked(authService.signIn).mockResolvedValue(makeUser({ role: 'trainer' }));
+      vi.mocked(authModel.signIn).mockResolvedValue(makeUser({ role: 'trainer' }));
       await vm.signIn('a@b.com', 'x');
       expect(vm.isTrainer).toBe(true);
     });
 
     it('is false when currentUser has role client', async () => {
-      vi.mocked(authService.signIn).mockResolvedValue(makeUser({ role: 'client' }));
+      vi.mocked(authModel.signIn).mockResolvedValue(makeUser({ role: 'client' }));
       await vm.signIn('a@b.com', 'x');
       expect(vm.isTrainer).toBe(false);
     });
@@ -228,7 +231,7 @@ describe('AuthViewModel', () => {
     });
 
     it('is true when currentUser has role client', async () => {
-      vi.mocked(authService.signIn).mockResolvedValue(makeUser({ role: 'client' }));
+      vi.mocked(authModel.signIn).mockResolvedValue(makeUser({ role: 'client' }));
       await vm.signIn('a@b.com', 'x');
       expect(vm.isClient).toBe(true);
     });
@@ -240,7 +243,7 @@ describe('AuthViewModel', () => {
 
   describe('clearError()', () => {
     it('resets error to null', async () => {
-      vi.mocked(authService.signIn).mockRejectedValue(new Error('oops'));
+      vi.mocked(authModel.signIn).mockRejectedValue(new Error('oops'));
       await vm.signIn('a@b.com', 'x');
 
       vm.clearError();

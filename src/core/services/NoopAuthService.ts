@@ -1,5 +1,5 @@
 import { AuthUser } from '../types';
-import { IAuthService } from '../repositories';
+import { IAuthService } from '../repositories/auth';
 
 // Used when NEXT_PUBLIC_SUPABASE_URL is not configured (localStorage dev mode).
 // signIn always succeeds so the UI is usable without a real Supabase project.

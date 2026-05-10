@@ -1,5 +1,12 @@
 import { ZoneType, ZONE_CONFIG } from './index';
 
+export class AuthenticationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AuthenticationError';
+  }
+}
+
 export class BookingValidationError extends Error {
   constructor(message: string) {
     super(message);

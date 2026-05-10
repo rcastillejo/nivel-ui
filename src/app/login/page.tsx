@@ -52,6 +52,7 @@ const LoginPage = observer(() => {
             </label>
             <input
               id="email"
+              data-testid="login-email"
               type="email"
               autoComplete="email"
               required
@@ -72,6 +73,7 @@ const LoginPage = observer(() => {
             </label>
             <input
               id="password"
+              data-testid="login-password"
               type="password"
               autoComplete="current-password"
               required
@@ -87,13 +89,14 @@ const LoginPage = observer(() => {
 
           {/* Error */}
           {authVM.error && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+            <p data-testid="login-error" className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
               {authVM.error}
             </p>
           )}
 
           {/* Submit */}
           <button
+            data-testid="login-submit"
             type="submit"
             disabled={authVM.isLoading}
             className="w-full py-2.5 px-4 bg-gray-900 text-white text-sm font-medium rounded-lg
