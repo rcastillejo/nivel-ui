@@ -23,6 +23,7 @@ function makeBuilder(result: { data: unknown; error: { message: string } | null 
   const builder: Record<string, unknown> = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    insert: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue(result),
     upsert: vi.fn().mockResolvedValue({ data: null, error: null }),
     update: vi.fn().mockReturnThis(),
@@ -172,6 +173,56 @@ describe('SupabaseBookingRepository', () => {
       await repo.getByTrainer('t1');
 
       expect(builder.eq).toHaveBeenCalledWith('trainer_id', 't1');
+    });
+  });
+
+  describe('create', () => {
+    it('inserts without id, selects the created row, and returns a mapped Booking', async () => {
+      const builder = makeBuilder({ data: bookingRow, error: null });
+      const client = makeClient(builder);
+      const repo = new SupabaseBookingRepository(client);
+
+      const result = await repo.create({
+        clientId: 'c1',
+        trainerId: 't1',
+        trainerName: 'Diego Lamas',
+        date: new Date('2026-05-11'),
+        time: '09:00',
+        duration: 60,
+        zone: 'gym',
+        status: 'confirmed',
+      });
+
+      expect(client.from).toHaveBeenCalledWith('bookings');
+      expect(builder.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ client_id: 'c1', time_slot: '09:00' }),
+      );
+      expect(builder.insert).toHaveBeenCalledWith(
+        expect.not.objectContaining({ id: expect.anything() }),
+      );
+      expect(builder.select).toHaveBeenCalled();
+      expect(builder.single).toHaveBeenCalled();
+      expect(result.id).toBe('b1');
+      expect(result.clientId).toBe('c1');
+    });
+
+    it('throws when Supabase returns an error', async () => {
+      const builder = makeBuilder({ data: null, error: { message: 'insert failed' } });
+      const client = makeClient(builder);
+      const repo = new SupabaseBookingRepository(client);
+
+      await expect(
+        repo.create({
+          clientId: 'c1',
+          trainerId: 't1',
+          trainerName: 'Diego',
+          date: new Date('2026-05-11'),
+          time: '09:00',
+          duration: 60,
+          zone: 'gym',
+          status: 'confirmed',
+        }),
+      ).rejects.toThrow('insert failed');
     });
   });
 

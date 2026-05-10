@@ -17,6 +17,7 @@ const mockBookingRepository = {
   getById: vi.fn(),
   getByDate: vi.fn(),
   getByTrainer: vi.fn(),
+  create: vi.fn(),
   save: vi.fn(),
   update: vi.fn(),
   delete: vi.fn()

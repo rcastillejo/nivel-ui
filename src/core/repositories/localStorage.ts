@@ -301,16 +301,22 @@ class LocalStorageBookingRepository implements IBookingRepository {
     return bookings.filter(b => b.trainerId === trainerId);
   }
 
+  async create(booking: Omit<Booking, 'id'>): Promise<Booking> {
+    const newBooking: Booking = { ...booking, id: crypto.randomUUID() };
+    await this.save(newBooking);
+    return newBooking;
+  }
+
   async save(booking: Booking): Promise<void> {
     const bookings = await this.getAll();
     const index = bookings.findIndex(b => b.id === booking.id);
-    
+
     if (index >= 0) {
       bookings[index] = booking;
     } else {
       bookings.push(booking);
     }
-    
+
     localStorage.setItem(this.key, JSON.stringify(bookings));
   }
 

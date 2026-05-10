@@ -196,6 +196,16 @@ export class SupabaseBookingRepository implements IBookingRepository {
     return (data as BookingRow[]).map(BookingMapper.toDomain);
   }
 
+  async create(booking: Omit<Booking, 'id'>): Promise<Booking> {
+    const { data, error } = await this.client
+      .from('bookings')
+      .insert(BookingMapper.toInsert(booking))
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return BookingMapper.toDomain(data as BookingRow);
+  }
+
   async save(booking: Booking): Promise<void> {
     const { id, ...rest } = booking;
     const row = { id, ...BookingMapper.toInsert(rest) };
