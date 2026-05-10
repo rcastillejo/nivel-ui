@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
-import { useBookingViewModel } from '@/core/providers/ViewModelProvider';
+import { useBookingViewModel, useProgramViewModel } from '@/core/providers/ViewModelProvider';
 import CalendarStep from './CalendarStep';
 import SuccessModal from './SuccessModal';
 import { format, isSameDay } from 'date-fns';
@@ -11,13 +11,14 @@ import { Booking, ZoneType, ZONE_CONFIG } from '@/core/types';
 
 // Muestra las sesiones pendientes del programa activo en la sección de confirmación
 const ProgramSessionInfo = observer(() => {
-  const vm = useBookingViewModel();
+  const programVM = useProgramViewModel();
 
-  if (!vm.hasActiveProgram || vm.pendingSessions === null) {
+  if (!programVM.hasActiveProgram || programVM.activeProgramPendingSessions === null) {
     return null;
   }
 
-  const pendingAfterBooking = vm.pendingSessions - 1;
+  const pendingSessions = programVM.activeProgramPendingSessions;
+  const pendingAfterBooking = pendingSessions - 1;
   const isLow = pendingAfterBooking >= 0 && pendingAfterBooking < 3;
 
   return (
@@ -30,7 +31,7 @@ const ProgramSessionInfo = observer(() => {
         </svg>
         <p className={isLow ? 'text-orange-800' : 'text-indigo-800'}>
           <span className="font-semibold">Mi Programa:</span>{' '}
-          {vm.pendingSessions === 0
+          {pendingSessions === 0
             ? 'No tienes sesiones pendientes. Habla con tu entrenador para renovar.'
             : pendingAfterBooking <= 0
             ? 'Esta será tu última sesión del programa.'
@@ -49,11 +50,13 @@ const ProgramSessionInfo = observer(() => {
 
 const BookingView = observer(() => {
   const vm = useBookingViewModel();
+  const programVM = useProgramViewModel();
 
   // Inicializar ViewModel después de la hidratación
   useEffect(() => {
     vm.initialize();
-  }, [vm]);
+    programVM.loadActiveProgram(vm.clientId);
+  }, [vm, programVM]);
 
   const handleDateSelect = (date: Date) => {
     vm.setDate(date);
@@ -76,6 +79,7 @@ const BookingView = observer(() => {
     const success = await vm.createBooking();
     if (success) {
       await vm.refreshBookings();
+      await programVM.loadActiveProgram(vm.clientId);
     }
   };
 
