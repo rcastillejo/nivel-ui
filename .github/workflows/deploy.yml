@@ -1,8 +1,9 @@
-name: Deploy to GitHub Pages
+name: Deploy to GitHub Pages (legacy — replaced by Vercel)
+# Vercel handles automatic deploys on push to main.
+# This workflow is kept as manual fallback only.
 
 on:
-  push:
-    branches: [ main, master ]
+  workflow_dispatch:
 
 permissions:
   contents: read
