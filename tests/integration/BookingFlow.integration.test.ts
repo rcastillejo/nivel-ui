@@ -26,6 +26,11 @@ import { BookingCapacityError, BookingValidationError } from '@/core/types/error
 function tomorrow(): Date {
   const d = new Date();
   d.setDate(d.getDate() + 1);
+  // Trainer schedules have no slots on Sunday; Saturday ends at 12:00 so
+  // 16:00 (used in capacity tests) is unavailable. Always land on Mon–Fri.
+  while (d.getDay() === 0 || d.getDay() === 6) {
+    d.setDate(d.getDate() + 1);
+  }
   d.setHours(12, 0, 0, 0);
   return d;
 }
