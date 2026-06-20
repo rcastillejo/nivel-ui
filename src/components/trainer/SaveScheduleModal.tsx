@@ -7,6 +7,7 @@ interface SaveScheduleModalProps {
   totalHours: number;
   onConfirm: () => void;
   onCancel: () => void;
+  isSaving?: boolean;
 }
 
 export default function SaveScheduleModal({
@@ -15,7 +16,8 @@ export default function SaveScheduleModal({
   specialization,
   totalHours,
   onConfirm,
-  onCancel
+  onCancel,
+  isSaving = false,
 }: SaveScheduleModalProps) {
   if (!isOpen) return null;
 
@@ -86,9 +88,10 @@ export default function SaveScheduleModal({
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            disabled={isSaving}
+            className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Guardar Horario
+            {isSaving ? 'Guardando…' : 'Guardar Horario'}
           </button>
         </div>
       </div>

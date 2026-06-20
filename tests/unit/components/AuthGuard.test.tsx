@@ -66,7 +66,7 @@ describe('AuthGuard', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Unauthenticated
+  // Unauthenticated (e.g. after logout, before router.replace('/login') fires)
   // -------------------------------------------------------------------------
 
   describe('when user is not authenticated', () => {
@@ -80,6 +80,16 @@ describe('AuthGuard', () => {
       mockAuth({ isLoading: false, isAuthenticated: false });
       render(<AuthGuard><p>protected</p></AuthGuard>);
       expect(screen.queryByText('protected')).not.toBeInTheDocument();
+    });
+
+    it('shows a loading indicator instead of a blank page while the redirect is in flight', () => {
+      mockAuth({ isLoading: false, isAuthenticated: false });
+      render(<AuthGuard><p>protected</p></AuthGuard>);
+      // The guard must not produce an empty DOM — it must render something
+      // visible so the user never sees a blank white screen between logout
+      // and the /login navigation completing.
+      expect(document.body.firstChild).not.toBeNull();
+      expect(document.body.innerHTML).not.toBe('');
     });
   });
 
