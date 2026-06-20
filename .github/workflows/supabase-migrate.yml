@@ -1,0 +1,39 @@
+name: Supabase Migrate
+
+# Aplica migraciones a producción automáticamente cuando se mergea a main
+# y hay cambios en supabase/migrations/.
+#
+# Secrets requeridos en GitHub → Settings → Secrets → Actions:
+#   SUPABASE_ACCESS_TOKEN  — supabase.com → Account → Access Tokens
+#   SUPABASE_PROJECT_ID    — ref del proyecto (ej: abcdefghijklmnop)
+#   SUPABASE_DB_PASSWORD   — contraseña elegida al crear el proyecto
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'supabase/migrations/**'
+
+jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+
+  migrate:
+    name: Apply migrations
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Apply migrations to production
+        run: supabase db push --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
