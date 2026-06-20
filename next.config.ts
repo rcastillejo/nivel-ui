@@ -1,4 +1,5 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
+import { withSentryConfig } from '@sentry/nextjs';
 
 const securityHeaders = [
   { key: 'X-Frame-Options',        value: 'DENY' },
@@ -13,7 +14,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "font-src 'self'",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io",
     ].join('; '),
   },
 ];
@@ -24,4 +25,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  telemetry: false,
+  // Sube source maps solo si SENTRY_AUTH_TOKEN está definido (opcional)
+  sourcemaps: {
+    disable: !process.env.SENTRY_AUTH_TOKEN,
+  },
+});
