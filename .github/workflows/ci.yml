@@ -35,3 +35,7 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
+          # Supabase vars required at build time for Next.js static analysis.
+          # Values here are placeholders — RLS and real data only apply in production.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
