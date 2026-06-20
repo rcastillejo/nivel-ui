@@ -23,6 +23,7 @@ function makeBuilder(result: { data: unknown; error: { message: string } | null 
   const builder: Record<string, unknown> = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    gte: vi.fn().mockReturnThis(),
     insert: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue(result),
     upsert: vi.fn().mockResolvedValue({ data: null, error: null }),
