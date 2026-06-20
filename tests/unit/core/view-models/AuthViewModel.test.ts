@@ -14,6 +14,7 @@ const makeUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
 function makeMockAuthModel(): AuthModel {
   return {
     signIn: vi.fn(),
+    signUp: vi.fn(),
     signOut: vi.fn(),
     getCurrentUser: vi.fn(),
     onAuthStateChange: vi.fn().mockReturnValue(() => {}),
@@ -160,6 +161,57 @@ describe('AuthViewModel', () => {
       vi.mocked(authModel.signIn).mockRejectedValue(new Error('fail'));
       await vm.signIn('a@b.com', 'x');
       expect(vm.isLoading).toBe(false);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // signUp()
+  // ---------------------------------------------------------------------------
+
+  describe('signUp()', () => {
+    it('returns true on success', async () => {
+      vi.mocked(authModel.signUp).mockResolvedValue();
+
+      const result = await vm.signUp('new@nivel.gym', 'secret123');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false and sets error on failure', async () => {
+      vi.mocked(authModel.signUp).mockRejectedValue(new Error('Email already in use'));
+
+      const result = await vm.signUp('new@nivel.gym', 'secret123');
+
+      expect(result).toBe(false);
+      expect(vm.error).toBe('Email already in use');
+    });
+
+    it('clears a previous error before attempting sign-up', async () => {
+      vi.mocked(authModel.signUp).mockRejectedValue(new Error('First error'));
+      await vm.signUp('a@b.com', 'pass123');
+      expect(vm.error).toBe('First error');
+
+      vi.mocked(authModel.signUp).mockResolvedValue();
+      await vm.signUp('a@b.com', 'pass123');
+      expect(vm.error).toBeNull();
+    });
+
+    it('sets isLoading to false after sign-up resolves', async () => {
+      vi.mocked(authModel.signUp).mockResolvedValue();
+      await vm.signUp('a@b.com', 'pass123');
+      expect(vm.isLoading).toBe(false);
+    });
+
+    it('sets isLoading to false after sign-up rejects', async () => {
+      vi.mocked(authModel.signUp).mockRejectedValue(new Error('fail'));
+      await vm.signUp('a@b.com', 'pass123');
+      expect(vm.isLoading).toBe(false);
+    });
+
+    it('does not set currentUser after sign-up (email confirmation required)', async () => {
+      vi.mocked(authModel.signUp).mockResolvedValue();
+      await vm.signUp('new@nivel.gym', 'secret123');
+      expect(vm.currentUser).toBeNull();
     });
   });
 
