@@ -1,5 +1,5 @@
-name: Deploy to GitHub Pages (legacy — replaced by Vercel)
-# Vercel handles automatic deploys on push to main.
+name: Deploy to GitHub Pages (legacy — replaced by Cloudflare Pages)
+# Cloudflare Pages handles automatic deploys on push to main.
 # This workflow is kept as manual fallback only.
 
 on:
