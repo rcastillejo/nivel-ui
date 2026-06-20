@@ -39,7 +39,14 @@ export const AuthGuard = observer(({ children, allowedRole }: AuthGuardProps) =>
     );
   }
 
-  if (!authVM.isAuthenticated) return null;
+  // Return loading while router.replace('/login') from useEffect is in flight
+  if (!authVM.isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-pulse text-gray-400 text-sm">Cargando…</div>
+      </div>
+    );
+  }
   if (allowedRole && authVM.currentUser?.role !== allowedRole) return null;
 
   return <>{children}</>;
