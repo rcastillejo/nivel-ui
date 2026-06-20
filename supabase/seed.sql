@@ -20,12 +20,20 @@
 
 -- ============================================================
 -- 1. Auth users — Entrenadores
+--
+-- GoTrue requires empty string '' (not NULL) for optional string
+-- columns like email_change, phone, reauthentication_token, etc.
+-- Inserting NULL in those columns causes a scan error on login.
 -- ============================================================
 INSERT INTO auth.users (
   instance_id, id, aud, role, email, encrypted_password,
   email_confirmed_at, created_at, updated_at,
   raw_app_meta_data, raw_user_meta_data,
-  is_super_admin, confirmation_token, recovery_token
+  is_super_admin,
+  confirmation_token, recovery_token,
+  email_change, email_change_token_new, email_change_token_current,
+  phone, phone_change, phone_change_token,
+  reauthentication_token
 )
 VALUES
   (
@@ -36,7 +44,11 @@ VALUES
     NOW(), NOW(), NOW(),
     '{"provider":"email","providers":["email"]}',
     '{"role":"trainer","full_name":"Diego Lamas"}',
-    FALSE, '', ''
+    FALSE,
+    '', '',
+    '', '', '',
+    '', '', '',
+    ''
   ),
   (
     '00000000-0000-0000-0000-000000000000',
@@ -46,7 +58,11 @@ VALUES
     NOW(), NOW(), NOW(),
     '{"provider":"email","providers":["email"]}',
     '{"role":"trainer","full_name":"Jeanpierre Casas"}',
-    FALSE, '', ''
+    FALSE,
+    '', '',
+    '', '', '',
+    '', '', '',
+    ''
   )
 ON CONFLICT (id) DO NOTHING;
 
@@ -57,18 +73,22 @@ INSERT INTO auth.users (
   instance_id, id, aud, role, email, encrypted_password,
   email_confirmed_at, created_at, updated_at,
   raw_app_meta_data, raw_user_meta_data,
-  is_super_admin, confirmation_token, recovery_token
+  is_super_admin,
+  confirmation_token, recovery_token,
+  email_change, email_change_token_new, email_change_token_current,
+  phone, phone_change, phone_change_token,
+  reauthentication_token
 )
 VALUES
-  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000001','authenticated','authenticated','maria.gonzalez@email.com', crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"María González"}',  FALSE,'',''),
-  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000002','authenticated','authenticated','carlos.ruiz@email.com',     crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Carlos Ruiz"}',      FALSE,'',''),
-  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000003','authenticated','authenticated','ana.martin@email.com',      crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Ana Martín"}',       FALSE,'',''),
-  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000004','authenticated','authenticated','luis.torres@email.com',     crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Luis Torres"}',      FALSE,'',''),
-  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000005','authenticated','authenticated','patricia.vega@email.com',   crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Patricia Vega"}',    FALSE,'',''),
-  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000006','authenticated','authenticated','roberto.silva@email.com',   crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Roberto Silva"}',    FALSE,'',''),
-  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000007','authenticated','authenticated','laura.mendoza@email.com',   crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Laura Mendoza"}',    FALSE,'',''),
-  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000008','authenticated','authenticated','diego.castro@email.com',    crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Diego Castro"}',     FALSE,'',''),
-  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000009','authenticated','authenticated','luis.castillejo@email.com', crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Luis Castillejo"}',  FALSE,'','')
+  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000001','authenticated','authenticated','maria.gonzalez@email.com', crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"María González"}',  FALSE,'','','','','','','','',''),
+  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000002','authenticated','authenticated','carlos.ruiz@email.com',     crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Carlos Ruiz"}',      FALSE,'','','','','','','','',''),
+  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000003','authenticated','authenticated','ana.martin@email.com',      crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Ana Martín"}',       FALSE,'','','','','','','','',''),
+  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000004','authenticated','authenticated','luis.torres@email.com',     crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Luis Torres"}',      FALSE,'','','','','','','','',''),
+  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000005','authenticated','authenticated','patricia.vega@email.com',   crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Patricia Vega"}',    FALSE,'','','','','','','','',''),
+  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000006','authenticated','authenticated','roberto.silva@email.com',   crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Roberto Silva"}',    FALSE,'','','','','','','','',''),
+  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000007','authenticated','authenticated','laura.mendoza@email.com',   crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Laura Mendoza"}',    FALSE,'','','','','','','','',''),
+  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000008','authenticated','authenticated','diego.castro@email.com',    crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Diego Castro"}',     FALSE,'','','','','','','','',''),
+  ('00000000-0000-0000-0000-000000000000','cccccccc-0000-0000-0000-000000000009','authenticated','authenticated','luis.castillejo@email.com', crypt('gym2026!', gen_salt('bf')),NOW(),NOW(),NOW(),'{"provider":"email","providers":["email"]}','{"role":"client","full_name":"Luis Castillejo"}',  FALSE,'','','','','','','','','')
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================
