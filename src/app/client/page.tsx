@@ -1,10 +1,12 @@
 'use client';
 
-import Link from 'next/link';
 import BookingView from '@/components/BookingView';
 import ClientProgramView from '@/components/ClientProgramView';
+import { useAuthViewModel } from '@/core/providers/AuthProvider';
 
 export default function ClientPage() {
+  const authVM = useAuthViewModel();
+
   return (
     <main className="min-h-screen bg-white py-8">
       <div className="max-w-4xl mx-auto px-4">
@@ -17,12 +19,17 @@ export default function ClientPage() {
               Reserva tu sesión de entrenamiento
             </p>
           </div>
-          <Link 
-            href="/" 
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
-          >
-            ← Volver al Inicio
-          </Link>
+          <div className="flex flex-col items-end gap-1">
+            {authVM.currentUser && (
+              <span className="text-sm text-gray-500">{authVM.currentUser.email}</span>
+            )}
+            <button
+              onClick={() => authVM.signOut()}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
+            >
+              Cerrar sesión
+            </button>
+          </div>
         </div>
 
         <ClientProgramView />

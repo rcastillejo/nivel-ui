@@ -1,16 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import TrainerSchedule from '@/components/trainer/TrainerSchedule';
 import TrainerAppointments from '@/components/trainer/TrainerAppointments';
 import ProgramListView from '@/components/trainer/ProgramListView';
 import CreateProgramForm from '@/components/trainer/CreateProgramForm';
+import { useAuthViewModel } from '@/core/providers/AuthProvider';
 
 export type TrainerView = 'schedule' | 'appointments' | 'programs';
 
 export default function TrainerDashboard() {
   const [currentView, setCurrentView] = useState<TrainerView>('schedule');
+  const authVM = useAuthViewModel();
 
   return (
     <main className="min-h-screen bg-white py-8">
@@ -24,12 +25,17 @@ export default function TrainerDashboard() {
               Gestiona tu horario y visualiza tus citas
             </p>
           </div>
-          <Link
-            href="/"
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
-          >
-            ← Volver al Inicio
-          </Link>
+          <div className="flex flex-col items-end gap-1">
+            {authVM.currentUser && (
+              <span className="text-sm text-gray-500">{authVM.currentUser.email}</span>
+            )}
+            <button
+              onClick={() => authVM.signOut()}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
+            >
+              Cerrar sesión
+            </button>
+          </div>
         </div>
 
         {/* Navigation tabs */}
