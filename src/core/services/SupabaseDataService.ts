@@ -142,11 +142,15 @@ export class SupabaseTrainerRepository implements ITrainerRepository {
   }
 
   async getSchedule(trainerId: string): Promise<TrainerSchedule | null> {
+    // Only fetch rows from the current week onwards so stale past rows with
+    // is_available=true don't override slots that were later removed.
+    const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
     const [scheduleResult, trainerResult] = await Promise.all([
       this.client
         .from('trainer_schedules')
         .select('*')
-        .eq('trainer_id', trainerId),
+        .eq('trainer_id', trainerId)
+        .gte('date', weekStart),
       this.client.from('trainers').select('name').eq('id', trainerId).single(),
     ]);
     if (scheduleResult.error) throw new Error(scheduleResult.error.message);
