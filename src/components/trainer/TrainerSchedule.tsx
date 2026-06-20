@@ -37,6 +37,11 @@ const TrainerScheduleComponent = observer(function TrainerSchedule() {
   const [trainerName, setTrainerName] = useState('Diego Lamas');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const trainersToDisplay = vm.trainers.length > 0
+    ? vm.trainers
+    : [{ id: '', name: 'Diego Lamas' }, { id: '', name: 'Jeanpierre Casas' }];
 
   useEffect(() => {
     vm.loadTrainers();
@@ -104,12 +109,15 @@ const TrainerScheduleComponent = observer(function TrainerSchedule() {
   };
 
   const handleConfirmSave = async () => {
-    const trainer = vm.trainers.find(t => t.name === trainerName);
-    if (!trainer) {
+    // Search in trainersToDisplay so the hardcoded fallbacks are also found
+    const trainer = trainersToDisplay.find(t => t.name === trainerName);
+    if (!trainer?.id) {
+      // Trainers haven't loaded from the server yet; inform the user
       setShowSaveModal(false);
       return;
     }
 
+    setIsSaving(true);
     const scheduleData: TrainerSchedule = {
       trainerId: trainer.id,
       trainerName: trainer.name,
@@ -117,6 +125,7 @@ const TrainerScheduleComponent = observer(function TrainerSchedule() {
     };
 
     const success = await vm.saveSchedule(scheduleData);
+    setIsSaving(false);
     setShowSaveModal(false);
     if (success) {
       setShowSuccessModal(true);
@@ -136,10 +145,6 @@ const TrainerScheduleComponent = observer(function TrainerSchedule() {
       total + day.slots.filter(slot => slot.available).length, 0
     );
   };
-
-  const trainersToDisplay = vm.trainers.length > 0
-    ? vm.trainers
-    : [{ id: '', name: 'Diego Lamas' }, { id: '', name: 'Jeanpierre Casas' }];
 
   return (
     <div className="space-y-6">
@@ -236,6 +241,13 @@ const TrainerScheduleComponent = observer(function TrainerSchedule() {
         </div>
       </div>
 
+      {/* Error feedback */}
+      {vm.error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          {vm.error}
+        </div>
+      )}
+
       {/* Save Section */}
       <div className="flex justify-between items-center pt-6 border-t border-gray-200">
         <div className="text-sm text-gray-600">
@@ -270,6 +282,7 @@ const TrainerScheduleComponent = observer(function TrainerSchedule() {
         totalHours={getTotalAvailableSlots()}
         onConfirm={handleConfirmSave}
         onCancel={handleCancelSave}
+        isSaving={isSaving}
       />
 
       {/* Success Modal */}

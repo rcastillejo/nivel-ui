@@ -20,6 +20,7 @@ const securityHeaders = [
       "img-src 'self' data: blob:",
       "font-src 'self'",
       `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.sentry.io${vercelLiveHosts.length ? ' ' + vercelLiveHosts.join(' ') : ''}`,
+      `frame-src 'self'${vercelLiveHosts.length ? ' ' + vercelLiveHosts.join(' ') : ''}`,
     ].join('; '),
   },
 ];
