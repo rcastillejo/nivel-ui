@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuthModel } from '@/core/models/AuthModel';
 import { IAuthService } from '@/core/repositories/auth';
-import { AuthenticationError } from '@/core/types/errors';
+import { AuthenticationError, SignUpError } from '@/core/types/errors';
 import { AuthUser } from '@/core/types';
 
 const makeUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
@@ -13,6 +13,7 @@ const makeUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
 
 const makeMockAuthService = (): IAuthService => ({
   signIn: vi.fn(),
+  signUp: vi.fn(),
   signOut: vi.fn(),
   getCurrentUser: vi.fn(),
   onAuthStateChange: vi.fn().mockReturnValue(() => {}),
@@ -96,6 +97,79 @@ describe('AuthModel', () => {
 
       await expect(model.signIn('test@nivel.gym', 'secret'))
         .rejects.toThrow('Credenciales incorrectas');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // signUp() — input validation
+  // ---------------------------------------------------------------------------
+
+  describe('signUp() — input validation', () => {
+    it('throws SignUpError when email is empty', async () => {
+      await expect(model.signUp('', 'secret123'))
+        .rejects.toThrow(SignUpError);
+    });
+
+    it('throws SignUpError when email is only whitespace', async () => {
+      await expect(model.signUp('   ', 'secret123'))
+        .rejects.toThrow(SignUpError);
+    });
+
+    it('throws SignUpError when password is empty', async () => {
+      await expect(model.signUp('test@nivel.gym', ''))
+        .rejects.toThrow(SignUpError);
+    });
+
+    it('throws SignUpError when password is shorter than 6 characters', async () => {
+      await expect(model.signUp('test@nivel.gym', 'abc'))
+        .rejects.toThrow(SignUpError);
+    });
+
+    it('does not call authService.signUp when validation fails', async () => {
+      await model.signUp('', 'pass').catch(() => {});
+      expect(authService.signUp).not.toHaveBeenCalled();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // signUp() — service delegation
+  // ---------------------------------------------------------------------------
+
+  describe('signUp() — service delegation', () => {
+    it('delegates to authService.signUp with the given credentials', async () => {
+      vi.mocked(authService.signUp).mockResolvedValue();
+
+      await model.signUp('new@nivel.gym', 'secret123');
+
+      expect(authService.signUp).toHaveBeenCalledWith('new@nivel.gym', 'secret123');
+    });
+
+    it('resolves successfully when service resolves', async () => {
+      vi.mocked(authService.signUp).mockResolvedValue();
+
+      await expect(model.signUp('new@nivel.gym', 'secret123')).resolves.toBeUndefined();
+    });
+
+    it('wraps service errors as SignUpError', async () => {
+      vi.mocked(authService.signUp).mockRejectedValue(new Error('Email already in use'));
+
+      await expect(model.signUp('new@nivel.gym', 'secret123'))
+        .rejects.toThrow(SignUpError);
+    });
+
+    it('preserves the original error message in the SignUpError', async () => {
+      vi.mocked(authService.signUp).mockRejectedValue(new Error('Email already in use'));
+
+      await expect(model.signUp('new@nivel.gym', 'secret123'))
+        .rejects.toThrow('Email already in use');
+    });
+
+    it('does not double-wrap a SignUpError thrown by the service', async () => {
+      const original = new SignUpError('Error al crear la cuenta');
+      vi.mocked(authService.signUp).mockRejectedValue(original);
+
+      await expect(model.signUp('new@nivel.gym', 'secret123'))
+        .rejects.toThrow('Error al crear la cuenta');
     });
   });
 
