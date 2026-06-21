@@ -16,10 +16,6 @@ export class NoopAuthService implements IAuthService {
     return this.currentUser;
   }
 
-  async signUp(_email: string, _password: string): Promise<void> {
-    // Noop: no real registration in dev mode
-  }
-
   async signOut(): Promise<void> {
     this.currentUser = null;
   }

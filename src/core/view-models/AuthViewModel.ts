@@ -53,22 +53,6 @@ export class AuthViewModel {
     }
   }
 
-  async signUp(email: string, password: string): Promise<boolean> {
-    this.setLoading(true);
-    this.clearError();
-    try {
-      await this.authModel.signUp(email, password);
-      return true;
-    } catch (err) {
-      runInAction(() => {
-        this.error = err instanceof Error ? err.message : 'Error al crear la cuenta';
-      });
-      return false;
-    } finally {
-      this.setLoading(false);
-    }
-  }
-
   async signOut(): Promise<void> {
     this.setLoading(true);
     this.clearError();
