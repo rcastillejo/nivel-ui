@@ -2,7 +2,6 @@
 
 import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { observer } from 'mobx-react-lite';
 import { useAuthViewModel } from '@/core/providers/AuthProvider';
 
@@ -108,13 +107,6 @@ const LoginPage = observer(() => {
             {authVM.isLoading ? 'Iniciando sesión…' : 'Iniciar sesión'}
           </button>
         </form>
-
-        <p className="mt-6 text-center text-sm text-gray-500">
-          ¿Eres cliente nuevo?{' '}
-          <Link href="/signup" className="text-gray-900 font-medium underline underline-offset-2">
-            Crea tu cuenta
-          </Link>
-        </p>
       </div>
     </div>
   );

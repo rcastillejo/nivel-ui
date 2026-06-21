@@ -13,11 +13,6 @@ export class SupabaseAuthService implements IAuthService {
     return { id: data.user.id, email: data.user.email!, role };
   }
 
-  async signUp(email: string, password: string): Promise<void> {
-    const { error } = await this.client.auth.signUp({ email, password });
-    if (error) throw new Error(error.message);
-  }
-
   async signOut(): Promise<void> {
     const { error } = await this.client.auth.signOut();
     if (error) throw new Error(error.message);
