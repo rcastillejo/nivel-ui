@@ -265,6 +265,7 @@ describe('BookingViewModel ↔ BookingModel ↔ LocalStorageDataService', () => 
   beforeEach(() => {
     const programModel = new ProgramModel(service);
     vm = new BookingViewModel(model, programModel);
+    vm.setClientId('client-test-uuid');
   });
 
   it('createBooking a través del ViewModel persiste en localStorage', async () => {

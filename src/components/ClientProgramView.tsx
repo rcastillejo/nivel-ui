@@ -3,15 +3,20 @@
 import React, { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { useProgramViewModel } from '@/core/providers/ViewModelProvider';
+import { useAuthViewModel } from '@/core/providers/AuthProvider';
 
 const MINIMUM_SESSIONS_FOR_RESULTS = 12;
 
 const ClientProgramView = observer(() => {
   const vm = useProgramViewModel();
+  const authVM = useAuthViewModel();
 
   useEffect(() => {
-    vm.loadActiveProgram('client1');
-  }, [vm]);
+    const userId = authVM.currentUser?.id;
+    if (userId) {
+      vm.loadActiveProgram(userId);
+    }
+  }, [vm, authVM.currentUser]);
 
   if (!vm.hasActiveProgram || !vm.activeProgram) {
     return null;
