@@ -34,14 +34,12 @@ const TrainerScheduleComponent = observer(function TrainerSchedule() {
   const currentSchedule = vm.currentSchedule;
 
   const [schedule, setSchedule] = useState<DaySchedule[]>(buildDefaultSchedule);
-  const [trainerName, setTrainerName] = useState('Diego Lamas');
+  const [trainerName, setTrainerName] = useState('');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const trainersToDisplay = vm.trainers.length > 0
-    ? vm.trainers
-    : [{ id: '', name: 'Diego Lamas' }, { id: '', name: 'Jeanpierre Casas' }];
+  const trainersToDisplay = vm.trainers;
 
   useEffect(() => {
     vm.loadTrainers();
