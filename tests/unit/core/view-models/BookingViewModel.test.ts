@@ -51,6 +51,7 @@ describe('BookingViewModel', () => {
 
       vm.setTime('09:00');
       vm.setZone('gym');
+      vm.setClientId('client1');
     };
 
     it('delegates session consumption to ProgramModel after a successful booking', async () => {
@@ -110,6 +111,17 @@ describe('BookingViewModel', () => {
 
       expect(success).toBe(false);
       expect(mockProgramModel.consumeSessionForClient).not.toHaveBeenCalled();
+    });
+
+    it('returns false and sets error when clientId is not set', async () => {
+      await setupForBooking();
+      vm.setClientId(''); // simulate unauthenticated or missing UUID
+
+      const success = await vm.createBooking();
+
+      expect(success).toBe(false);
+      expect(vm.error).toBeTruthy();
+      expect(mockBookingModel.createBooking).not.toHaveBeenCalled();
     });
 
     it('delegates capacity check entirely to BookingModel — does not short-circuit based on local bookings cache', async () => {

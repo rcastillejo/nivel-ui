@@ -31,7 +31,7 @@ export class BookingViewModel {
   selectedTrainer: Trainer | null = null;
   selectedTime: string | null = null;
   selectedZone: ZoneType | null = null;
-  clientId = 'client1'; // En una app real vendría de un selector de clientes
+  clientId = '';
   
   // Estado de modales
   showSuccessModal = false;

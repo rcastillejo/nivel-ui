@@ -10,6 +10,7 @@ import { TrainerModel } from '../models/TrainerModel';
 import { ClientViewModel } from '../view-models/ClientViewModel';
 import { ClientModel } from '../models/ClientModel';
 import { useDataService } from './DataProvider';
+import { useAuthViewModel } from './AuthProvider';
 
 interface ViewModelContextType {
   bookingVM: BookingViewModel;
@@ -26,6 +27,7 @@ interface ViewModelProviderProps {
 
 export function ViewModelProvider({ children }: ViewModelProviderProps) {
   const service = useDataService();
+  const authVM = useAuthViewModel();
 
   const viewModels = useMemo(() => {
     const bookingModel = new BookingModel(service);
@@ -44,6 +46,10 @@ export function ViewModelProvider({ children }: ViewModelProviderProps) {
   useEffect(() => {
     viewModels.clientVM.loadClients();
   }, [viewModels]);
+
+  useEffect(() => {
+    viewModels.bookingVM.setClientId(authVM.currentUser?.id ?? '');
+  }, [authVM.currentUser, viewModels.bookingVM]);
 
   return (
     <ViewModelContext.Provider value={viewModels}>
