@@ -53,6 +53,20 @@ export class AuthViewModel {
     }
   }
 
+  async signInWithGoogle(): Promise<void> {
+    this.setLoading(true);
+    this.clearError();
+    try {
+      await this.authModel.signInWithGoogle();
+      // On success the browser redirects to /auth/callback — no cleanup needed.
+    } catch (err) {
+      runInAction(() => {
+        this.error = err instanceof Error ? err.message : 'Error al iniciar sesión con Google';
+      });
+      this.setLoading(false);
+    }
+  }
+
   async signOut(): Promise<void> {
     this.setLoading(true);
     this.clearError();

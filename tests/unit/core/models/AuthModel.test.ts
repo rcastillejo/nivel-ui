@@ -13,6 +13,7 @@ const makeUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
 
 const makeMockAuthService = (): IAuthService => ({
   signIn: vi.fn(),
+  signInWithGoogle: vi.fn(),
   signOut: vi.fn(),
   getCurrentUser: vi.fn(),
   onAuthStateChange: vi.fn().mockReturnValue(() => {}),
@@ -96,6 +97,32 @@ describe('AuthModel', () => {
 
       await expect(model.signIn('test@nivel.gym', 'secret'))
         .rejects.toThrow('Credenciales incorrectas');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // signInWithGoogle()
+  // ---------------------------------------------------------------------------
+
+  describe('signInWithGoogle()', () => {
+    it('delegates to authService.signInWithGoogle', async () => {
+      vi.mocked(authService.signInWithGoogle).mockResolvedValue();
+
+      await model.signInWithGoogle();
+
+      expect(authService.signInWithGoogle).toHaveBeenCalledOnce();
+    });
+
+    it('wraps service errors as AuthenticationError', async () => {
+      vi.mocked(authService.signInWithGoogle).mockRejectedValue(new Error('OAuth error'));
+
+      await expect(model.signInWithGoogle()).rejects.toThrow(AuthenticationError);
+    });
+
+    it('preserves the original error message', async () => {
+      vi.mocked(authService.signInWithGoogle).mockRejectedValue(new Error('OAuth error'));
+
+      await expect(model.signInWithGoogle()).rejects.toThrow('OAuth error');
     });
   });
 

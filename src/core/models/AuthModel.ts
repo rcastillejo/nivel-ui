@@ -23,6 +23,16 @@ export class AuthModel {
     }
   }
 
+  async signInWithGoogle(): Promise<void> {
+    try {
+      await this.authService.signInWithGoogle();
+    } catch (err) {
+      throw new AuthenticationError(
+        err instanceof Error ? err.message : 'Error al iniciar sesión con Google',
+      );
+    }
+  }
+
   async signOut(): Promise<void> {
     await this.authService.signOut();
   }
