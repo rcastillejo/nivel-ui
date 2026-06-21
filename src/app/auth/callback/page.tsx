@@ -1,45 +1,72 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { observer } from 'mobx-react-lite';
-import { useAuthViewModel } from '@/core/providers/AuthProvider';
 import { getSupabaseBrowserClient } from '@/lib/supabase';
 
-const AuthCallbackPage = observer(() => {
+type Status = 'loading' | 'error';
+
+export default function AuthCallbackPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const authVM = useAuthViewModel();
+  const [status, setStatus] = useState<Status>('loading');
 
   useEffect(() => {
     const code = searchParams.get('code');
-    if (!code) {
-      router.replace('/login');
-      return;
-    }
+    if (!code) { router.replace('/login'); return; }
 
     const supabase = getSupabaseBrowserClient();
-    if (!supabase) {
-      router.replace('/login');
-      return;
-    }
+    if (!supabase) { router.replace('/login'); return; }
 
-    supabase.auth.exchangeCodeForSession(code).catch(() => {
-      router.replace('/login');
-    });
+    (async () => {
+      // 1. Exchange the OAuth authorization code for an authenticated session.
+      //    The returned user object contains the email from the Google account.
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error || !data.user) {
+        setStatus('error');
+        setTimeout(() => router.replace('/login'), 1500);
+        return;
+      }
+
+      const { id: userId, email } = data.user;
+
+      // 2. Determine role: check whether this email is registered as an active trainer.
+      //    The trainers table has public read, so no auth restriction applies here.
+      let role: 'trainer' | 'client' = 'client';
+      if (email) {
+        const { data: trainer } = await supabase
+          .from('trainers')
+          .select('id')
+          .eq('email', email)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (trainer) role = 'trainer';
+      }
+
+      // 3. Persist the correct role. The DB trigger may have defaulted to 'client';
+      //    upserting on the primary key corrects it without overwriting full_name.
+      await supabase
+        .from('user_profiles')
+        .upsert({ id: userId, role, email: email ?? null }, { onConflict: 'id' });
+
+      // 4. Refresh the session so the global onAuthStateChange listener re-fires
+      //    and AuthViewModel picks up the now-correct role from user_profiles.
+      await supabase.auth.refreshSession();
+
+      // 5. Navigate to the dashboard that matches the resolved role.
+      router.replace(role === 'trainer' ? '/trainer' : '/client');
+    })();
   }, [searchParams, router]);
-
-  useEffect(() => {
-    if (!authVM.isLoading && authVM.isAuthenticated) {
-      router.replace(authVM.isTrainer ? '/trainer' : '/client');
-    }
-  }, [authVM.isAuthenticated, authVM.isLoading, authVM.isTrainer, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="animate-pulse text-gray-400 text-sm">Autenticando…</div>
+      {status === 'error' ? (
+        <p data-testid="callback-error" className="text-sm text-red-600">
+          Error al autenticar. Redirigiendo…
+        </p>
+      ) : (
+        <div className="animate-pulse text-gray-400 text-sm">Autenticando…</div>
+      )}
     </div>
   );
-});
-
-export default AuthCallbackPage;
+}
