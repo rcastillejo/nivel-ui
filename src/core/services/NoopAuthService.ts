@@ -16,6 +16,10 @@ export class NoopAuthService implements IAuthService {
     return this.currentUser;
   }
 
+  async signInWithGoogle(): Promise<void> {
+    throw new Error('Google OAuth no está disponible en modo local');
+  }
+
   async signOut(): Promise<void> {
     this.currentUser = null;
   }

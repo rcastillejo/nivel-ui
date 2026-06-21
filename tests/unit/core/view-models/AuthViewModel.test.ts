@@ -14,6 +14,7 @@ const makeUser = (overrides: Partial<AuthUser> = {}): AuthUser => ({
 function makeMockAuthModel(): AuthModel {
   return {
     signIn: vi.fn(),
+    signInWithGoogle: vi.fn(),
     signOut: vi.fn(),
     getCurrentUser: vi.fn(),
     onAuthStateChange: vi.fn().mockReturnValue(() => {}),
@@ -160,6 +161,39 @@ describe('AuthViewModel', () => {
       vi.mocked(authModel.signIn).mockRejectedValue(new Error('fail'));
       await vm.signIn('a@b.com', 'x');
       expect(vm.isLoading).toBe(false);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // signInWithGoogle()
+  // ---------------------------------------------------------------------------
+
+  describe('signInWithGoogle()', () => {
+    it('calls authModel.signInWithGoogle', async () => {
+      vi.mocked(authModel.signInWithGoogle).mockResolvedValue();
+
+      await vm.signInWithGoogle();
+
+      expect(authModel.signInWithGoogle).toHaveBeenCalledOnce();
+    });
+
+    it('sets error and resets isLoading when the model throws', async () => {
+      vi.mocked(authModel.signInWithGoogle).mockRejectedValue(new Error('OAuth error'));
+
+      await vm.signInWithGoogle();
+
+      expect(vm.error).toBe('OAuth error');
+      expect(vm.isLoading).toBe(false);
+    });
+
+    it('clears a previous error before attempting sign-in', async () => {
+      vi.mocked(authModel.signIn).mockRejectedValue(new Error('prev error'));
+      await vm.signIn('a@b.com', 'x');
+      expect(vm.error).toBe('prev error');
+
+      vi.mocked(authModel.signInWithGoogle).mockResolvedValue();
+      await vm.signInWithGoogle();
+      expect(vm.error).toBeNull();
     });
   });
 

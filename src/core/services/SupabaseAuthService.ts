@@ -13,6 +13,15 @@ export class SupabaseAuthService implements IAuthService {
     return { id: data.user.id, email: data.user.email!, role };
   }
 
+  async signInWithGoogle(): Promise<void> {
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    const { error } = await this.client.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo },
+    });
+    if (error) throw new Error(error.message);
+  }
+
   async signOut(): Promise<void> {
     const { error } = await this.client.auth.signOut();
     if (error) throw new Error(error.message);
@@ -46,6 +55,11 @@ export class SupabaseAuthService implements IAuthService {
       .select('role')
       .eq('id', userId)
       .single();
-    return (data as { role: UserRole } | null)?.role ?? 'client';
+
+    if (data) return (data as { role: UserRole }).role;
+
+    // First-time OAuth sign-in: create a default client profile
+    await this.client.from('user_profiles').insert({ id: userId, role: 'client' });
+    return 'client';
   }
 }

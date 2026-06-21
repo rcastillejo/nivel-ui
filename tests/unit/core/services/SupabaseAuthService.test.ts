@@ -14,6 +14,7 @@ function makeProfileBuilder(role: string | null = 'client') {
       data: role !== null ? { role } : null,
       error: null,
     }),
+    insert: vi.fn().mockResolvedValue({ error: null }),
   };
 }
 
@@ -35,6 +36,7 @@ function makeAuthClient(overrides: {
           error: null,
         },
       ),
+      signInWithOAuth: vi.fn().mockResolvedValue({ error: null }),
       signOut: vi.fn().mockResolvedValue(overrides.signOutResult ?? { error: null }),
       getUser: vi.fn().mockResolvedValue(
         overrides.getUserResult ?? { data: { user: { id: 'u1', email: 'test@nivel.gym' } } },
@@ -122,6 +124,37 @@ describe('SupabaseAuthService', () => {
       service = new SupabaseAuthService(client);
 
       await expect(service.signIn('bad@email.com', 'wrong')).rejects.toThrow('Invalid credentials');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // signInWithGoogle()
+  // -------------------------------------------------------------------------
+
+  describe('signInWithGoogle()', () => {
+    it('calls signInWithOAuth with provider google', async () => {
+      Object.defineProperty(window, 'location', {
+        value: { origin: 'http://localhost:3000' },
+        writable: true,
+      });
+
+      await service.signInWithGoogle();
+
+      expect(client.auth.signInWithOAuth).toHaveBeenCalledWith({
+        provider: 'google',
+        options: { redirectTo: 'http://localhost:3000/auth/callback' },
+      });
+    });
+
+    it('throws when Supabase returns an error', async () => {
+      client = makeAuthClient();
+      vi.mocked(client.auth.signInWithOAuth).mockResolvedValue({
+        data: { provider: 'google', url: null },
+        error: { message: 'OAuth error', name: 'AuthError', status: 400 } as never,
+      });
+      service = new SupabaseAuthService(client);
+
+      await expect(service.signInWithGoogle()).rejects.toThrow('OAuth error');
     });
   });
 
