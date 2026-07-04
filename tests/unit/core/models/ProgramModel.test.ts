@@ -31,6 +31,7 @@ const mockDataService: IDataService = {
   trainers: {
     getAll: vi.fn(),
     getById: vi.fn(),
+    getByAuthUserId: vi.fn(),
     save: vi.fn(),
     saveSchedule: vi.fn(),
     getSchedule: vi.fn()

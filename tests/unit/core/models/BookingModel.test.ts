@@ -8,6 +8,7 @@ import { BookingCapacityError, BookingValidationError } from '@/core/types/error
 const mockTrainerRepository = {
   getAll: vi.fn(),
   getById: vi.fn(),
+  getByAuthUserId: vi.fn(),
   save: vi.fn(),
   saveSchedule: vi.fn(),
   getSchedule: vi.fn()
@@ -59,6 +60,7 @@ describe('BookingModel', () => {
   describe('createBooking', () => {
     const mockTrainer: Trainer = {
       id: 'trainer1',
+      userId: 'user1',
       name: 'John',
       availableSlots: ['09:00', '10:00', '11:00']
     }
@@ -270,8 +272,8 @@ describe('BookingModel', () => {
   describe('getTrainers', () => {
     it('should return all trainers', async () => {
       const mockTrainers: Trainer[] = [
-        { id: 'trainer1', name: 'John', availableSlots: ['09:00', '10:00'] },
-        { id: 'trainer2', name: 'Jane', availableSlots: ['11:00', '12:00'] }
+        { id: 'trainer1', userId: 'user1', name: 'John', availableSlots: ['09:00', '10:00'] },
+        { id: 'trainer2', userId: 'user2', name: 'Jane', availableSlots: ['11:00', '12:00'] }
       ]
 
       mockTrainerRepository.getAll.mockResolvedValue(mockTrainers)
@@ -287,6 +289,7 @@ describe('BookingModel', () => {
     it('should return trainer when found', async () => {
       const mockTrainer: Trainer = {
         id: 'trainer1',
+        userId: 'user1',
         name: 'John',
         availableSlots: ['09:00', '10:00']
       }
@@ -338,6 +341,7 @@ describe('BookingModel', () => {
   describe('getAvailableSlots', () => {
     const mockTrainer: Trainer = {
       id: 'trainer1',
+      userId: 'user1',
       name: 'John',
       availableSlots: ['09:00', '10:00', '11:00']
     }

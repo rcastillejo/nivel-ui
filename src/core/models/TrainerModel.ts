@@ -1,4 +1,4 @@
-import { TrainerSchedule, AVAILABLE_TIME_SLOTS } from '../types';
+import { Trainer, TrainerSchedule, AVAILABLE_TIME_SLOTS } from '../types';
 import { IDataService } from '../repositories';
 import { TrainerValidationError } from '../types/errors';
 
@@ -12,6 +12,10 @@ export class TrainerModel {
 
   async getSchedule(trainerId: string): Promise<TrainerSchedule | null> {
     return this.dataService.trainers.getSchedule(trainerId);
+  }
+
+  async getTrainerByAuthUser(authUserId: string): Promise<Trainer | null> {
+    return this.dataService.trainers.getByAuthUserId(authUserId);
   }
 
   generateDefaultSchedule(trainerId: string, trainerName: string): TrainerSchedule {

@@ -5,6 +5,7 @@ import { observer } from 'mobx-react-lite';
 import SaveScheduleModal from './SaveScheduleModal';
 import ScheduleSavedModal from './ScheduleSavedModal';
 import { useTrainerViewModel } from '@/core/providers/ViewModelProvider';
+import { useAuthViewModel } from '@/core/providers/AuthProvider';
 import { DaySchedule, TrainerSchedule } from '@/core/types';
 
 const timeSlots = [
@@ -31,29 +32,20 @@ const buildDefaultSchedule = (): DaySchedule[] =>
 
 const TrainerScheduleComponent = observer(function TrainerSchedule() {
   const vm = useTrainerViewModel();
+  const authVM = useAuthViewModel();
   const currentSchedule = vm.currentSchedule;
+  const trainerName = vm.selectedTrainer?.name ?? '';
 
   const [schedule, setSchedule] = useState<DaySchedule[]>(buildDefaultSchedule);
-  const [trainerName, setTrainerName] = useState('');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const trainersToDisplay = vm.trainers;
-
   useEffect(() => {
-    vm.loadTrainers();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Set trainer in ViewModel when trainers list loads or trainer name changes
-  useEffect(() => {
-    if (vm.trainers.length > 0 && trainerName) {
-      const trainer = vm.trainers.find(t => t.name === trainerName);
-      if (trainer && vm.selectedTrainerId !== trainer.id) {
-        vm.setSelectedTrainer(trainer.id);
-      }
+    if (authVM.currentUser) {
+      vm.loadCurrentTrainer(authVM.currentUser.id);
     }
-  }, [vm.trainers.length, trainerName]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [authVM.currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Populate local schedule when the VM loads one from persistence
   useEffect(() => {
@@ -107,18 +99,17 @@ const TrainerScheduleComponent = observer(function TrainerSchedule() {
   };
 
   const handleConfirmSave = async () => {
-    // Search in trainersToDisplay so the hardcoded fallbacks are also found
-    const trainer = trainersToDisplay.find(t => t.name === trainerName);
-    if (!trainer?.id) {
-      // Trainers haven't loaded from the server yet; inform the user
+    const trainerId = vm.selectedTrainerId;
+    if (!trainerId) {
+      // Trainer hasn't loaded yet; inform the user
       setShowSaveModal(false);
       return;
     }
 
     setIsSaving(true);
     const scheduleData: TrainerSchedule = {
-      trainerId: trainer.id,
-      trainerName: trainer.name,
+      trainerId,
+      trainerName,
       weeklySchedule: schedule
     };
 
@@ -151,19 +142,12 @@ const TrainerScheduleComponent = observer(function TrainerSchedule() {
         <h3 className="text-lg font-semibold text-blue-900 mb-4">Información del Entrenador</h3>
         <div className="grid grid-cols-1 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <span className="block text-sm font-medium text-gray-700 mb-1">
               Entrenador
-            </label>
-            <select
-              value={trainerName}
-              onChange={(e) => setTrainerName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Selecciona un entrenador</option>
-              {trainersToDisplay.map(t => (
-                <option key={t.id || t.name} value={t.name}>{t.name}</option>
-              ))}
-            </select>
+            </span>
+            <p data-testid="current-trainer-name" className="text-gray-900 font-medium">
+              {trainerName || 'Cargando...'}
+            </p>
           </div>
         </div>
       </div>

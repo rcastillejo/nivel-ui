@@ -7,6 +7,7 @@ import { TrainerValidationError } from '@/core/types/errors';
 const mockTrainerRepository = {
   getAll: vi.fn(),
   getById: vi.fn(),
+  getByAuthUserId: vi.fn(),
   save: vi.fn(),
   saveSchedule: vi.fn(),
   getSchedule: vi.fn()
@@ -191,6 +192,31 @@ describe('TrainerModel', () => {
       mockTrainerRepository.getSchedule.mockResolvedValue(null);
 
       const result = await trainerModel.getSchedule('trainer1');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('getTrainerByAuthUser', () => {
+    it('retorna el entrenador vinculado al usuario autenticado', async () => {
+      const mockTrainer = {
+        id: 'trainer1',
+        userId: 'auth-user-1',
+        name: 'Diego Lamas',
+        availableSlots: ['09:00']
+      };
+      mockTrainerRepository.getByAuthUserId.mockResolvedValue(mockTrainer);
+
+      const result = await trainerModel.getTrainerByAuthUser('auth-user-1');
+
+      expect(result).toEqual(mockTrainer);
+      expect(mockTrainerRepository.getByAuthUserId).toHaveBeenCalledWith('auth-user-1');
+    });
+
+    it('retorna null si no hay entrenador vinculado al usuario', async () => {
+      mockTrainerRepository.getByAuthUserId.mockResolvedValue(null);
+
+      const result = await trainerModel.getTrainerByAuthUser('unknown-user');
 
       expect(result).toBeNull();
     });
