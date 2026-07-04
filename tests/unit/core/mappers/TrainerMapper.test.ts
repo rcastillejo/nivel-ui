@@ -14,10 +14,11 @@ const baseRow: TrainerRow = {
 
 describe('TrainerMapper', () => {
   describe('toDomain', () => {
-    it('maps id and name from the row', () => {
+    it('maps id, userId and name from the row', () => {
       const result = TrainerMapper.toDomain(baseRow)
 
       expect(result.id).toBe('uuid-trainer-1')
+      expect(result.userId).toBe('uuid-user-1')
       expect(result.name).toBe('Carlos López')
     })
 
@@ -34,7 +35,7 @@ describe('TrainerMapper', () => {
       expect(result.availableSlots).toEqual(slots)
     })
 
-    it('does not expose email, specialization, is_active or created_at on the domain entity', () => {
+    it('does not expose email, specialization, is_active, created_at or the raw user_id column on the domain entity', () => {
       const result = TrainerMapper.toDomain(baseRow) as unknown as Record<string, unknown>
 
       expect(result['email']).toBeUndefined()

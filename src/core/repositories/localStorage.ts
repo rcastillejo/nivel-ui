@@ -27,12 +27,14 @@ const initialData = {
   trainers: [
     {
       id: 'trainer1',
+      userId: 'trainer1',
       name: 'Diego Lamas',
       // Horarios dinámicos basados en el calendario del entrenador
       availableSlots: ['09:00', '10:00', '11:00', '16:00', '17:00', '18:00']
     },
     {
-      id: 'trainer2', 
+      id: 'trainer2',
+      userId: 'trainer2',
       name: 'Jeanpierre Casas',
       // Horarios dinámicos basados en el calendario del entrenador
       availableSlots: ['08:00', '09:00', '15:00', '16:00', '19:00', '20:00']
@@ -232,6 +234,11 @@ class LocalStorageTrainerRepository implements ITrainerRepository {
   async getById(id: string): Promise<Trainer | null> {
     const trainers = await this.getAll();
     return trainers.find(t => t.id === id) || null;
+  }
+
+  async getByAuthUserId(userId: string): Promise<Trainer | null> {
+    const trainers = await this.getAll();
+    return trainers.find(t => t.userId === userId) || null;
   }
 
   async save(trainer: Trainer): Promise<void> {

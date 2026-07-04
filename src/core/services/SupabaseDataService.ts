@@ -123,6 +123,28 @@ export class SupabaseTrainerRepository implements ITrainerRepository {
     return TrainerMapper.toDomain(trainerResult.data as TrainerRow, slots.sort());
   }
 
+  async getByAuthUserId(userId: string): Promise<Trainer | null> {
+    const { data: trainerData, error: trainerError } = await this.client
+      .from('trainers')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    if (trainerError) return null;
+
+    const trainerRow = trainerData as TrainerRow;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const { data: scheduleData, error: scheduleError } = await this.client
+      .from('trainer_schedules')
+      .select('*')
+      .eq('trainer_id', trainerRow.id)
+      .eq('date', today)
+      .eq('is_available', true);
+    if (scheduleError) throw new Error(scheduleError.message);
+
+    const slots = (scheduleData as TrainerScheduleRow[] | null)?.map((r) => r.time_slot) ?? [];
+    return TrainerMapper.toDomain(trainerRow, slots.sort());
+  }
+
   async save(trainer: Trainer): Promise<void> {
     const row = { id: trainer.id, name: trainer.name, is_active: true };
     const { error } = await this.client.from('trainers').upsert(row);

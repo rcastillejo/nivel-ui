@@ -7,6 +7,7 @@ export class TrainerMapper {
   static toDomain(row: TrainerRow, availableSlots: string[] = []): Trainer {
     return {
       id: row.id,
+      userId: row.user_id,
       name: row.name,
       availableSlots,
     };

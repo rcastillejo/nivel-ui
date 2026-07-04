@@ -72,6 +72,27 @@ export class TrainerViewModel {
     }
   }
 
+  async loadCurrentTrainer(authUserId: string): Promise<void> {
+    this.setLoading(true);
+    try {
+      const trainer = await this.trainerModel.getTrainerByAuthUser(authUserId);
+      runInAction(() => {
+        this.trainers = trainer ? [trainer] : [];
+        this.selectedTrainerId = trainer?.id ?? null;
+        this.error = trainer ? null : 'No se encontró un entrenador asociado a este usuario';
+      });
+      if (trainer) {
+        await this.loadSchedule(trainer.id);
+      }
+    } catch (err) {
+      runInAction(() => {
+        this.error = err instanceof Error ? err.message : 'Error cargando entrenador';
+      });
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
   async loadSchedule(trainerId: string): Promise<void> {
     this.setLoading(true);
     try {

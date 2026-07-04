@@ -12,6 +12,7 @@ export interface IClientRepository {
 export interface ITrainerRepository {
   getAll(): Promise<Trainer[]>;
   getById(id: string): Promise<Trainer | null>;
+  getByAuthUserId(userId: string): Promise<Trainer | null>;
   save(trainer: Trainer): Promise<void>;
   saveSchedule(schedule: TrainerSchedule): Promise<void>;
   getSchedule(trainerId: string): Promise<TrainerSchedule | null>;

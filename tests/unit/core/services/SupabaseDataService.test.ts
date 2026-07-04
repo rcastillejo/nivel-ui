@@ -422,6 +422,36 @@ describe('SupabaseTrainerRepository', () => {
     });
   });
 
+  describe('getByAuthUserId', () => {
+    it('returns null when no trainer matches the auth user id', async () => {
+      const builder = makeBuilder({ data: null, error: { message: 'not found' } });
+      const client = makeClient(builder);
+
+      const repo = new SupabaseTrainerRepository(client);
+      const result = await repo.getByAuthUserId('unknown-user');
+
+      expect(result).toBeNull();
+    });
+
+    it('returns the trainer with today available slots when found', async () => {
+      const trainerBuilder = makeBuilder({ data: trainerRow, error: null });
+      const scheduleBuilder = makeBuilder({ data: [scheduleRow], error: null });
+
+      let call = 0;
+      const mockClient = {
+        from: vi.fn().mockImplementation(() => (call++ === 0 ? trainerBuilder : scheduleBuilder)),
+      } as unknown as SupabaseClient;
+
+      const repo = new SupabaseTrainerRepository(mockClient);
+      const result = await repo.getByAuthUserId('u1');
+
+      expect(result).not.toBeNull();
+      expect(result!.id).toBe('t1');
+      expect(result!.userId).toBe('u1');
+      expect(result!.availableSlots).toContain('09:00');
+    });
+  });
+
   describe('getSchedule', () => {
     it('returns null when no schedule rows exist for trainer', async () => {
       const scheduleBuilder = makeBuilder({ data: [], error: null });

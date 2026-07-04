@@ -27,6 +27,7 @@ export interface Client {
 
 export interface Trainer {
   id: string;
+  userId: string;
   name: string;
   availableSlots: string[];
 }

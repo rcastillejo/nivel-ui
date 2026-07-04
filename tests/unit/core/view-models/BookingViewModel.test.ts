@@ -22,6 +22,7 @@ const mockProgramModel = {
 
 const mockTrainer: Trainer = {
   id: 'trainer1',
+  userId: 'user1',
   name: 'John',
   availableSlots: ['09:00', '10:00']
 };
