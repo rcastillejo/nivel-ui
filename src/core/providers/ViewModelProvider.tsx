@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useMemo, ReactNode } from 'react';
+import { observer } from 'mobx-react-lite';
 import { BookingViewModel } from '../view-models/BookingViewModel';
 import { BookingModel } from '../models/BookingModel';
 import { ProgramViewModel } from '../view-models/ProgramViewModel';
@@ -25,7 +26,7 @@ interface ViewModelProviderProps {
   children: ReactNode;
 }
 
-export function ViewModelProvider({ children }: ViewModelProviderProps) {
+export const ViewModelProvider = observer(function ViewModelProvider({ children }: ViewModelProviderProps) {
   const service = useDataService();
   const authVM = useAuthViewModel();
 
@@ -56,7 +57,7 @@ export function ViewModelProvider({ children }: ViewModelProviderProps) {
       {children}
     </ViewModelContext.Provider>
   );
-}
+});
 
 export function useViewModels(): ViewModelContextType {
   const context = useContext(ViewModelContext);
