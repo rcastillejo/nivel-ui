@@ -538,14 +538,14 @@ describe('SupabaseProgramRepository', () => {
   });
 
   describe('getByClient', () => {
-    it('uses .contains() with the clientId in an array', async () => {
+    it('uses .contains() with a JSON-stringified array, since client_ids is jsonb', async () => {
       const builder = makeBuilder({ data: [programRow], error: null });
       const client = makeClient(builder);
       const repo = new SupabaseProgramRepository(client);
 
       await repo.getByClient('c1');
 
-      expect(builder.contains).toHaveBeenCalledWith('client_ids', ['c1']);
+      expect(builder.contains).toHaveBeenCalledWith('client_ids', JSON.stringify(['c1']));
     });
   });
 
