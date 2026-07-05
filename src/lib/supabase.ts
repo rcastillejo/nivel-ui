@@ -8,7 +8,11 @@ export function getSupabaseBrowserClient(): SupabaseClient | null {
   if (!url || !key) return null;
 
   if (!client) {
-    client = createClient(url, key);
+    // PKCE keeps the OAuth callback in `?code=` form (see auth/callback/page.tsx).
+    // Without it Supabase falls back to the implicit flow and returns tokens in
+    // the URL hash instead, which the callback page never handles, leaving
+    // Google sign-in stuck on the "Autenticando…" screen.
+    client = createClient(url, key, { auth: { flowType: 'pkce' } });
   }
   return client;
 }
