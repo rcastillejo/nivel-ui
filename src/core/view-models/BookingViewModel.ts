@@ -19,6 +19,7 @@ export class BookingViewModel {
   // Estado observable
   trainers: Trainer[] = [];
   availableSlots: string[] = [];
+  availableSlotsByTrainer: Record<string, string[]> = {};
   bookings: Booking[] = [];
   isLoading = false;
   error: string | null = null;
@@ -86,6 +87,34 @@ export class BookingViewModel {
     } finally {
       this.setLoading(false);
     }
+  }
+
+  // Carga los horarios disponibles de todos los entrenadores para la fecha seleccionada,
+  // ya que el cliente elige entrenador y horario en un mismo paso (ver TimeSelectionView).
+  async loadAvailableSlotsForDate(date: Date) {
+    this.setLoading(true);
+    try {
+      const entries = await Promise.all(
+        this.trainers.map(async (trainer) => {
+          const slots = await this.model.getAvailableSlots(trainer.id, date);
+          return [trainer.id, slots] as const;
+        })
+      );
+      runInAction(() => {
+        this.availableSlotsByTrainer = Object.fromEntries(entries);
+        this.error = null;
+      });
+    } catch (err) {
+      runInAction(() => {
+        this.error = err instanceof Error ? err.message : 'Error cargando disponibilidad';
+      });
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  getSlotsForTrainer(trainerId: string): string[] {
+    return this.availableSlotsByTrainer[trainerId] ?? [];
   }
 
   async createBooking(): Promise<boolean> {
@@ -226,7 +255,8 @@ export class BookingViewModel {
     this.selectedDate = date;
     this.selectedTime = null; // Reset time when date changes
     this.clearCapacityCache(); // Limpiar cache al cambiar fecha
-    
+    this.loadAvailableSlotsForDate(date);
+
     if (this.selectedTrainer) {
       this.loadAvailableSlots(this.selectedTrainer.id, date);
     }
@@ -261,6 +291,7 @@ export class BookingViewModel {
     this.selectedTime = null;
     this.selectedZone = null;
     this.availableSlots = [];
+    this.availableSlotsByTrainer = {};
     this.clearCapacityCache();
   }
 
