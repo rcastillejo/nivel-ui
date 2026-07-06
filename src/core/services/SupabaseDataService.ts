@@ -295,10 +295,14 @@ export class SupabaseProgramRepository implements IProgramRepository {
   }
 
   async getByClient(clientId: string): Promise<Program[]> {
+    // client_ids is jsonb, not a native Postgres array — supabase-js's .contains()
+    // serializes a JS array as Postgres array-literal syntax (cs.{val}), which
+    // PostgREST rejects as invalid JSON for a jsonb column. Pre-serializing to a
+    // JSON string routes through the string branch instead, producing cs.["val"].
     const { data, error } = await this.client
       .from('programs')
       .select('*')
-      .contains('client_ids', [clientId]);
+      .contains('client_ids', JSON.stringify([clientId]));
     if (error) throw new Error(error.message);
     return (data as ProgramRow[]).map(ProgramMapper.toDomain);
   }

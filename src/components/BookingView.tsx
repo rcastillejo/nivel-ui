@@ -142,6 +142,7 @@ const BookingView = observer(() => {
           <TimeSelectionView
             selectedDate={vm.selectedDate}
             trainers={vm.trainers}
+            slotsByTrainer={vm.availableSlotsByTrainer}
             bookings={vm.bookings}
             selectedTrainerName={vm.selectedTrainerName}
             selectedTime={vm.selectedTime}
@@ -176,8 +177,8 @@ interface TimeSelectionViewProps {
   trainers: Array<{
     id: string;
     name: string;
-    availableSlots: string[];
   }>;
+  slotsByTrainer: Record<string, string[]>;
   bookings: Booking[];
   selectedTrainerName: string | null;
   selectedTime: string | null;
@@ -192,6 +193,7 @@ interface TimeSelectionViewProps {
 const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
   selectedDate,
   trainers,
+  slotsByTrainer,
   bookings,
   selectedTrainerName,
   selectedTime,
@@ -246,14 +248,19 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
       </div>
 
       <div className="space-y-6">
-        {trainers.map((trainer) => (
+        {trainers.map((trainer) => {
+          const trainerSlots = slotsByTrainer[trainer.id] ?? [];
+
+          if (trainerSlots.length === 0) return null;
+
+          return (
           <div key={trainer.id} className="border border-gray-200 rounded-lg p-4">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Entrenador {trainer.name}</h3>
             </div>
-            
+
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-              {trainer.availableSlots.map((time: string) => {
+              {trainerSlots.map((time: string) => {
                 const isSelected = selectedTrainerName === `Entrenador ${trainer.name}` && selectedTime === time;
                 const gymCapacity = getZoneCapacity(trainer.id, time, 'gym');
                 const gabineteCapacity = getZoneCapacity(trainer.id, time, 'gabinete');
@@ -289,7 +296,8 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Confirmation section */}
