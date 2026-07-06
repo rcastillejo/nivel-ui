@@ -5,6 +5,7 @@ import "./globals.css";
 import { AuthProvider } from "@/core/providers/AuthProvider";
 import { DataProvider } from "@/core/providers/DataProvider";
 import { ViewModelProvider } from "@/core/providers/ViewModelProvider";
+import { LocalStorageFallbackBanner } from "@/components/LocalStorageFallbackBanner";
 
 
 export const metadata: Metadata = {
@@ -24,6 +25,7 @@ export default function RootLayout({
       >
         <AuthProvider>
           <DataProvider>
+            <LocalStorageFallbackBanner />
             <ViewModelProvider>
               {children}
             </ViewModelProvider>

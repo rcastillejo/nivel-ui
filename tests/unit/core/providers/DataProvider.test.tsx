@@ -30,17 +30,7 @@ vi.mock('@/lib/supabase', () => ({
 import { getSupabaseBrowserClient } from '@/lib/supabase';
 import { LocalStorageDataService } from '@/core/repositories/localStorage';
 import { SupabaseDataService } from '@/core/services/SupabaseDataService';
-import { DataProvider, useDataService } from '@/core/providers/DataProvider';
-
-// ---------------------------------------------------------------------------
-// Helper — exposes which service was injected
-// ---------------------------------------------------------------------------
-
-function ServiceLabel() {
-  const svc = useDataService();
-  const label = svc instanceof (LocalStorageDataService as never) ? 'localStorage' : 'supabase';
-  return <div data-testid="service-label">{label}</div>;
-}
+import { DataProvider, useIsLocalStorageFallback } from '@/core/providers/DataProvider';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -117,5 +107,42 @@ describe('DataProvider — service selection', () => {
 
     expect(screen.queryByTestId('child')).not.toBeInTheDocument();
     expect(screen.getByText('Cargando...')).toBeInTheDocument();
+  });
+});
+
+describe('DataProvider — local storage fallback detection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockInitialize.mockResolvedValue(undefined);
+  });
+
+  function FallbackLabel() {
+    const isFallback = useIsLocalStorageFallback();
+    return <div data-testid="fallback-label">{String(isFallback)}</div>;
+  }
+
+  it('reports the fallback as active when using LocalStorageDataService', async () => {
+    vi.mocked(getSupabaseBrowserClient).mockReturnValue(null);
+
+    render(
+      <DataProvider>
+        <FallbackLabel />
+      </DataProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('fallback-label')).toHaveTextContent('true'));
+  });
+
+  it('reports the fallback as inactive when using SupabaseDataService', async () => {
+    const fakeClient = { auth: {} } as never;
+    vi.mocked(getSupabaseBrowserClient).mockReturnValue(fakeClient);
+
+    render(
+      <DataProvider>
+        <FallbackLabel />
+      </DataProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('fallback-label')).toHaveTextContent('false'));
   });
 });
