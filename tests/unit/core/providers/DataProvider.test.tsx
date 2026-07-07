@@ -104,6 +104,21 @@ describe('DataProvider — service selection', () => {
     await waitFor(() => expect(screen.getByTestId('child')).toBeInTheDocument());
   });
 
+  it('renders children even when service.initialize() rejects', async () => {
+    vi.mocked(getSupabaseBrowserClient).mockReturnValue(null);
+    mockInitialize.mockRejectedValueOnce(new Error('init failed'));
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(
+      <DataProvider>
+        <div data-testid="child" />
+      </DataProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('child')).toBeInTheDocument());
+    consoleErrorSpy.mockRestore();
+  });
+
   it('shows a loading indicator while initializing', () => {
     vi.mocked(getSupabaseBrowserClient).mockReturnValue(null);
     // initialize never resolves within this synchronous check

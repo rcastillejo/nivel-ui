@@ -21,12 +21,19 @@ export class AuthViewModel {
       });
     });
 
-    this.authModel.getCurrentUser().then((user) => {
-      runInAction(() => {
-        this.currentUser = user;
-        this.isLoading = false;
+    this.authModel.getCurrentUser()
+      .then((user) => {
+        runInAction(() => {
+          this.currentUser = user;
+          this.isLoading = false;
+        });
+      })
+      .catch((err) => {
+        runInAction(() => {
+          this.error = err instanceof Error ? err.message : 'Error al verificar la sesión';
+          this.isLoading = false;
+        });
       });
-    });
   }
 
   dispose(): void {

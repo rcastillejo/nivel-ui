@@ -29,7 +29,11 @@ export function DataProvider({ children }: DataProviderProps) {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    service.initialize().then(() => setIsReady(true));
+    service.initialize()
+      .catch((err) => {
+        console.error('Error initializing data service:', err);
+      })
+      .finally(() => setIsReady(true));
   }, [service]);
 
   if (!isReady) {
