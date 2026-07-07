@@ -27,7 +27,12 @@ vi.mock('@/lib/supabase', () => ({
   getSupabaseBrowserClient: vi.fn(),
 }));
 
+vi.mock('@/lib/env', () => ({
+  isProductionEnvironment: vi.fn().mockReturnValue(false),
+}));
+
 import { getSupabaseBrowserClient } from '@/lib/supabase';
+import { isProductionEnvironment } from '@/lib/env';
 import { LocalStorageDataService } from '@/core/repositories/localStorage';
 import { SupabaseDataService } from '@/core/services/SupabaseDataService';
 import { DataProvider, useIsLocalStorageFallback } from '@/core/providers/DataProvider';
@@ -39,6 +44,7 @@ import { DataProvider, useIsLocalStorageFallback } from '@/core/providers/DataPr
 describe('DataProvider — service selection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(isProductionEnvironment).mockReturnValue(false);
   });
 
   it('instantiates LocalStorageDataService when Supabase client is not available', async () => {
@@ -114,6 +120,7 @@ describe('DataProvider — local storage fallback detection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockInitialize.mockResolvedValue(undefined);
+    vi.mocked(isProductionEnvironment).mockReturnValue(false);
   });
 
   function FallbackLabel() {
@@ -144,5 +151,54 @@ describe('DataProvider — local storage fallback detection', () => {
     );
 
     await waitFor(() => expect(screen.getByTestId('fallback-label')).toHaveTextContent('false'));
+  });
+});
+
+describe('DataProvider — production without Supabase configured', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockInitialize.mockResolvedValue(undefined);
+    vi.mocked(isProductionEnvironment).mockReturnValue(true);
+  });
+
+  it('shows a configuration error instead of falling back to localStorage', () => {
+    vi.mocked(getSupabaseBrowserClient).mockReturnValue(null);
+
+    render(
+      <DataProvider>
+        <div data-testid="child" />
+      </DataProvider>,
+    );
+
+    expect(screen.getByTestId('data-service-config-error')).toBeInTheDocument();
+    expect(screen.queryByTestId('child')).not.toBeInTheDocument();
+  });
+
+  it('never instantiates LocalStorageDataService', () => {
+    vi.mocked(getSupabaseBrowserClient).mockReturnValue(null);
+
+    render(
+      <DataProvider>
+        <div />
+      </DataProvider>,
+    );
+
+    expect(LocalStorageDataService).not.toHaveBeenCalled();
+    expect(mockInitialize).not.toHaveBeenCalled();
+  });
+
+  it('still uses SupabaseDataService when Supabase is configured', async () => {
+    const fakeClient = { auth: {} } as never;
+    vi.mocked(getSupabaseBrowserClient).mockReturnValue(fakeClient);
+
+    render(
+      <DataProvider>
+        <div data-testid="child" />
+      </DataProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('child')).toBeInTheDocument());
+    expect(SupabaseDataService).toHaveBeenCalledWith(fakeClient);
+    expect(LocalStorageDataService).not.toHaveBeenCalled();
   });
 });
