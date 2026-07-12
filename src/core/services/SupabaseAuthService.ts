@@ -37,14 +37,25 @@ export class SupabaseAuthService implements IAuthService {
 
   onAuthStateChange(callback: (user: AuthUser | null) => void): () => void {
     const { data: { subscription } } = this.client.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         if (!session?.user) {
           callback(null);
           return;
         }
         const { id, email } = session.user;
-        const role = await this.fetchRole(id, email ?? undefined);
-        callback({ id, email: email!, role });
+        // Defer the role lookup instead of awaiting it here: calling any other
+        // Supabase method synchronously inside this callback deadlocks the
+        // client's internal auth lock (see supabase/auth-js#762) - the fetch
+        // itself completes, but its promise never settles because it's
+        // waiting on a lock still held by this very callback.
+        setTimeout(() => {
+          this.fetchRole(id, email ?? undefined)
+            .then((role) => callback({ id, email: email!, role }))
+            .catch((err) => {
+              console.error('[Auth] onAuthStateChange: fetchRole failed', err);
+              callback(null);
+            });
+        }, 0);
       },
     );
     return () => subscription.unsubscribe();
