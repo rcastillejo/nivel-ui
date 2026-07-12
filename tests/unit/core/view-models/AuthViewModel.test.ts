@@ -80,6 +80,16 @@ describe('AuthViewModel', () => {
       expect(vm.currentUser).toBeNull();
     });
 
+    it('sets isLoading to false and records an error when getCurrentUser rejects', async () => {
+      vi.mocked(authModel.getCurrentUser).mockRejectedValue(new Error('Network error'));
+
+      vm.initialize();
+      await vi.waitFor(() => expect(vm.isLoading).toBe(false));
+
+      expect(vm.error).toBe('Network error');
+      expect(vm.currentUser).toBeNull();
+    });
+
     it('updates currentUser when onAuthStateChange fires', async () => {
       const user = makeUser();
       vi.mocked(authModel.getCurrentUser).mockResolvedValue(null);
