@@ -34,6 +34,7 @@ export interface IProgramRepository {
   getById(id: string): Promise<Program | null>;
   getByTrainer(trainerId: string): Promise<Program[]>;
   getByClient(clientId: string): Promise<Program[]>;
+  create(program: Omit<Program, 'id'>): Promise<Program>;
   save(program: Program): Promise<void>;
   delete(id: string): Promise<void>;
 }

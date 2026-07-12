@@ -307,6 +307,16 @@ export class SupabaseProgramRepository implements IProgramRepository {
     return (data as ProgramRow[]).map(ProgramMapper.toDomain);
   }
 
+  async create(program: Omit<Program, 'id'>): Promise<Program> {
+    const { data, error } = await this.client
+      .from('programs')
+      .insert(ProgramMapper.toInsert(program))
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return ProgramMapper.toDomain(data as ProgramRow);
+  }
+
   async save(program: Program): Promise<void> {
     const { id, ...rest } = program;
     const row = { id, ...ProgramMapper.toInsert(rest) };

@@ -30,6 +30,7 @@ const mockProgramRepository = {
   getById: vi.fn(),
   getByTrainer: vi.fn(),
   getByClient: vi.fn(),
+  create: vi.fn(),
   save: vi.fn(),
   delete: vi.fn()
 }

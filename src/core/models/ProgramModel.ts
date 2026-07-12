@@ -26,8 +26,7 @@ export class ProgramModel {
     // Validaciones básicas
     this.validateProgramData(data);
 
-    const newProgram: Program = {
-      id: `program_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    return this.dataService.programs.create({
       name: data.name,
       description: data.description,
       trainerId: data.trainerId,
@@ -37,10 +36,7 @@ export class ProgramModel {
       totalSessions: data.totalSessions,
       usedSessions: 0,
       status: 'active'
-    };
-
-    await this.dataService.programs.save(newProgram);
-    return newProgram;
+    });
   }
 
   async getActiveProgram(clientId: string): Promise<Program | null> {
@@ -72,8 +68,7 @@ export class ProgramModel {
     }
 
     // Crear el nuevo programa
-    const newProgram: Program = {
-      id: `program_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    const newProgram = await this.dataService.programs.create({
       name: previousProgram.name,
       description: previousProgram.description,
       trainerId: previousProgram.trainerId,
@@ -84,10 +79,7 @@ export class ProgramModel {
       usedSessions: 0,
       status: 'active',
       previousProgramId: programId
-    };
-
-    // Guardar el nuevo programa
-    await this.dataService.programs.save(newProgram);
+    });
 
     // Expirar el programa anterior
     await this.expireProgram(programId);

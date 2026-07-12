@@ -561,6 +561,58 @@ describe('SupabaseProgramRepository', () => {
     });
   });
 
+  describe('create', () => {
+    it('inserts without id, selects the created row, and returns a mapped Program', async () => {
+      const builder = makeBuilder({ data: programRow, error: null });
+      const client = makeClient(builder);
+      const repo = new SupabaseProgramRepository(client);
+
+      const result = await repo.create({
+        name: 'Fuerza',
+        description: 'Desc',
+        trainerId: 't1',
+        clientIds: ['c1'],
+        startDate: new Date('2026-01-01'),
+        endDate: new Date('2026-06-30'),
+        totalSessions: 20,
+        usedSessions: 5,
+        status: 'active',
+      });
+
+      expect(client.from).toHaveBeenCalledWith('programs');
+      expect(builder.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ trainer_id: 't1', total_sessions: 20 }),
+      );
+      expect(builder.insert).toHaveBeenCalledWith(
+        expect.not.objectContaining({ id: expect.anything() }),
+      );
+      expect(builder.select).toHaveBeenCalled();
+      expect(builder.single).toHaveBeenCalled();
+      expect(result.id).toBe('p1');
+      expect(result.trainerId).toBe('t1');
+    });
+
+    it('throws when Supabase returns an error', async () => {
+      const builder = makeBuilder({ data: null, error: { message: 'insert failed' } });
+      const client = makeClient(builder);
+      const repo = new SupabaseProgramRepository(client);
+
+      await expect(
+        repo.create({
+          name: 'Fuerza',
+          description: 'Desc',
+          trainerId: 't1',
+          clientIds: ['c1'],
+          startDate: new Date('2026-01-01'),
+          endDate: new Date('2026-06-30'),
+          totalSessions: 20,
+          usedSessions: 5,
+          status: 'active',
+        }),
+      ).rejects.toThrow('insert failed');
+    });
+  });
+
   describe('save', () => {
     it('upserts with both id and ProgramMapper fields', async () => {
       const builder = makeBuilder({ data: null, error: null });
