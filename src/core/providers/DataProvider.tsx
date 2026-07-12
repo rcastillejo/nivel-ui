@@ -41,11 +41,14 @@ type ServiceSelection =
 function selectDataService(): ServiceSelection {
   const supabase = getSupabaseBrowserClient();
   if (supabase) {
+    console.log('[DataProvider] selected service: Supabase');
     return { service: new SupabaseDataService(supabase), isLocalStorageFallback: false };
   }
   if (isProductionEnvironment()) {
+    console.error('[DataProvider] selected service: none (production with no Supabase env vars configured)');
     return { service: null, isLocalStorageFallback: false };
   }
+  console.log('[DataProvider] selected service: LocalStorage fallback');
   return { service: new LocalStorageDataService(), isLocalStorageFallback: true };
 }
 
@@ -55,9 +58,14 @@ export function DataProvider({ children }: DataProviderProps) {
 
   useEffect(() => {
     if (!service) return;
+const initStart = Date.now();
+    console.log('[DataProvider] initialize: start');
     withTimeout(service.initialize(), INITIALIZE_TIMEOUT_MS, 'Timed out initializing data service')
+      .then(() => {
+        console.log(`[DataProvider] initialize: success (${Date.now() - initStart}ms)`);
+      })
       .catch((err) => {
-        console.error('Error initializing data service:', err);
+        console.error(`[DataProvider] initialize: FAILED after ${Date.now() - initStart}ms`, err);
       })
       .finally(() => setIsReady(true));
   }, [service]);
