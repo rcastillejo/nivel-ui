@@ -48,22 +48,19 @@ const ProgramListView = observer(function ProgramListView() {
   const programVM = useProgramViewModel();
   const clientVM = useClientViewModel();
   const authVM = useAuthViewModel();
-  const trainerId = authVM.currentUser?.id;
+  // AuthGuard (src/app/trainer/layout.tsx) guarantees an authenticated trainer here.
+  const trainerId = authVM.currentUser!.id;
   const [renewTarget, setRenewTarget] = useState<Program | null>(null);
 
   useEffect(() => {
-    if (trainerId) {
-      programVM.loadPrograms(trainerId);
-    }
+    programVM.loadPrograms(trainerId);
   }, [programVM, trainerId]);
 
   const getClientNames = (clientIds: string[]) => clientVM.getClientNames(clientIds);
 
   const handleRenewSuccess = async () => {
     setRenewTarget(null);
-    if (trainerId) {
-      await programVM.loadPrograms(trainerId);
-    }
+    await programVM.loadPrograms(trainerId);
   };
 
   if (programVM.isLoading) {

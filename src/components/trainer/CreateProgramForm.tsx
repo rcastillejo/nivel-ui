@@ -37,12 +37,11 @@ const CreateProgramForm = observer(function CreateProgramForm() {
   const programVM = useProgramViewModel();
   const clientVM = useClientViewModel();
   const authVM = useAuthViewModel();
-  const trainerId = authVM.currentUser?.id;
+  // AuthGuard (src/app/trainer/layout.tsx) guarantees an authenticated trainer here.
+  const trainerId = authVM.currentUser!.id;
 
   useEffect(() => {
-    if (trainerId) {
-      programVM.setFormTrainerId(trainerId);
-    }
+    programVM.setFormTrainerId(trainerId);
   }, [programVM, trainerId]);
 
   const { formData } = programVM;
@@ -219,9 +218,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
           type="button"
           onClick={() => {
             programVM.resetForm();
-            if (trainerId) {
-              programVM.setFormTrainerId(trainerId);
-            }
+            programVM.setFormTrainerId(trainerId);
             programVM.clearError();
           }}
           className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
