@@ -1,6 +1,11 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { AuthUser } from '../types';
 import { AuthModel } from '../models/AuthModel';
+import { withTimeout } from '../utils/withTimeout';
+
+// Bounds how long we wait for the initial session check before giving up,
+// so a hung network request can't leave the app stuck loading.
+const GET_CURRENT_USER_TIMEOUT_MS = 10_000;
 
 export class AuthViewModel {
   currentUser: AuthUser | null = null;
@@ -21,7 +26,11 @@ export class AuthViewModel {
       });
     });
 
-    this.authModel.getCurrentUser()
+    withTimeout(
+      this.authModel.getCurrentUser(),
+      GET_CURRENT_USER_TIMEOUT_MS,
+      'Timed out checking session',
+    )
       .then((user) => {
         runInAction(() => {
           this.currentUser = user;

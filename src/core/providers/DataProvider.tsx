@@ -6,6 +6,11 @@ import { LocalStorageDataService } from '../repositories/localStorage';
 import { SupabaseDataService } from '../services/SupabaseDataService';
 import { getSupabaseBrowserClient } from '@/lib/supabase';
 import { isProductionEnvironment } from '@/lib/env';
+import { withTimeout } from '../utils/withTimeout';
+
+// Bounds how long we wait for service.initialize() before giving up, so a
+// hung network request can't leave the app stuck on the loading screen.
+const INITIALIZE_TIMEOUT_MS = 10_000;
 
 // Internal context — only for use by ViewModelProvider to access the service layer
 const DataServiceContext = createContext<IDataService | null>(null);
@@ -50,7 +55,7 @@ export function DataProvider({ children }: DataProviderProps) {
 
   useEffect(() => {
     if (!service) return;
-    service.initialize()
+    withTimeout(service.initialize(), INITIALIZE_TIMEOUT_MS, 'Timed out initializing data service')
       .catch((err) => {
         console.error('Error initializing data service:', err);
       })
