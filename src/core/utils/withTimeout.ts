@@ -8,7 +8,10 @@
  */
 export function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(message)), ms);
+    const timer = setTimeout(() => {
+      console.warn(`[withTimeout] "${message}" timed out after ${ms}ms`);
+      reject(new Error(message));
+    }, ms);
     promise.then(
       (value) => {
         clearTimeout(timer);
