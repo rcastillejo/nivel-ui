@@ -70,10 +70,18 @@ const ProgramListView = observer(function ProgramListView() {
 
   const handleRenewSuccess = async () => {
     setRenewTarget(null);
-    if (trainerId) {
-      await programVM.loadPrograms(trainerId);
-    }
+    await programVM.loadPrograms(trainerId!);
   };
+
+  if (!trainerId) {
+    return (
+      <div data-testid="program-list-trainer-pending" className="flex items-center justify-center h-64">
+        <div className="text-gray-500">
+          {trainerVM.error ?? 'Cargando información del entrenador...'}
+        </div>
+      </div>
+    );
+  }
 
   if (programVM.isLoading) {
     return (

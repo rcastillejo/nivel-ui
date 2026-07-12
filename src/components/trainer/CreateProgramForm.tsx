@@ -54,6 +54,14 @@ const CreateProgramForm = observer(function CreateProgramForm() {
     }
   }, [programVM, trainerId]);
 
+  if (!trainerId) {
+    return (
+      <div data-testid="create-program-trainer-pending" className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500">
+        {trainerVM.error ?? 'Cargando información del entrenador...'}
+      </div>
+    );
+  }
+
   const { formData } = programVM;
 
   const startDateStr = formData.startDate
@@ -239,9 +247,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
           type="button"
           onClick={() => {
             programVM.resetForm();
-            if (trainerId) {
-              programVM.setFormTrainerId(trainerId);
-            }
+            programVM.setFormTrainerId(trainerId);
             programVM.clearError();
           }}
           className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"

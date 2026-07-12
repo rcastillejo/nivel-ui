@@ -135,7 +135,7 @@ describe('CreateProgramForm', () => {
     expect(programVM.setFormTrainerId).toHaveBeenCalledWith(anotherTrainerRowId);
   });
 
-  it('does not stamp the form while the trainer row has not resolved yet', () => {
+  it('renders a pending state instead of the form while the trainer row has not resolved yet', () => {
     const authUserId = crypto.randomUUID();
     mockAuthenticatedTrainer(authUserId);
     mockTrainerVM(null);
@@ -145,6 +145,26 @@ describe('CreateProgramForm', () => {
     render(<CreateProgramForm />);
 
     expect(programVM.setFormTrainerId).not.toHaveBeenCalled();
+    expect(screen.getByTestId('create-program-trainer-pending')).toBeInTheDocument();
+    expect(screen.queryByTestId('create-program-form')).not.toBeInTheDocument();
+  });
+
+  it('surfaces the trainer resolution error instead of the form when the trainer lookup fails', () => {
+    const authUserId = crypto.randomUUID();
+    mockAuthenticatedTrainer(authUserId);
+    vi.mocked(useTrainerViewModel).mockReturnValue({
+      selectedTrainerId: null,
+      error: 'No se encontró un entrenador asociado a este usuario',
+      loadCurrentTrainer: vi.fn(),
+    } as unknown as ReturnType<typeof useTrainerViewModel>);
+    mockProgramVM();
+    mockClientVM();
+
+    render(<CreateProgramForm />);
+
+    expect(screen.getByTestId('create-program-trainer-pending')).toHaveTextContent(
+      'No se encontró un entrenador asociado a este usuario'
+    );
   });
 
   it('re-stamps the same resolved trainer row id after clearing the form', async () => {

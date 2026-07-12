@@ -136,7 +136,7 @@ describe('ProgramListView', () => {
     expect(programVM.loadPrograms).toHaveBeenCalledWith(anotherTrainerRowId);
   });
 
-  it('does not fetch programs while the trainer row has not resolved yet', () => {
+  it('renders a pending state instead of the list while the trainer row has not resolved yet', () => {
     const authUserId = crypto.randomUUID();
     mockAuthenticatedTrainer(authUserId);
     mockTrainerVM(null);
@@ -146,6 +146,26 @@ describe('ProgramListView', () => {
     render(<ProgramListView />);
 
     expect(programVM.loadPrograms).not.toHaveBeenCalled();
+    expect(screen.getByTestId('program-list-trainer-pending')).toBeInTheDocument();
+    expect(screen.queryByTestId('program-list-view')).not.toBeInTheDocument();
+  });
+
+  it('surfaces the trainer resolution error instead of the list when the trainer lookup fails', () => {
+    const authUserId = crypto.randomUUID();
+    mockAuthenticatedTrainer(authUserId);
+    vi.mocked(useTrainerViewModel).mockReturnValue({
+      selectedTrainerId: null,
+      error: 'No se encontró un entrenador asociado a este usuario',
+      loadCurrentTrainer: vi.fn(),
+    } as unknown as ReturnType<typeof useTrainerViewModel>);
+    mockProgramVM();
+    mockClientVM();
+
+    render(<ProgramListView />);
+
+    expect(screen.getByTestId('program-list-trainer-pending')).toHaveTextContent(
+      'No se encontró un entrenador asociado a este usuario'
+    );
   });
 
   it('reloads programs with the same resolved trainer row id after renewing a program', async () => {
