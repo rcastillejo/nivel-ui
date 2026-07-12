@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { format } from 'date-fns';
-import { useProgramViewModel, useClientViewModel } from '@/core/providers/ViewModelProvider';
+import { useProgramViewModel, useClientViewModel, useTrainerViewModel } from '@/core/providers/ViewModelProvider';
 import { useAuthViewModel } from '@/core/providers/AuthProvider';
 
 function getTomorrow(): string {
@@ -36,12 +36,22 @@ function computeWeeklyFrequency(
 const CreateProgramForm = observer(function CreateProgramForm() {
   const programVM = useProgramViewModel();
   const clientVM = useClientViewModel();
+  const trainerVM = useTrainerViewModel();
   const authVM = useAuthViewModel();
   // AuthGuard (src/app/trainer/layout.tsx) guarantees an authenticated trainer here.
-  const trainerId = authVM.currentUser!.id;
+  const authUserId = authVM.currentUser!.id;
+  // programs.trainer_id is a FK to public.trainers(id), not the auth user id —
+  // resolve the trainer row via TrainerViewModel (same pattern as TrainerSchedule).
+  const trainerId = trainerVM.selectedTrainerId;
 
   useEffect(() => {
-    programVM.setFormTrainerId(trainerId);
+    trainerVM.loadCurrentTrainer(authUserId);
+  }, [trainerVM, authUserId]);
+
+  useEffect(() => {
+    if (trainerId) {
+      programVM.setFormTrainerId(trainerId);
+    }
   }, [programVM, trainerId]);
 
   const { formData } = programVM;
@@ -229,7 +239,9 @@ const CreateProgramForm = observer(function CreateProgramForm() {
           type="button"
           onClick={() => {
             programVM.resetForm();
-            programVM.setFormTrainerId(trainerId);
+            if (trainerId) {
+              programVM.setFormTrainerId(trainerId);
+            }
             programVM.clearError();
           }}
           className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"

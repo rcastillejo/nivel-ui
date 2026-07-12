@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useProgramViewModel, useClientViewModel } from '@/core/providers/ViewModelProvider';
+import { useProgramViewModel, useClientViewModel, useTrainerViewModel } from '@/core/providers/ViewModelProvider';
 import { useAuthViewModel } from '@/core/providers/AuthProvider';
 import { Program } from '@/core/types';
 import RenewProgramModal from './RenewProgramModal';
@@ -47,20 +47,32 @@ function StatusBadge({ status }: { status: Program['status'] }) {
 const ProgramListView = observer(function ProgramListView() {
   const programVM = useProgramViewModel();
   const clientVM = useClientViewModel();
+  const trainerVM = useTrainerViewModel();
   const authVM = useAuthViewModel();
   // AuthGuard (src/app/trainer/layout.tsx) guarantees an authenticated trainer here.
-  const trainerId = authVM.currentUser!.id;
+  const authUserId = authVM.currentUser!.id;
+  // programs.trainer_id is a FK to public.trainers(id), not the auth user id —
+  // resolve the trainer row via TrainerViewModel (same pattern as TrainerSchedule).
+  const trainerId = trainerVM.selectedTrainerId;
   const [renewTarget, setRenewTarget] = useState<Program | null>(null);
 
   useEffect(() => {
-    programVM.loadPrograms(trainerId);
+    trainerVM.loadCurrentTrainer(authUserId);
+  }, [trainerVM, authUserId]);
+
+  useEffect(() => {
+    if (trainerId) {
+      programVM.loadPrograms(trainerId);
+    }
   }, [programVM, trainerId]);
 
   const getClientNames = (clientIds: string[]) => clientVM.getClientNames(clientIds);
 
   const handleRenewSuccess = async () => {
     setRenewTarget(null);
-    await programVM.loadPrograms(trainerId);
+    if (trainerId) {
+      await programVM.loadPrograms(trainerId);
+    }
   };
 
   if (programVM.isLoading) {
