@@ -380,6 +380,12 @@ class LocalStorageProgramRepository implements IProgramRepository {
     return programs.filter(p => p.clientIds.includes(clientId));
   }
 
+  async create(program: Omit<Program, 'id'>): Promise<Program> {
+    const newProgram: Program = { ...program, id: crypto.randomUUID() };
+    await this.save(newProgram);
+    return newProgram;
+  }
+
   async save(program: Program): Promise<void> {
     const programs = await this.getAll();
     const index = programs.findIndex(p => p.id === program.id);

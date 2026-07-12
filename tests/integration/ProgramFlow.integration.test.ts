@@ -84,14 +84,14 @@ describe('ProgramModel ↔ LocalStorageDataService', () => {
       expect(saved?.usedSessions).toBe(0);
     });
 
-    it('el programa creado tiene id único con formato correcto', async () => {
+    it('el programa creado tiene id único con formato UUID', async () => {
       const p1 = await model.createProgram(validProgramData({ clientIds: ['client1'] }));
 
       // Segundo programa para un cliente diferente
       const p2 = await model.createProgram(validProgramData({ clientIds: ['client2'] }));
 
       expect(p1.id).not.toBe(p2.id);
-      expect(p1.id).toMatch(/^program_\d+_[a-z0-9]+$/);
+      expect(p1.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
     });
 
     it('lanza ActiveProgramAlreadyExistsError si el cliente ya tiene un programa activo', async () => {

@@ -16,6 +16,7 @@ const mockProgramRepository = {
   getById: vi.fn(),
   getByTrainer: vi.fn(),
   getByClient: vi.fn(),
+  create: vi.fn(),
   save: vi.fn(),
   delete: vi.fn()
 };
@@ -71,23 +72,38 @@ describe('ProgramModel', () => {
     };
 
     it('should create a program successfully', async () => {
-      mockProgramRepository.getByClient.mockResolvedValue([]);
-      mockProgramRepository.save.mockResolvedValue(undefined);
-
-      const result = await programModel.createProgram(validProgramData);
-
-      expect(result).toMatchObject({
+      const createdProgram: Program = {
+        id: 'db-generated-uuid',
         name: validProgramData.name,
         description: validProgramData.description,
         trainerId: validProgramData.trainerId,
         clientIds: validProgramData.clientIds,
+        startDate: validProgramData.startDate,
+        endDate: validProgramData.endDate,
         totalSessions: validProgramData.totalSessions,
         usedSessions: 0,
         status: 'active'
-      });
-      expect(result.id).toBeDefined();
-      expect(result.id).toMatch(/^program_\d+_[a-z0-9]+$/);
-      expect(mockProgramRepository.save).toHaveBeenCalledWith(result);
+      };
+      mockProgramRepository.getByClient.mockResolvedValue([]);
+      mockProgramRepository.create.mockResolvedValue(createdProgram);
+
+      const result = await programModel.createProgram(validProgramData);
+
+      expect(result).toEqual(createdProgram);
+      expect(mockProgramRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: validProgramData.name,
+          description: validProgramData.description,
+          trainerId: validProgramData.trainerId,
+          clientIds: validProgramData.clientIds,
+          totalSessions: validProgramData.totalSessions,
+          usedSessions: 0,
+          status: 'active'
+        })
+      );
+      expect(mockProgramRepository.create).not.toHaveBeenCalledWith(
+        expect.objectContaining({ id: expect.anything() })
+      );
     });
 
     it('should throw ProgramValidationError when name is empty', async () => {
@@ -229,8 +245,16 @@ describe('ProgramModel', () => {
     };
 
     it('should renew a program successfully', async () => {
+      const renewedProgram: Program = {
+        ...previousProgram,
+        id: 'db-generated-uuid-2',
+        totalSessions: 15,
+        usedSessions: 0,
+        previousProgramId: 'program1'
+      };
       mockProgramRepository.getById.mockResolvedValue(previousProgram);
       mockProgramRepository.getByClient.mockResolvedValue([previousProgram]);
+      mockProgramRepository.create.mockResolvedValue(renewedProgram);
       mockProgramRepository.save.mockResolvedValue(undefined);
 
       const result = await programModel.renewProgram('program1', 15);
@@ -246,7 +270,8 @@ describe('ProgramModel', () => {
         previousProgramId: 'program1'
       });
       expect(result.id).not.toBe('program1');
-      expect(mockProgramRepository.save).toHaveBeenCalledTimes(2); // New program + expire old one
+      expect(mockProgramRepository.create).toHaveBeenCalledTimes(1); // New program
+      expect(mockProgramRepository.save).toHaveBeenCalledTimes(1); // Expire old one
     });
 
     it('should throw ProgramNotFoundError when program does not exist', async () => {
