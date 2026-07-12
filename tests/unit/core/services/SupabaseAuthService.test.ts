@@ -333,14 +333,14 @@ describe('SupabaseAuthService', () => {
 
     it('calls callback with AuthUser when session is present', async () => {
       const callback = vi.fn();
-      let capturedHandler: ((event: string, session: object) => Promise<void>) | null = null;
+      let capturedHandler: ((event: string, session: object) => void) | null = null;
 
       const profileBuilder = makeQueryBuilder({ role: 'trainer' });
       const trainerBuilder = makeQueryBuilder(null);
       client = {
         auth: {
           onAuthStateChange: vi.fn().mockImplementation(
-            (handler: (event: string, session: object) => Promise<void>) => {
+            (handler: (event: string, session: object) => void) => {
               capturedHandler = handler;
               return { data: { subscription: { unsubscribe: vi.fn() } } };
             },
@@ -360,15 +360,44 @@ describe('SupabaseAuthService', () => {
       service = new SupabaseAuthService(client);
 
       service.onAuthStateChange(callback);
-      await capturedHandler!('SIGNED_IN', {
+      capturedHandler!('SIGNED_IN', {
         user: { id: 'u1', email: 'test@nivel.gym' },
       });
+      await vi.waitFor(() => expect(callback).toHaveBeenCalled());
 
       expect(callback).toHaveBeenCalledWith({
         id: 'u1',
         email: 'test@nivel.gym',
         role: 'trainer',
       });
+    });
+
+    it('does not call fetchRole synchronously within the auth callback (avoids the supabase-js lock deadlock)', () => {
+      const callback = vi.fn();
+      let capturedHandler: ((event: string, session: object) => void) | null = null;
+
+      const profileBuilder = makeQueryBuilder({ role: 'trainer' });
+      client = {
+        auth: {
+          onAuthStateChange: vi.fn().mockImplementation(
+            (handler: (event: string, session: object) => void) => {
+              capturedHandler = handler;
+              return { data: { subscription: { unsubscribe: vi.fn() } } };
+            },
+          ),
+          signInWithPassword: vi.fn(),
+          signOut: vi.fn(),
+          getUser: vi.fn(),
+          signInWithOAuth: vi.fn(),
+        },
+        from: vi.fn().mockReturnValue(profileBuilder),
+      } as unknown as ReturnType<typeof makeAuthClient>;
+      service = new SupabaseAuthService(client);
+
+      service.onAuthStateChange(callback);
+      capturedHandler!('SIGNED_IN', { user: { id: 'u1', email: 'test@nivel.gym' } });
+
+      expect(client.from).not.toHaveBeenCalled();
     });
   });
 });
