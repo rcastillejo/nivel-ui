@@ -19,7 +19,9 @@ export class AuthViewModel {
   }
 
   initialize(): void {
+    console.log('[AuthViewModel] initialize() called');
     this.unsubscribe = this.authModel.onAuthStateChange((user) => {
+      console.log(`[AuthViewModel] onAuthStateChange fired, user=${user ? user.id : 'null'}`);
       runInAction(() => {
         this.currentUser = user;
         this.isLoading = false;
@@ -32,12 +34,14 @@ export class AuthViewModel {
       'Timed out checking session',
     )
       .then((user) => {
+        console.log(`[AuthViewModel] getCurrentUser resolved, user=${user ? user.id : 'null'}`);
         runInAction(() => {
           this.currentUser = user;
           this.isLoading = false;
         });
       })
       .catch((err) => {
+        console.error('[AuthViewModel] getCurrentUser timed out or errored:', err);
         runInAction(() => {
           this.error = err instanceof Error ? err.message : 'Error al verificar la sesión';
           this.isLoading = false;
