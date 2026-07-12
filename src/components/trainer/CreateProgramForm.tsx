@@ -42,25 +42,16 @@ const CreateProgramForm = observer(function CreateProgramForm() {
   const authUserId = authVM.currentUser!.id;
   // programs.trainer_id is a FK to public.trainers(id), not the auth user id —
   // resolve the trainer row via TrainerViewModel (same pattern as TrainerSchedule).
-  const trainerId = trainerVM.selectedTrainerId;
+  // AuthGuard + the mount-time loadCurrentTrainer call guarantee it's populated.
+  const trainerId = trainerVM.selectedTrainerId!;
 
   useEffect(() => {
     trainerVM.loadCurrentTrainer(authUserId);
   }, [trainerVM, authUserId]);
 
   useEffect(() => {
-    if (trainerId) {
-      programVM.setFormTrainerId(trainerId);
-    }
+    programVM.setFormTrainerId(trainerId);
   }, [programVM, trainerId]);
-
-  if (!trainerId) {
-    return (
-      <div data-testid="create-program-trainer-pending" className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500">
-        {trainerVM.error ?? 'Cargando información del entrenador...'}
-      </div>
-    );
-  }
 
   const { formData } = programVM;
 

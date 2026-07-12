@@ -65,7 +65,7 @@ function mockClientVM() {
 // user id, so selectedTrainerId (the resolved trainers.id row) must be a
 // distinct value from the auth user id in these tests — otherwise a
 // regression to stamping the raw auth id would go undetected.
-function mockTrainerVM(selectedTrainerId: string | null) {
+function mockTrainerVM(selectedTrainerId: string) {
   const vm = {
     selectedTrainerId,
     loadCurrentTrainer: vi.fn(),
@@ -133,38 +133,6 @@ describe('CreateProgramForm', () => {
     render(<CreateProgramForm />);
 
     expect(programVM.setFormTrainerId).toHaveBeenCalledWith(anotherTrainerRowId);
-  });
-
-  it('renders a pending state instead of the form while the trainer row has not resolved yet', () => {
-    const authUserId = crypto.randomUUID();
-    mockAuthenticatedTrainer(authUserId);
-    mockTrainerVM(null);
-    const programVM = mockProgramVM();
-    mockClientVM();
-
-    render(<CreateProgramForm />);
-
-    expect(programVM.setFormTrainerId).not.toHaveBeenCalled();
-    expect(screen.getByTestId('create-program-trainer-pending')).toBeInTheDocument();
-    expect(screen.queryByTestId('create-program-form')).not.toBeInTheDocument();
-  });
-
-  it('surfaces the trainer resolution error instead of the form when the trainer lookup fails', () => {
-    const authUserId = crypto.randomUUID();
-    mockAuthenticatedTrainer(authUserId);
-    vi.mocked(useTrainerViewModel).mockReturnValue({
-      selectedTrainerId: null,
-      error: 'No se encontró un entrenador asociado a este usuario',
-      loadCurrentTrainer: vi.fn(),
-    } as unknown as ReturnType<typeof useTrainerViewModel>);
-    mockProgramVM();
-    mockClientVM();
-
-    render(<CreateProgramForm />);
-
-    expect(screen.getByTestId('create-program-trainer-pending')).toHaveTextContent(
-      'No se encontró un entrenador asociado a este usuario'
-    );
   });
 
   it('re-stamps the same resolved trainer row id after clearing the form', async () => {

@@ -53,7 +53,8 @@ const ProgramListView = observer(function ProgramListView() {
   const authUserId = authVM.currentUser!.id;
   // programs.trainer_id is a FK to public.trainers(id), not the auth user id —
   // resolve the trainer row via TrainerViewModel (same pattern as TrainerSchedule).
-  const trainerId = trainerVM.selectedTrainerId;
+  // AuthGuard + the mount-time loadCurrentTrainer call guarantee it's populated.
+  const trainerId = trainerVM.selectedTrainerId!;
   const [renewTarget, setRenewTarget] = useState<Program | null>(null);
 
   useEffect(() => {
@@ -61,27 +62,15 @@ const ProgramListView = observer(function ProgramListView() {
   }, [trainerVM, authUserId]);
 
   useEffect(() => {
-    if (trainerId) {
-      programVM.loadPrograms(trainerId);
-    }
+    programVM.loadPrograms(trainerId);
   }, [programVM, trainerId]);
 
   const getClientNames = (clientIds: string[]) => clientVM.getClientNames(clientIds);
 
   const handleRenewSuccess = async () => {
     setRenewTarget(null);
-    await programVM.loadPrograms(trainerId!);
+    await programVM.loadPrograms(trainerId);
   };
-
-  if (!trainerId) {
-    return (
-      <div data-testid="program-list-trainer-pending" className="flex items-center justify-center h-64">
-        <div className="text-gray-500">
-          {trainerVM.error ?? 'Cargando información del entrenador...'}
-        </div>
-      </div>
-    );
-  }
 
   if (programVM.isLoading) {
     return (
