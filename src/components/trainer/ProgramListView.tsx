@@ -5,10 +5,9 @@ import { observer } from 'mobx-react-lite';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useProgramViewModel, useClientViewModel } from '@/core/providers/ViewModelProvider';
+import { useAuthViewModel } from '@/core/providers/AuthProvider';
 import { Program } from '@/core/types';
 import RenewProgramModal from './RenewProgramModal';
-
-const TRAINER_ID = 'trainer1';
 
 function SessionsBar({ used, total }: { used: number; total: number }) {
   const pct = total > 0 ? Math.min((used / total) * 100, 100) : 0;
@@ -48,17 +47,20 @@ function StatusBadge({ status }: { status: Program['status'] }) {
 const ProgramListView = observer(function ProgramListView() {
   const programVM = useProgramViewModel();
   const clientVM = useClientViewModel();
+  const authVM = useAuthViewModel();
+  // AuthGuard (src/app/trainer/layout.tsx) guarantees an authenticated trainer here.
+  const trainerId = authVM.currentUser!.id;
   const [renewTarget, setRenewTarget] = useState<Program | null>(null);
 
   useEffect(() => {
-    programVM.loadPrograms(TRAINER_ID);
-  }, [programVM]);
+    programVM.loadPrograms(trainerId);
+  }, [programVM, trainerId]);
 
   const getClientNames = (clientIds: string[]) => clientVM.getClientNames(clientIds);
 
   const handleRenewSuccess = async () => {
     setRenewTarget(null);
-    await programVM.loadPrograms(TRAINER_ID);
+    await programVM.loadPrograms(trainerId);
   };
 
   if (programVM.isLoading) {

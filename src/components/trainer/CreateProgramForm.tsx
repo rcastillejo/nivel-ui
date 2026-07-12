@@ -4,8 +4,7 @@ import { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { format } from 'date-fns';
 import { useProgramViewModel, useClientViewModel } from '@/core/providers/ViewModelProvider';
-
-const TRAINER_ID = 'trainer1';
+import { useAuthViewModel } from '@/core/providers/AuthProvider';
 
 function getTomorrow(): string {
   const d = new Date();
@@ -37,10 +36,13 @@ function computeWeeklyFrequency(
 const CreateProgramForm = observer(function CreateProgramForm() {
   const programVM = useProgramViewModel();
   const clientVM = useClientViewModel();
+  const authVM = useAuthViewModel();
+  // AuthGuard (src/app/trainer/layout.tsx) guarantees an authenticated trainer here.
+  const trainerId = authVM.currentUser!.id;
 
   useEffect(() => {
-    programVM.setFormTrainerId(TRAINER_ID);
-  }, [programVM]);
+    programVM.setFormTrainerId(trainerId);
+  }, [programVM, trainerId]);
 
   const { formData } = programVM;
 
@@ -216,7 +218,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
           type="button"
           onClick={() => {
             programVM.resetForm();
-            programVM.setFormTrainerId(TRAINER_ID);
+            programVM.setFormTrainerId(trainerId);
             programVM.clearError();
           }}
           className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
