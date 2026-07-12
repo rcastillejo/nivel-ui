@@ -190,24 +190,35 @@ const CreateProgramForm = observer(function CreateProgramForm() {
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Cliente(s) <span className="text-red-500">*</span>
         </label>
-        <div data-testid="clientVM.clients-checkbox-container" className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3">
-          {clientVM.clients.filter(c => c.status === 'active').map(client => (
-            <label
-              key={client.id}
-              className="flex items-center space-x-2 cursor-pointer"
-            >
-              <input
-                data-testid={`client-checkbox-${client.id}`}
-                type="checkbox"
-                checked={formData.clientIds.includes(client.id)}
-                onChange={() => handleClientToggle(client.id)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700 truncate">{client.name}</span>
-            </label>
-          ))}
-          {clientVM.clients.filter(c => c.status === 'active').length === 0 && (
-            <p className="text-sm text-gray-400 col-span-full">No hay clientes activos</p>
+        {clientVM.error && (
+          <div data-testid="client-list-error" className="mb-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {clientVM.error}
+          </div>
+        )}
+        <div data-testid="clients-checkbox-container" className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3">
+          {clientVM.isLoading ? (
+            <p data-testid="clients-loading" className="text-sm text-gray-400 col-span-full">Cargando clientes...</p>
+          ) : (
+            <>
+              {clientVM.clients.filter(c => c.status === 'active').map(client => (
+                <label
+                  key={client.id}
+                  className="flex items-center space-x-2 cursor-pointer"
+                >
+                  <input
+                    data-testid={`client-checkbox-${client.id}`}
+                    type="checkbox"
+                    checked={formData.clientIds.includes(client.id)}
+                    onChange={() => handleClientToggle(client.id)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700 truncate">{client.name}</span>
+                </label>
+              ))}
+              {clientVM.clients.filter(c => c.status === 'active').length === 0 && (
+                <p className="text-sm text-gray-400 col-span-full">No hay clientes activos</p>
+              )}
+            </>
           )}
         </div>
       </div>
