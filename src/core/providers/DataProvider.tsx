@@ -6,6 +6,11 @@ import { LocalStorageDataService } from '../repositories/localStorage';
 import { SupabaseDataService } from '../services/SupabaseDataService';
 import { getSupabaseBrowserClient } from '@/lib/supabase';
 import { isProductionEnvironment } from '@/lib/env';
+import { withTimeout } from '../utils/withTimeout';
+
+// Bounds how long we wait for service.initialize() before giving up, so a
+// hung network request can't leave the app stuck on the loading screen.
+const INITIALIZE_TIMEOUT_MS = 10_000;
 
 // Internal context — only for use by ViewModelProvider to access the service layer
 const DataServiceContext = createContext<IDataService | null>(null);
@@ -36,11 +41,14 @@ type ServiceSelection =
 function selectDataService(): ServiceSelection {
   const supabase = getSupabaseBrowserClient();
   if (supabase) {
+    console.log('[DataProvider] selected service: Supabase');
     return { service: new SupabaseDataService(supabase), isLocalStorageFallback: false };
   }
   if (isProductionEnvironment()) {
+    console.error('[DataProvider] selected service: none (production with no Supabase env vars configured)');
     return { service: null, isLocalStorageFallback: false };
   }
+  console.log('[DataProvider] selected service: LocalStorage fallback');
   return { service: new LocalStorageDataService(), isLocalStorageFallback: true };
 }
 
@@ -50,7 +58,16 @@ export function DataProvider({ children }: DataProviderProps) {
 
   useEffect(() => {
     if (!service) return;
-    service.initialize().then(() => setIsReady(true));
+const initStart = Date.now();
+    console.log('[DataProvider] initialize: start');
+    withTimeout(service.initialize(), INITIALIZE_TIMEOUT_MS, 'Timed out initializing data service')
+      .then(() => {
+        console.log(`[DataProvider] initialize: success (${Date.now() - initStart}ms)`);
+      })
+      .catch((err) => {
+        console.error(`[DataProvider] initialize: FAILED after ${Date.now() - initStart}ms`, err);
+      })
+      .finally(() => setIsReady(true));
   }, [service]);
 
   if (!service) {
