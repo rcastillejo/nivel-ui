@@ -614,7 +614,7 @@ describe('SupabaseProgramRepository', () => {
   });
 
   describe('save', () => {
-    it('upserts with both id and ProgramMapper fields', async () => {
+    it('updates the existing row by id with the ProgramMapper fields', async () => {
       const builder = makeBuilder({ data: null, error: null });
       const client = makeClient(builder);
       const repo = new SupabaseProgramRepository(client);
@@ -632,9 +632,13 @@ describe('SupabaseProgramRepository', () => {
         status: 'active',
       });
 
-      expect(builder.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'p1', trainer_id: 't1', total_sessions: 20 }),
+      expect(builder.update).toHaveBeenCalledWith(
+        expect.objectContaining({ trainer_id: 't1', total_sessions: 20 }),
       );
+      expect(builder.update).toHaveBeenCalledWith(
+        expect.not.objectContaining({ id: expect.anything() }),
+      );
+      expect(builder.eq).toHaveBeenCalledWith('id', 'p1');
     });
   });
 

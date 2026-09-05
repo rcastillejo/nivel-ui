@@ -77,6 +77,23 @@ Feature: Row Level Security en bookings
     Then recibe un error de permisos (RLS denied)
 ```
 
+### Escenario 5: Cliente consume una sesión de su propio programa al reservar
+
+```gherkin
+  Scenario: Cliente confirma una reserva y consume una sesión de su programa activo
+    Given el cliente "alice@gym.com" está autenticado con rol "client"
+    And alice tiene un programa activo con used_sessions = 2 de total_sessions = 10
+    When alice confirma una reserva
+    Then el sistema incrementa used_sessions a 3 en el programa de alice
+    And RLS lo permite porque alice solo modifica used_sessions (+1) en su propio programa
+
+  Scenario: Cliente no puede modificar otros campos de su programa
+    Given el cliente "alice@gym.com" está autenticado con rol "client"
+    And alice tiene un programa activo
+    When alice intenta actualizar total_sessions o status directamente
+    Then RLS rechaza la operación (solo used_sessions += 1 está permitido para un cliente)
+```
+
 ## Contratos TypeScript
 
 > Estos tipos deben coincidir exactamente con las columnas de Supabase para garantizar type safety.
@@ -137,6 +154,7 @@ export interface UserProfileRow {
 - [ ] RLS activado: un entrenador autenticado SÍ puede leer todas las reservas
 - [ ] RLS activado: un entrenador SÍ puede insertar/actualizar sus propios `trainer_schedules`
 - [ ] RLS activado: un usuario anónimo puede leer `trainers` y `trainer_schedules` pero no insertar en `bookings`
+- [ ] RLS activado: un cliente puede incrementar `used_sessions` (+1) de su propio programa activo al reservar, pero no puede modificar ningún otro campo de `programs`
 - [ ] Las migraciones se pueden aplicar desde cero con `supabase db reset`
 - [ ] Los índices de performance existen en `bookings(date, trainer_id)` y `trainer_schedules(trainer_id, date)`
 
