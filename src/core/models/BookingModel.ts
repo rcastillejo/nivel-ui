@@ -1,7 +1,7 @@
 import { Booking, Trainer, ZoneType, ZONE_CONFIG } from '../types';
 import { BookingCapacityError, BookingValidationError } from '../types/errors';
 import { IDataService } from '../repositories';
-import { isSameDay } from 'date-fns';
+import { isSameDay, startOfDay } from 'date-fns';
 
 export class BookingModel {
   constructor(private dataService: IDataService) {}
@@ -100,7 +100,7 @@ export class BookingModel {
       throw new BookingValidationError('La duración máxima es 180 minutos');
     }
 
-    if (booking.date < new Date()) {
+    if (startOfDay(booking.date) < startOfDay(new Date())) {
       throw new BookingValidationError('No se pueden hacer reservas en el pasado');
     }
   }

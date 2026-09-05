@@ -22,8 +22,7 @@ export default function CalendarStep({ selectedDate, onDateSelect }: CalendarSte
   };
 
   const today = new Date();
-  const minDate = new Date();
-  minDate.setDate(minDate.getDate() + 2); // Minimum 2 days from today
+  const minDate = new Date(); // Allow booking from today (same-day bookings)
   const maxDate = new Date();
   maxDate.setMonth(maxDate.getMonth() + 2); // Allow booking up to 2 months in advance
 
@@ -32,8 +31,8 @@ export default function CalendarStep({ selectedDate, onDateSelect }: CalendarSte
       <h2 className="text-2xl font-bold text-gray-900 mb-2">
         ¿Cuándo quieres entrenar?
       </h2>
-      <p className="text-sm text-orange-600 mb-6">
-        Reservas con mínimo 2 días de anticipación
+      <p className="text-sm text-gray-500 mb-6">
+        Puedes reservar hasta con 2 meses de anticipación
       </p>
 
       <div className="flex justify-center mb-8">

@@ -141,6 +141,19 @@ describe('BookingModel', () => {
       await expect(bookingModel.createBooking(invalidBooking)).rejects.toThrow(BookingValidationError)
     })
 
+    it('should allow a same-day booking even when the date has no time-of-day set', async () => {
+      const todayAtMidnight = new Date()
+      todayAtMidnight.setHours(0, 0, 0, 0)
+      const sameDayBooking = { ...validBookingData, date: todayAtMidnight }
+
+      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
+      mockTrainerRepository.getSchedule.mockResolvedValue(null)
+      mockBookingRepository.getByDate.mockResolvedValue([])
+      mockBookingRepository.create.mockResolvedValue({ ...sameDayBooking, id: 'generated-uuid' })
+
+      await expect(bookingModel.createBooking(sameDayBooking)).resolves.not.toThrow()
+    })
+
     it('should throw error for unavailable time slot', async () => {
       mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
       mockTrainerRepository.getSchedule.mockResolvedValue(null)

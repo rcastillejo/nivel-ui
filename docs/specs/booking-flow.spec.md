@@ -78,7 +78,31 @@ Feature: Reserva de Sesión de Entrenamiento
     And el cliente ve el mensaje "El Gabinete está lleno (1/1)"
 ```
 
-### Escenario 5: Entrenador puede reservar para un cliente
+### Escenario 5b: Cliente reserva el mismo día
+
+```gherkin
+  Scenario: Cliente reserva una sesión para el día de hoy
+    Given hoy es "2026-04-15"
+    And el entrenador "Carlos" tiene disponibilidad hoy a las "18:00"
+    And el Gym tiene capacidad disponible en ese horario
+    When el cliente selecciona la fecha de hoy
+    And selecciona al entrenador "Carlos" en el horario "18:00" y zona "Gym"
+    And confirma la reserva
+    Then la reserva queda con estado "confirmed"
+    And el sistema NO rechaza la reserva por ser "el mismo día"
+```
+
+### Escenario 5c: Reserva rechazada por fecha pasada
+
+```gherkin
+  Scenario: Fecha anterior a hoy — reserva rechazada
+    Given hoy es "2026-04-15"
+    When el cliente intenta reservar para el "2026-04-14"
+    Then el sistema lanza BookingValidationError "No se pueden hacer reservas en el pasado"
+    And no se crea ninguna reserva
+```
+
+### Escenario 6: Entrenador puede reservar para un cliente
 
 ```gherkin
   Scenario: Entrenador crea reserva en nombre de un cliente
@@ -143,6 +167,7 @@ export class BookingCapacityError extends Error {
 - [x] El cliente puede elegir zona: Gym o Gabinete
 - [x] Al confirmar, la reserva se persiste con estado `confirmed`
 - [x] Si el aforo está lleno, se muestra un error claro y no se crea la reserva
+- [x] El cliente puede reservar para el mismo día (no hay mínimo de anticipación)
 - [x] El entrenador puede crear una reserva en nombre de un cliente
 
 ### No Funcionales
