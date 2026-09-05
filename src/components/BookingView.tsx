@@ -59,7 +59,7 @@ const BookingView = observer(() => {
   }, [vm, programVM]);
 
   const handleDateSelect = (date: Date) => {
-    vm.setDate(date);
+    void vm.setDate(date);
   };
 
   const handleTimeSelect = (trainerName: string, time: string) => {

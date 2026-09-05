@@ -36,6 +36,7 @@ describe('BookingViewModel', () => {
       mockProgramModel as unknown as ProgramModel
     );
     vi.clearAllMocks();
+    mockBookingModel.getBookingsByDate.mockResolvedValue([]);
   });
 
   describe('createBooking', () => {
@@ -43,7 +44,7 @@ describe('BookingViewModel', () => {
       mockBookingModel.getTrainers.mockResolvedValue([mockTrainer]);
       await vm.loadTrainers();
 
-      vm.setDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
+      await vm.setDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
       vm.setTrainer('trainer1');
 
       mockBookingModel.getAvailableSlots.mockResolvedValue(['09:00', '10:00']);
@@ -165,6 +166,71 @@ describe('BookingViewModel', () => {
 
       expect(success).toBe(true);
       expect(mockBookingModel.createBooking).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('setDate — aforo actualizado para el cliente (issue #176)', () => {
+    it('carga las reservas reales de la fecha, sin esperar a que el cliente cree la suya', async () => {
+      mockBookingModel.getTrainers.mockResolvedValue([mockTrainer]);
+      await vm.loadTrainers();
+      mockBookingModel.getAvailableSlots.mockResolvedValue(['09:00']);
+
+      const date = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const existingBooking: Booking = {
+        id: 'other-client-booking',
+        clientId: 'other-client',
+        trainerId: 'trainer1',
+        trainerName: 'Entrenador John',
+        date,
+        time: '09:00',
+        duration: 60,
+        zone: 'gym',
+        status: 'confirmed'
+      };
+      mockBookingModel.getBookingsByDate.mockResolvedValue([existingBooking]);
+
+      expect(vm.bookings).toEqual([]);
+
+      await vm.setDate(date);
+
+      expect(mockBookingModel.getBookingsByDate).toHaveBeenCalledWith(date);
+      expect(vm.bookings).toEqual([existingBooking]);
+    });
+
+    it('descarta una respuesta de reservas desactualizada si la fecha cambió mientras se cargaba', async () => {
+      const staleDate = new Date(2026, 0, 10);
+      const freshDate = new Date(2026, 0, 11);
+      const staleBooking: Booking = {
+        id: 'stale',
+        clientId: 'c1',
+        trainerId: 'trainer1',
+        trainerName: 'Entrenador John',
+        date: staleDate,
+        time: '09:00',
+        duration: 60,
+        zone: 'gym',
+        status: 'confirmed'
+      };
+      const freshBooking: Booking = { ...staleBooking, id: 'fresh', date: freshDate };
+
+      mockBookingModel.getAvailableSlots.mockResolvedValue([]);
+
+      let resolveStale!: (bookings: Booking[]) => void;
+      mockBookingModel.getBookingsByDate.mockImplementationOnce(
+        () => new Promise<Booking[]>((resolve) => { resolveStale = resolve; })
+      );
+
+      const stalePromise = vm.setDate(staleDate);
+
+      // El cliente cambia de fecha antes de que responda la primera consulta
+      mockBookingModel.getBookingsByDate.mockResolvedValue([freshBooking]);
+      await vm.setDate(freshDate);
+
+      // Ahora sí responde la consulta vieja, ya obsoleta
+      resolveStale([staleBooking]);
+      await stalePromise;
+
+      expect(vm.bookings).toEqual([freshBooking]);
     });
   });
 

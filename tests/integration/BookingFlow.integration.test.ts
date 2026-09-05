@@ -353,4 +353,84 @@ describe('BookingViewModel ↔ BookingModel ↔ LocalStorageDataService', () => 
 
     expect(vm.bookings.length).toBeGreaterThan(before);
   });
+
+  // Issue #176: el aforo mostrado al cliente por horario quedaba desactualizado
+  // porque `vm.bookings` solo se poblaba tras la propia reserva del cliente.
+  describe('aforo actualizado para el cliente al ver un horario (issue #176)', () => {
+    it('un cliente nuevo ve, sin reservar nada, las reservas ya confirmadas por otro cliente para esa fecha', async () => {
+      await vm.loadTrainers();
+      const trainer = vm.trainers[0];
+      const date = tomorrow();
+
+      const slots = await model.getAvailableSlots(trainer.id, date);
+      if (slots.length === 0) return;
+      const time = slots[0];
+
+      // Cliente A reserva un turno de gym directamente contra el modelo real
+      const bookingClientA = await model.createBooking({
+        clientId: 'clientA',
+        trainerId: trainer.id,
+        trainerName: `Entrenador ${trainer.name}`,
+        date,
+        time,
+        duration: 60,
+        zone: 'gym',
+        status: 'confirmed',
+      });
+
+      // Cliente B (esta instancia de BookingViewModel) abre el flujo de reserva
+      // y selecciona la misma fecha — nunca creó una reserva propia todavía.
+      await vm.setDate(date);
+
+      // El aforo visible para el cliente B debe reflejar la reserva de A
+      expect(vm.bookings.some(b => b.id === bookingClientA.id)).toBe(true);
+
+      const gymBookingsForSlot = vm.bookings.filter(
+        b => b.trainerId === trainer.id &&
+             b.time === time &&
+             b.zone === 'gym' &&
+             b.status === 'confirmed'
+      );
+      expect(gymBookingsForSlot.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('el aforo del cliente se actualiza al cambiar de fecha sin necesidad de refrescar manualmente', async () => {
+      await vm.loadTrainers();
+      const trainer = vm.trainers[0];
+      const date1 = tomorrow();
+      const date2 = new Date(date1);
+      date2.setDate(date2.getDate() + 1);
+      while (date2.getDay() === 0 || date2.getDay() === 6) {
+        date2.setDate(date2.getDate() + 1);
+      }
+
+      await vm.setDate(date1);
+
+      const slots = await model.getAvailableSlots(trainer.id, date2);
+      if (slots.length === 0) return;
+
+      // Otro cliente reserva en date2 mientras el cliente actual seguía en date1
+      const bookingClientA = await model.createBooking({
+        clientId: 'clientA',
+        trainerId: trainer.id,
+        trainerName: `Entrenador ${trainer.name}`,
+        date: date2,
+        time: slots[0],
+        duration: 60,
+        zone: 'gabinete',
+        status: 'confirmed',
+      });
+
+      await vm.setDate(date2);
+
+      expect(vm.bookings.some(b => b.id === bookingClientA.id)).toBe(true);
+      expect(vm.bookings.every(b => isSameCalendarDay(b.date, date2))).toBe(true);
+    });
+  });
 });
+
+function isSameCalendarDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+}

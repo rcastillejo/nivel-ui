@@ -223,9 +223,12 @@ export class BookingViewModel {
 
   async refreshBookings(): Promise<void> {
     if (!this.selectedDate) return;
+    const requestedDate = this.selectedDate;
     try {
-      const bookings = await this.model.getBookingsByDate(this.selectedDate);
+      const bookings = await this.model.getBookingsByDate(requestedDate);
       runInAction(() => {
+        // Si la fecha cambió mientras se cargaba, descartar esta respuesta desactualizada
+        if (this.selectedDate !== requestedDate) return;
         this.bookings = bookings;
         this.clearCapacityCache();
       });
@@ -251,15 +254,22 @@ export class BookingViewModel {
     this.resetForm();
   }
 
-  setDate(date: Date) {
+  async setDate(date: Date): Promise<void> {
     this.selectedDate = date;
     this.selectedTime = null; // Reset time when date changes
     this.clearCapacityCache(); // Limpiar cache al cambiar fecha
-    this.loadAvailableSlotsForDate(date);
+
+    const tasks: Promise<void>[] = [
+      this.loadAvailableSlotsForDate(date),
+      // Cargar reservas reales de la fecha para que el aforo del cliente no quede en 0/10 (issue #176)
+      this.refreshBookings(),
+    ];
 
     if (this.selectedTrainer) {
-      this.loadAvailableSlots(this.selectedTrainer.id, date);
+      tasks.push(this.loadAvailableSlots(this.selectedTrainer.id, date));
     }
+
+    await Promise.all(tasks);
   }
 
   setTrainer(trainerId: string) {
