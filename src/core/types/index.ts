@@ -73,6 +73,11 @@ export interface Booking {
   status: 'confirmed' | 'cancelled' | 'pending';
 }
 
+export interface ClientAppointments {
+  upcoming: Booking[]; // no canceladas, aún no terminadas; orden ascendente
+  past: Booking[]; // terminadas o canceladas; orden descendente
+}
+
 export interface TrainerSchedule {
   trainerId: string;
   trainerName: string;

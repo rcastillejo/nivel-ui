@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import BookingView from '@/components/BookingView';
 import ClientProgramView from '@/components/ClientProgramView';
 import { useAuthViewModel } from '@/core/providers/AuthProvider';
@@ -23,6 +24,13 @@ export default function ClientPage() {
             {authVM.currentUser && (
               <span className="text-sm text-gray-500">{authVM.currentUser.email}</span>
             )}
+            <Link
+              href="/client/citas"
+              data-testid="link-my-appointments"
+              className="text-sm font-medium text-blue-600 hover:text-blue-800"
+            >
+              Mis citas
+            </Link>
             <button
               onClick={() => authVM.signOut()}
               className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"

@@ -1,7 +1,7 @@
-import { Booking, Trainer, ZoneType, ZONE_CONFIG } from '../types';
+import { Booking, ClientAppointments, Trainer, ZoneType, ZONE_CONFIG } from '../types';
 import { BookingCapacityError, BookingValidationError } from '../types/errors';
 import { IDataService } from '../repositories';
-import { isSameDay, startOfDay } from 'date-fns';
+import { addMinutes, isSameDay, startOfDay } from 'date-fns';
 
 export class BookingModel {
   constructor(private dataService: IDataService) {}
@@ -33,6 +33,30 @@ export class BookingModel {
 
   async getBookingsByDate(date: Date): Promise<Booking[]> {
     return this.dataService.bookings.getByDate(date);
+  }
+
+  async getClientAppointments(clientId: string, now: Date): Promise<ClientAppointments> {
+    if (!clientId.trim()) {
+      throw new BookingValidationError('El cliente es requerido');
+    }
+
+    const bookings = await this.dataService.bookings.getByClient(clientId);
+    const upcoming: Booking[] = [];
+    const past: Booking[] = [];
+
+    for (const booking of bookings) {
+      const isFinished = this.getBookingEnd(booking) <= now;
+      if (booking.status === 'cancelled' || isFinished) {
+        past.push(booking);
+      } else {
+        upcoming.push(booking);
+      }
+    }
+
+    upcoming.sort((a, b) => this.getBookingStart(a).getTime() - this.getBookingStart(b).getTime());
+    past.sort((a, b) => this.getBookingStart(b).getTime() - this.getBookingStart(a).getTime());
+
+    return { upcoming, past };
   }
 
   async getAvailableSlots(trainerId: string, date: Date): Promise<string[]> {
@@ -85,6 +109,17 @@ export class BookingModel {
       );
       return bookingsForSlot.length < maxCapacity; // Disponible si hay menos de 10 reservas
     });
+  }
+
+  private getBookingStart(booking: Booking): Date {
+    const [hours, minutes] = booking.time.split(':').map(Number);
+    const start = startOfDay(booking.date);
+    start.setHours(hours, minutes, 0, 0);
+    return start;
+  }
+
+  private getBookingEnd(booking: Booking): Date {
+    return addMinutes(this.getBookingStart(booking), booking.duration);
   }
 
   private validateBooking(booking: Omit<Booking, 'id'>): void {

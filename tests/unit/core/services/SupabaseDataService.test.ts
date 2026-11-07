@@ -177,6 +177,28 @@ describe('SupabaseBookingRepository', () => {
     });
   });
 
+  describe('getByClient', () => {
+    it('filters by client_id and maps rows to bookings', async () => {
+      const builder = makeBuilder({ data: [bookingRow], error: null });
+      const client = makeClient(builder);
+      const repo = new SupabaseBookingRepository(client);
+
+      const result = await repo.getByClient('c1');
+
+      expect(builder.eq).toHaveBeenCalledWith('client_id', 'c1');
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('b1');
+    });
+
+    it('throws when supabase returns an error', async () => {
+      const builder = makeBuilder({ data: null, error: { message: 'boom' } });
+      const client = makeClient(builder);
+      const repo = new SupabaseBookingRepository(client);
+
+      await expect(repo.getByClient('c1')).rejects.toThrow('boom');
+    });
+  });
+
   describe('create', () => {
     it('inserts without id, selects the created row, and returns a mapped Booking', async () => {
       const builder = makeBuilder({ data: bookingRow, error: null });

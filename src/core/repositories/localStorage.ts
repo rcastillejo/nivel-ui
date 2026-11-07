@@ -308,6 +308,11 @@ class LocalStorageBookingRepository implements IBookingRepository {
     return bookings.filter(b => b.trainerId === trainerId);
   }
 
+  async getByClient(clientId: string): Promise<Booking[]> {
+    const bookings = await this.getAll();
+    return bookings.filter(b => b.clientId === clientId);
+  }
+
   async create(booking: Omit<Booking, 'id'>): Promise<Booking> {
     const newBooking: Booking = { ...booking, id: crypto.randomUUID() };
     await this.save(newBooking);
