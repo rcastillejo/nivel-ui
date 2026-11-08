@@ -40,7 +40,7 @@ We'll know we're right when **TBD — métrica y meta pendientes de definir** (c
 | # | Milestone | Outcome | Status | Plan |
 |---|---|---|---|---|
 | 1 | Ver mis citas | El cliente consulta sus citas próximas y su historial | complete | [client-appointments.spec.md](../../docs/specs/client-appointments.spec.md) |
-| 2 | Cancelar cita | El cliente cancela una cita futura respetando la anticipación mínima | pending | — |
+| 2 | Cancelar cita | El cliente cancela una cita futura respetando la anticipación mínima | in-progress | [mis-citas-cliente-cancelar-cita.plan.md](../plans/mis-citas-cliente-cancelar-cita.plan.md) |
 | 3 | Reprogramar cita | El cliente mueve una cita futura (horario, entrenador, zona) respetando anticipación, aforo y disponibilidad | pending | — |
 
 ## Open Questions
