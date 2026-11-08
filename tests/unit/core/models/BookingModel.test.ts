@@ -19,6 +19,7 @@ const mockBookingRepository = {
   getById: vi.fn(),
   getByDate: vi.fn(),
   getByTrainer: vi.fn(),
+  getByClient: vi.fn(),
   create: vi.fn(),
   save: vi.fn(),
   update: vi.fn(),
@@ -514,6 +515,99 @@ describe('BookingModel', () => {
         gym: 1,
         gabinete: 1
       })
+    })
+  })
+
+  describe('getClientAppointments', () => {
+    const now = new Date(2026, 10, 10, 9, 30) // 10-nov-2026 09:30 local
+
+    const makeBooking = (overrides: Partial<Booking>): Booking => ({
+      id: 'b',
+      clientId: 'client1',
+      trainerId: 'trainer1',
+      trainerName: 'Entrenador John',
+      date: new Date(2026, 10, 10),
+      time: '09:00',
+      duration: 60,
+      zone: 'gym',
+      status: 'confirmed',
+      ...overrides
+    })
+
+    it('rejects an empty client id with a domain error', async () => {
+      await expect(bookingModel.getClientAppointments('  ', now)).rejects.toThrow(
+        BookingValidationError
+      )
+      expect(mockBookingRepository.getByClient).not.toHaveBeenCalled()
+    })
+
+    it('queries bookings only for the given client', async () => {
+      mockBookingRepository.getByClient.mockResolvedValue([])
+
+      await bookingModel.getClientAppointments('client1', now)
+
+      expect(mockBookingRepository.getByClient).toHaveBeenCalledWith('client1')
+    })
+
+    it('returns empty lists when the client has no bookings', async () => {
+      mockBookingRepository.getByClient.mockResolvedValue([])
+
+      const result = await bookingModel.getClientAppointments('client1', now)
+
+      expect(result).toEqual({ upcoming: [], past: [] })
+    })
+
+    it('keeps an in-progress booking as upcoming', async () => {
+      const inProgress = makeBooking({ id: 'in-progress', time: '09:00', duration: 60 })
+      mockBookingRepository.getByClient.mockResolvedValue([inProgress])
+
+      const result = await bookingModel.getClientAppointments('client1', now)
+
+      expect(result.upcoming).toEqual([inProgress])
+      expect(result.past).toEqual([])
+    })
+
+    it('moves a booking to history exactly when it ends', async () => {
+      const endsNow = makeBooking({ id: 'ends-now', time: '08:30', duration: 60 })
+      const endsLater = makeBooking({ id: 'ends-later', time: '08:31', duration: 60 })
+      mockBookingRepository.getByClient.mockResolvedValue([endsNow, endsLater])
+
+      const result = await bookingModel.getClientAppointments('client1', now)
+
+      expect(result.past).toEqual([endsNow])
+      expect(result.upcoming).toEqual([endsLater])
+    })
+
+    it('sends cancelled bookings to history even if they are in the future', async () => {
+      const cancelledFuture = makeBooking({
+        id: 'cancelled-future',
+        date: new Date(2026, 10, 20),
+        status: 'cancelled'
+      })
+      mockBookingRepository.getByClient.mockResolvedValue([cancelledFuture])
+
+      const result = await bookingModel.getClientAppointments('client1', now)
+
+      expect(result.upcoming).toEqual([])
+      expect(result.past).toEqual([cancelledFuture])
+    })
+
+    it('sorts upcoming ascending and history descending', async () => {
+      const laterUpcoming = makeBooking({ id: 'later', date: new Date(2026, 10, 12), time: '10:00' })
+      const soonerUpcoming = makeBooking({ id: 'sooner', date: new Date(2026, 10, 11), time: '18:00' })
+      const olderPast = makeBooking({ id: 'older', date: new Date(2026, 10, 1), time: '09:00' })
+      const newerPast = makeBooking({ id: 'newer', date: new Date(2026, 10, 5), time: '09:00' })
+      mockBookingRepository.getByClient.mockResolvedValue([
+        laterUpcoming,
+        olderPast,
+        soonerUpcoming,
+        newerPast
+      ])
+
+      const result = await bookingModel.getClientAppointments('client1', now)
+
+      expect(result.upcoming.map(b => b.id)).toEqual(['sooner', 'later'])
+      expect(result.past.map(b => b.id)).toEqual(['newer', 'older'])
     })
   })
 })

@@ -10,6 +10,7 @@ import { TrainerViewModel } from '../view-models/TrainerViewModel';
 import { TrainerModel } from '../models/TrainerModel';
 import { ClientViewModel } from '../view-models/ClientViewModel';
 import { ClientModel } from '../models/ClientModel';
+import { ClientAppointmentsViewModel } from '../view-models/ClientAppointmentsViewModel';
 import { useDataService } from './DataProvider';
 import { useAuthViewModel } from './AuthProvider';
 
@@ -18,6 +19,7 @@ interface ViewModelContextType {
   programVM: ProgramViewModel;
   trainerVM: TrainerViewModel;
   clientVM: ClientViewModel;
+  clientAppointmentsVM: ClientAppointmentsViewModel;
 }
 
 const ViewModelContext = createContext<ViewModelContextType | null>(null);
@@ -40,8 +42,9 @@ export const ViewModelProvider = observer(function ViewModelProvider({ children 
     const programVM = new ProgramViewModel(programModel);
     const trainerVM = new TrainerViewModel(bookingModel, trainerModel);
     const clientVM = new ClientViewModel(clientModel);
+    const clientAppointmentsVM = new ClientAppointmentsViewModel(bookingModel);
 
-    return { bookingVM, programVM, trainerVM, clientVM };
+    return { bookingVM, programVM, trainerVM, clientVM, clientAppointmentsVM };
   }, [service]);
 
   useEffect(() => {
@@ -85,4 +88,9 @@ export function useTrainerViewModel() {
 export function useClientViewModel() {
   const { clientVM } = useViewModels();
   return clientVM;
+}
+
+export function useClientAppointmentsViewModel(): ClientAppointmentsViewModel {
+  const { clientAppointmentsVM } = useViewModels();
+  return clientAppointmentsVM;
 }

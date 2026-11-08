@@ -429,6 +429,55 @@ describe('BookingViewModel ↔ BookingModel ↔ LocalStorageDataService', () => 
   });
 });
 
+describe('BookingModel.getClientAppointments ↔ LocalStorageDataService', () => {
+  const now = new Date(2026, 10, 10, 9, 30);
+
+  it('returns only the bookings of the requested client', async () => {
+    await service.bookings.create(
+      validBookingData({ clientId: 'client-a', date: new Date(2026, 10, 12), time: '09:00' })
+    );
+    await service.bookings.create(
+      validBookingData({ clientId: 'client-b', date: new Date(2026, 10, 12), time: '10:00' })
+    );
+
+    const forA = await model.getClientAppointments('client-a', now);
+    const forB = await model.getClientAppointments('client-b', now);
+
+    expect(forA.upcoming.map(b => b.clientId)).toEqual(['client-a']);
+    expect(forB.upcoming.map(b => b.clientId)).toEqual(['client-b']);
+  });
+
+  it('splits persisted bookings into upcoming and history, including cancelled ones', async () => {
+    const past = await service.bookings.create(
+      validBookingData({ clientId: 'client-a', date: new Date(2026, 10, 1), time: '09:00' })
+    );
+    const upcoming = await service.bookings.create(
+      validBookingData({ clientId: 'client-a', date: new Date(2026, 10, 15), time: '09:00' })
+    );
+    const cancelled = await service.bookings.create(
+      validBookingData({
+        clientId: 'client-a',
+        date: new Date(2026, 10, 20),
+        time: '09:00',
+        status: 'cancelled',
+      })
+    );
+
+    const result = await model.getClientAppointments('client-a', now);
+
+    expect(result.upcoming.map(b => b.id)).toEqual([upcoming.id]);
+    expect(result.past.map(b => b.id)).toEqual([cancelled.id, past.id]);
+  });
+
+  it('reflects a booking created through the model', async () => {
+    const created = await model.createBooking(validBookingData({ clientId: 'client-a' }));
+
+    const result = await model.getClientAppointments('client-a', new Date());
+
+    expect(result.upcoming.map(b => b.id)).toContain(created.id);
+  });
+});
+
 function isSameCalendarDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&

@@ -17,6 +17,7 @@ Cada spec describe:
 | [supabase-data-service.spec.md](supabase-data-service.spec.md) | SupabaseDataService — Capa de Persistencia | draft | TBD |
 | [auth.spec.md](auth.spec.md) | Autenticación de Usuarios con Supabase Auth | draft | TBD |
 | [vercel-deployment.spec.md](vercel-deployment.spec.md) | Configurar Despliegue en Vercel | draft | TBD |
+| [client-appointments.spec.md](client-appointments.spec.md) | Mis citas — vista de citas del cliente (hito 1) | implemented | TBD |
 
 ## Ciclo de Vida de una Spec
 

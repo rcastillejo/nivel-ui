@@ -222,6 +222,15 @@ export class SupabaseBookingRepository implements IBookingRepository {
     return (data as BookingRow[]).map(BookingMapper.toDomain);
   }
 
+  async getByClient(clientId: string): Promise<Booking[]> {
+    const { data, error } = await this.client
+      .from('bookings')
+      .select('*')
+      .eq('client_id', clientId);
+    if (error) throw new Error(error.message);
+    return (data as BookingRow[]).map(BookingMapper.toDomain);
+  }
+
   async create(booking: Omit<Booking, 'id'>): Promise<Booking> {
     const { data, error } = await this.client
       .from('bookings')

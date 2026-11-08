@@ -23,6 +23,7 @@ export interface IBookingRepository {
   getById(id: string): Promise<Booking | null>;
   getByDate(date: Date): Promise<Booking[]>;
   getByTrainer(trainerId: string): Promise<Booking[]>;
+  getByClient(clientId: string): Promise<Booking[]>;
   create(booking: Omit<Booking, 'id'>): Promise<Booking>;
   save(booking: Booking): Promise<void>;
   update(id: string, booking: Partial<Booking>): Promise<void>;

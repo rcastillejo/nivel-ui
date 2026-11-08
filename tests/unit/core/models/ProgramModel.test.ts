@@ -42,6 +42,7 @@ const mockDataService: IDataService = {
     getById: vi.fn(),
     getByDate: vi.fn(),
     getByTrainer: vi.fn(),
+    getByClient: vi.fn(),
     create: vi.fn(),
     save: vi.fn(),
     update: vi.fn(),
