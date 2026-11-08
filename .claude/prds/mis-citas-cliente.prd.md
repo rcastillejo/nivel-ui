@@ -27,12 +27,13 @@ We'll know we're right when **TBD — métrica y meta pendientes de definir** (c
 - El cliente cancela una cita futura.
 - El cliente reprograma una cita futura: puede cambiar horario, entrenador y zona.
 - Reglas de anticipación mínima para cancelar y reprogramar: 1 h en zona gym, 24 h en zona gabinete.
-- La reprogramación respeta el aforo y la disponibilidad de entrenadores vigentes.
+- La reprogramación respeta el aforo y la disponibilidad de entrenadores **con las mismas validaciones que la reserva actual** (sin cambiar la regla de aforo; ver [#182](https://github.com/rcastillejo/nivel-ui/issues/182)).
 
 **Out of scope**
 - Notificaciones por email o WhatsApp — diferido.
 - Panel de entrenador o administrador para gestionar citas de clientes — diferido.
 - Pagos o reembolsos — fuera de este producto por ahora.
+- Corregir la regla de aforo y garantizarla (junto con la anticipación mínima) en el servidor — diferido: [#182](https://github.com/rcastillejo/nivel-ui/issues/182) (inconsistencia y conteo limitado por RLS) y [#178](https://github.com/rcastillejo/nivel-ui/issues/178) (validación atómica en Supabase).
 - Citas pasadas: no se pueden cancelar ni reprogramar, solo ver.
 
 ## Delivery Milestones
@@ -43,8 +44,8 @@ We'll know we're right when **TBD — métrica y meta pendientes de definir** (c
 | 3 | Reprogramar cita | El cliente mueve una cita futura (horario, entrenador, zona) respetando anticipación, aforo y disponibilidad | pending | — |
 
 ## Open Questions
-- [ ] ¿El aforo y la anticipación deben garantizarse del lado servidor? Si sí, el alcance crece, porque hoy el aforo no se controla de forma fiable para el cliente.
-- [ ] ¿El aforo del gym es global (10 por hueco) o por entrenador? El código actual dice ambas cosas.
+- [x] ¿El aforo y la anticipación deben garantizarse del lado servidor? **Decisión: no en este alcance.** Se mantiene el aforo actual (validación en el cliente, igual que reservar) y la garantía en servidor queda en [#182](https://github.com/rcastillejo/nivel-ui/issues/182) y [#178](https://github.com/rcastillejo/nivel-ui/issues/178). La anticipación de 1 h / 24 h también queda solo en el cliente y se puede saltar llamando a la API directamente.
+- [x] ¿El aforo del gym es global (10 por hueco) o por entrenador? **Por entrenador**, según `docs/specs/booking-flow.spec.md` y `ZONE_CONFIG`. La inconsistencia de `BookingModel.validateCapacity` (cuenta global) se corrige en [#182](https://github.com/rcastillejo/nivel-ui/issues/182).
 - [ ] ¿Reprogramar modifica la misma reserva o crea una nueva? ¿Debe quedar rastro de la cita original?
 - [ ] ¿La anticipación se mide contra la cita original, la nueva o ambas? Al pasar de gym a gabinete, ¿aplican 24 h al nuevo hueco?
 - [ ] ¿En qué zona horaria se evalúan los cortes y la división entre próximas y pasadas? ¿Una cita es "pasada" al empezar o al terminar?
@@ -61,7 +62,7 @@ We'll know we're right when **TBD — métrica y meta pendientes de definir** (c
 ## Risks
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| Sobreventa de cupos al reprogramar: hoy el cliente solo ve sus propias reservas, así que el aforo no se valida bien (crítico en gabinete, capacidad 1) | High | High | Resolver la validación de aforo antes o junto con reprogramar; decidir en `/plan` |
+| Sobreventa de cupos al reprogramar: hoy el cliente solo ve sus propias reservas, así que el aforo no se valida bien (crítico en gabinete, capacidad 1) | High | High | Se acepta el aforo actual en este alcance; seguimiento en [#182](https://github.com/rcastillejo/nivel-ui/issues/182) y [#178](https://github.com/rcastillejo/nivel-ui/issues/178). No hay reservas de gabinete en producción todavía |
 | Dos clientes toman el último cupo a la vez (sin garantías de concurrencia) | Medium | High | Garantía de consistencia en el servidor |
 | La regla de 1 h / 24 h solo se aplica en el cliente y se puede saltar | High | Medium | Aplicar la regla donde no se pueda evadir |
 | Zona horaria inconsistente en los cortes y en próximas/pasadas | Medium | Medium | Definir zona horaria de referencia del gimnasio |
