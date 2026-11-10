@@ -7,6 +7,7 @@ import {
   SupabaseTrainerRepository,
   SupabaseDataService,
 } from '@/core/services/SupabaseDataService';
+import { BookingDuplicateError } from '@/core/types/errors';
 import { BookingRow, ProgramRow, TrainerRow, TrainerScheduleRow, UserProfileRow } from '@/core/types/supabase';
 
 // ---------------------------------------------------------------------------
@@ -19,7 +20,7 @@ import { BookingRow, ProgramRow, TrainerRow, TrainerScheduleRow, UserProfileRow 
  * The builder is thenable so `await chain.eq(...)` resolves to `result`.
  * Individual terminal methods (.single, .upsert) can be overridden per test.
  */
-function makeBuilder(result: { data: unknown; error: { message: string } | null }) {
+function makeBuilder(result: { data: unknown; error: { message: string; code?: string } | null }) {
   const builder: Record<string, unknown> = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
@@ -230,6 +231,27 @@ describe('SupabaseBookingRepository', () => {
       expect(builder.single).toHaveBeenCalled();
       expect(result.id).toBe('b1');
       expect(result.clientId).toBe('c1');
+    });
+
+    it('translates a unique violation (23505) into BookingDuplicateError', async () => {
+      const builder = makeBuilder({
+        data: null,
+        error: { code: '23505', message: 'duplicate key value violates unique constraint "uq_bookings_client_slot_confirmed"' },
+      });
+      const repo = new SupabaseBookingRepository(makeClient(builder));
+
+      await expect(
+        repo.create({
+          clientId: 'c1',
+          trainerId: 't1',
+          trainerName: 'Diego',
+          date: new Date('2026-05-11'),
+          time: '09:00',
+          duration: 60,
+          zone: 'gym',
+          status: 'confirmed',
+        }),
+      ).rejects.toThrow(BookingDuplicateError);
     });
 
     it('throws when Supabase returns an error', async () => {
@@ -599,6 +621,50 @@ describe('SupabaseTrainerRepository', () => {
 // ---------------------------------------------------------------------------
 // SupabaseProgramRepository
 // ---------------------------------------------------------------------------
+
+describe('SupabaseProgramRepository atomic session functions', () => {
+  const makeRpcClient = (result: { data: unknown; error: { message: string } | null }) => {
+    const rpc = vi.fn().mockResolvedValue(result);
+    return { client: { rpc } as unknown as SupabaseClient, rpc };
+  };
+
+  it('consumeSession calls consume_program_session and maps the returned row', async () => {
+    const { client, rpc } = makeRpcClient({ data: [{ ...programRow, used_sessions: 8 }], error: null });
+
+    const result = await new SupabaseProgramRepository(client).consumeSession('p1');
+
+    expect(rpc).toHaveBeenCalledWith('consume_program_session', { p_program_id: 'p1' });
+    expect(result?.id).toBe('p1');
+    expect(result?.usedSessions).toBe(8);
+  });
+
+  it('consumeSession returns null when the function updates no row', async () => {
+    const { client } = makeRpcClient({ data: [], error: null });
+
+    await expect(new SupabaseProgramRepository(client).consumeSession('p1')).resolves.toBeNull();
+  });
+
+  it('restoreSession calls restore_program_session', async () => {
+    const { client, rpc } = makeRpcClient({ data: [{ ...programRow, used_sessions: 2 }], error: null });
+
+    const result = await new SupabaseProgramRepository(client).restoreSession('p1');
+
+    expect(rpc).toHaveBeenCalledWith('restore_program_session', { p_program_id: 'p1' });
+    expect(result?.usedSessions).toBe(2);
+  });
+
+  it('restoreSession returns null when the function updates no row', async () => {
+    const { client } = makeRpcClient({ data: [], error: null });
+
+    await expect(new SupabaseProgramRepository(client).restoreSession('p1')).resolves.toBeNull();
+  });
+
+  it('throws when the function call fails', async () => {
+    const { client } = makeRpcClient({ data: null, error: { message: 'rpc failed' } });
+
+    await expect(new SupabaseProgramRepository(client).consumeSession('p1')).rejects.toThrow('rpc failed');
+  });
+});
 
 describe('SupabaseProgramRepository', () => {
   describe('getAll', () => {

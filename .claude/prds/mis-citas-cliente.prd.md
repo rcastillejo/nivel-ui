@@ -53,7 +53,8 @@ We'll know we're right when **TBD — métrica y meta pendientes de definir** (c
 - [ ] ¿Se puede reprogramar a otra fecha o solo a otro horario del mismo día? ¿Hay límite de reprogramaciones por cita?
 - [ ] ¿El historial muestra las citas canceladas? ¿Hace falta distinguir "completada" o "no asistió"?
 - [ ] ¿Cómo se entera el entrenador de una cancelación o reprogramación, si no hay notificaciones en el MVP?
-- [ ] ¿Qué se hace con las reservas existentes (duplicadas, pasadas aún confirmadas, creadas sin control de aforo)?
+- [x] ¿Qué se hace con las reservas duplicadas? **Decisión ([#201](https://github.com/rcastillejo/nivel-ui/issues/201)): un cliente no puede tener dos reservas confirmadas en la misma fecha y hora, con cualquier entrenador y zona.** Se rechaza con `BookingDuplicateError` ("Ya tienes una reserva en ese horario") en `BookingModel` y lo refuerza el índice único parcial `uq_bookings_client_slot_confirmed`. Las reservas canceladas no cuentan. Los duplicados existentes en producción se cancelaron el 2026-11-10 conservando la más antigua de cada horario.
+- [ ] ¿Qué se hace con las reservas pasadas aún confirmadas y con las creadas sin control de aforo?
 - [ ] ¿La feature debe funcionar también en modo local (sin Google ni identidad real) o solo con el backend real?
 - [ ] ¿Cómo ve el cliente una cita cancelada por el entrenador?
 - [ ] Definir métrica y meta de la hipótesis.
@@ -70,7 +71,7 @@ We'll know we're right when **TBD — métrica y meta pendientes de definir** (c
 | Sesiones de programa mal contabilizadas al cancelar o reprogramar | High | Medium | Definir la regla de negocio antes de implementar |
 | Disponibilidad de entrenador por fecha poco fiable: se podrían ofrecer huecos inexistentes | Medium | Medium | Validar disponibilidad en la reprogramación |
 | Entrenador sin aviso de cambios (sin notificaciones ni auditoría) | Medium | Medium | Visibilidad mínima para el entrenador o notificación en un hito posterior |
-| Datos existentes inconsistentes (duplicados, pasadas sin cerrar) | Medium | Low/Medium | Revisar y depurar antes del lanzamiento |
+| Datos existentes inconsistentes (pasadas sin cerrar, creadas sin control de aforo); los duplicados ya se depuraron y la regla los impide ([#201](https://github.com/rcastillejo/nivel-ui/issues/201)) | Medium | Low/Medium | Revisar y depurar antes del lanzamiento |
 | No se puede probar de punta a punta en modo local | High | Low | Probar contra el backend real |
 
 ---

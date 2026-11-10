@@ -6,6 +6,7 @@ import {
   BookingAlreadyCancelledError,
   BookingCancellationNoticeError,
   BookingCapacityError,
+  BookingDuplicateError,
   BookingNotFoundError,
   BookingValidationError,
   InvalidTimeZoneError,
@@ -108,6 +109,17 @@ describe('handleBookingsRequest', () => {
       await call({ body: { ...createBody, clientId: 'victim' } });
 
       expect(commands.createBooking.mock.calls[0][0].clientId).toBe('client1');
+    });
+
+    it('maps duplicate booking errors to 409 keeping the domain message', async () => {
+      commands.createBooking.mockRejectedValue(new BookingDuplicateError());
+
+      const response = await call();
+
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({
+        error: { name: 'BookingDuplicateError', message: 'Ya tienes una reserva en ese horario' }
+      });
     });
 
     it('maps capacity errors to 409', async () => {

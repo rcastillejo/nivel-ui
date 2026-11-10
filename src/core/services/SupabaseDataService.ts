@@ -15,6 +15,7 @@ import {
   TrainerMapper,
   TrainerScheduleMapper,
 } from '../mappers';
+import { BookingDuplicateError } from '../types/errors';
 import { BookingRow, ProgramRow, TrainerRow, TrainerScheduleRow, UserProfileRow } from '../types/supabase';
 
 // Number of rolling calendar weeks written on each saveSchedule() call
@@ -237,6 +238,8 @@ export class SupabaseBookingRepository implements IBookingRepository {
       .insert(BookingMapper.toInsert(booking))
       .select()
       .single();
+    // 23505 = unique_violation: el índice único de reservas confirmadas por cliente y horario
+    if (error?.code === '23505') throw new BookingDuplicateError();
     if (error) throw new Error(error.message);
     return BookingMapper.toDomain(data as BookingRow);
   }
@@ -347,6 +350,23 @@ export class SupabaseProgramRepository implements IProgramRepository {
       .update(ProgramMapper.toInsert(rest))
       .eq('id', id);
     if (error) throw new Error(error.message);
+  }
+
+  async consumeSession(id: string): Promise<Program | null> {
+    return this.callSessionFunction('consume_program_session', id);
+  }
+
+  async restoreSession(id: string): Promise<Program | null> {
+    return this.callSessionFunction('restore_program_session', id);
+  }
+
+  // Las funciones SQL hacen el UPDATE condicional en una sola sentencia, de modo que
+  // peticiones simultáneas no se pisan (a diferencia de leer y luego escribir).
+  private async callSessionFunction(fn: string, id: string): Promise<Program | null> {
+    const { data, error } = await this.client.rpc(fn, { p_program_id: id });
+    if (error) throw new Error(error.message);
+    const rows = data as ProgramRow[] | null;
+    return rows && rows.length > 0 ? ProgramMapper.toDomain(rows[0]) : null;
   }
 
   async delete(id: string): Promise<void> {

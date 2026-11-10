@@ -416,6 +416,32 @@ class LocalStorageProgramRepository implements IProgramRepository {
     localStorage.setItem(this.key, JSON.stringify(programs));
   }
 
+  async consumeSession(id: string): Promise<Program | null> {
+    return this.adjustUsedSessions(id, 1, p => p.usedSessions < p.totalSessions);
+  }
+
+  async restoreSession(id: string): Promise<Program | null> {
+    return this.adjustUsedSessions(id, -1, p => p.status === 'active' && p.usedSessions > 0);
+  }
+
+  // Lectura y escritura sin `await` intermedio: en el navegador es atómico respecto a otras llamadas
+  private adjustUsedSessions(
+    id: string,
+    delta: number,
+    canApply: (program: Program) => boolean
+  ): Program | null {
+    const data = localStorage.getItem(this.key);
+    if (!data) return null;
+    const programs = this.parsePrograms(data);
+    const index = programs.findIndex(p => p.id === id);
+    if (index < 0 || !canApply(programs[index])) return null;
+
+    const updated: Program = { ...programs[index], usedSessions: programs[index].usedSessions + delta };
+    programs[index] = updated;
+    localStorage.setItem(this.key, JSON.stringify(programs));
+    return updated;
+  }
+
   async delete(id: string): Promise<void> {
     const programs = await this.getAll();
     const filtered = programs.filter(p => p.id !== id);

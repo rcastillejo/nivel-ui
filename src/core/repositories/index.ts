@@ -46,6 +46,16 @@ export interface IProgramRepository {
   getByClient(clientId: string): Promise<Program[]>;
   create(program: Omit<Program, 'id'>): Promise<Program>;
   save(program: Program): Promise<void>;
+  /**
+   * Consume una sesión en una sola operación atómica (used_sessions + 1).
+   * Devuelve null si el programa no existe o no le quedan sesiones.
+   */
+  consumeSession(id: string): Promise<Program | null>;
+  /**
+   * Devuelve una sesión en una sola operación atómica (used_sessions - 1).
+   * Devuelve null si el programa no existe, no está activo o no tiene sesiones consumidas.
+   */
+  restoreSession(id: string): Promise<Program | null>;
   delete(id: string): Promise<void>;
 }
 

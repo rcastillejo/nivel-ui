@@ -133,30 +133,23 @@ export class ProgramModel {
   }
 
   async consumeSession(programId: string): Promise<Program | null> {
+    // El descuento es atómico en el repositorio: con peticiones simultáneas no se pierden sesiones
+    const updated = await this.dataService.programs.consumeSession(programId);
+    if (updated) {
+      return updated;
+    }
+
     const program = await this.dataService.programs.getById(programId);
     if (!program) {
       throw new ProgramNotFoundError(programId);
     }
-
-    if (program.usedSessions >= program.totalSessions) {
-      return null; // Sesiones agotadas — no es un error, simplemente no se consume
-    }
-
-    return this.updateUsedSessions(programId, program.usedSessions + 1);
+    return null; // Sesiones agotadas — no es un error, simplemente no se consume
   }
 
   /** Devuelve una sesión consumida (p. ej. al cancelar una cita). No es error si no procede. */
   async restoreSession(programId: string): Promise<Program | null> {
-    const program = await this.dataService.programs.getById(programId);
-    if (!program) {
-      return null; // El programa ya no existe
-    }
-
-    if (program.status !== 'active' || program.usedSessions <= 0) {
-      return null; // Programa vencido o sin sesiones consumidas
-    }
-
-    return this.updateUsedSessions(programId, program.usedSessions - 1);
+    // Atómico en el repositorio; null si el programa no existe, venció o no tiene sesiones consumidas
+    return this.dataService.programs.restoreSession(programId);
   }
 
   async consumeSessionForClient(clientId: string): Promise<Program | null> {
