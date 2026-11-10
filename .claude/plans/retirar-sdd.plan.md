@@ -1,54 +1,51 @@
-# Plan: Retirar SDD — Hito 1 (dejar de crear specs)
+# Plan: Retirar SDD — Hito 1 (dejar de crear specs y quitar workflows de Claude)
 
 **Source PRD**: `.claude/prds/retirar-sdd.prd.md`
 **Selected Milestone**: 1 — Dejar de crear specs
 **Complexity**: Small
 
 ## Summary
-Eliminar de `CLAUDE.md` la sección 11 (flujo SDD) y reemplazarla por una nota breve del flujo vigente (PRD → `/plan` → implementación) que indique explícitamente no crear `docs/specs/*.spec.md`. Los specs y ADR-001 no se tocan (eso es el hito 2).
-
-## Patterns to Mirror
-| Category | Source | Pattern |
-|---|---|---|
-| Naming | `CLAUDE.md` (secciones `## N. Título`) | Secciones numeradas en español, separadas por `---` |
-| Docs | `CLAUDE.md:372-436` | Bloque a reemplazar: `## 11. Flujo de Trabajo SDD` hasta el fin del archivo |
-| Tests | — | No aplica: es un cambio solo de documentación; no existe patrón de tests para docs |
-
-Hallazgo: el PRD mencionaba "el checklist SDD de la sección 9", pero la sección 9 (Checklist General) **no** contiene ítems SDD. El único checklist SDD está dentro de la sección 11, así que se elimina junto con ella.
+Quitar el flujo SDD de `CLAUDE.md` (sección 11) y reemplazarlo por el flujo vigente (PRD → `/plan` → implementación). Además, eliminar los workflows que hacen que Claude comente o revise en GitHub (`claude.yml` y `claude-code-review.yml`), que ya no se necesitan; el segundo además se basa en specs y en archivos que no existen. Specs y ADR-001 no se tocan (hito 2).
 
 ## Files to Change
 | File | Action | Why |
 |---|---|---|
-| `CLAUDE.md` | UPDATE | Reemplazar sección 11 por "Flujo de Trabajo de Features" (PRD → `/plan`) |
-| `.claude/prds/retirar-sdd.prd.md` | UPDATE | Fila del hito 1: `pending` → `in-progress` y enlace al plan; corregir nota sobre la sección 9 |
+| `CLAUDE.md` | UPDATE | Reemplazar sección 11 (líneas 372 al final) por "Flujo de Trabajo de Features" |
+| `.github/workflows/claude-code-review.yml` | DELETE | Revisión automática de PR contra specs; cita `requirements.md`, `design.md` y `tasks.md`, que no existen |
+| `.github/workflows/claude.yml` | DELETE | Responde a menciones `@claude` en issues y PR; ya no se usa |
+| `.claude/prds/retirar-sdd.prd.md` | UPDATE | Incluir los workflows en el alcance y marcar el hito 1 como `complete` al terminar |
+
+Ningún otro archivo del repo referencia esos dos workflows (verificado con búsqueda).
 
 ## Tasks
 ### Task 1: Reemplazar la sección 11 de `CLAUDE.md`
-- **Action**: Borrar desde `## 11. Flujo de Trabajo SDD (Spec Driven Development)` hasta el final y poner `## 11. Flujo de Trabajo de Features` con: (a) flujo `PRD (/plan-prd) → plan (/plan) → implementación → PR`, artefactos en `.claude/prds/` y `.claude/plans/`; (b) regla explícita: no crear `docs/specs/*.spec.md`; (c) los ADR siguen para decisiones arquitectónicas puntuales (ADR-002). Sin mencionar "SDD" ni "Spec Driven" para cumplir la métrica de 0 menciones. Los tests siguen según secciones 5–7.
-- **Mirror**: formato de secciones existentes en `CLAUDE.md`.
-- **Validate**: `grep -nEi "SDD|spec.driven" CLAUDE.md` no devuelve resultados.
+- **Action**: Borrar desde `## 11. Flujo de Trabajo SDD (Spec Driven Development)` hasta el final. Poner `## 11. Flujo de Trabajo de Features` con el flujo `/plan-prd → /plan → implementación → PR` (artefactos en `.claude/prds/` y `.claude/plans/`), la regla "no crear `docs/specs/*.spec.md`", ADR solo para decisiones arquitectónicas puntuales, y los checklists de las secciones 1 a 9. Sin las palabras "SDD" ni "Spec Driven".
+- **Validate**: `grep -nEi "SDD|spec.driven" CLAUDE.md` sin resultados.
 
-### Task 2: Actualizar el PRD
-- **Action**: Hito 1 a `in-progress` con enlace a este plan (ya aplicado). Al terminar, pasarlo a `complete`.
-- **Mirror**: formato de la tabla de hitos de `mis-citas-cliente.prd.md`.
-- **Validate**: revisión visual del diff.
+### Task 2: Eliminar los workflows de Claude
+- **Action**: `git rm .github/workflows/claude.yml .github/workflows/claude-code-review.yml`.
+- **Validate**: `ls .github/workflows` ya no los lista; `ci.yml`, `deploy.yml`, `supabase-migrate.yml` y `sync-lockfile.yml` quedan intactos.
+
+### Task 3: Actualizar el PRD
+- **Action**: Alcance y fila del hito 1 con los workflows; al cerrar, estado `complete`.
 
 ## Validation
 ```bash
-grep -nEi "SDD|spec.driven" CLAUDE.md          # debe estar vacío
-git diff --stat                                  # solo CLAUDE.md y los artefactos de .claude/
-npm run lint                                     # sin cambios de código; confirma que no se rompe nada
+grep -nEi "SDD|spec.driven" CLAUDE.md
+ls .github/workflows
+git diff --stat main                      # solo CLAUDE.md, los 2 workflows y el PRD
+npm run lint
 ```
 
 ## Risks
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| Agentes con contexto previo siguen creando specs | Baja | Regla explícita de "no crear specs" en la nueva sección 11 |
-| `CLAUDE.md` menciona rutas de `docs/specs` sin contexto | Baja | La nota solo nombra la ruta para prohibir su creación |
-| Contradicción con el hito 2 (archivar) | Baja | Hito 2 queda pendiente; este plan no mueve archivos |
+| Se pierde la respuesta a `@claude` en GitHub | Cierta (es lo pedido) | Intencional; se puede restaurar desde git |
+| Secret `CLAUDE_CODE_OAUTH_TOKEN` queda sin uso | Cierta | Eliminarlo a mano en Settings → Secrets (no se puede desde el repo); `GIT_HUB_PAT` se conserva porque lo usa `sync-lockfile.yml` |
+| Agentes con contexto previo siguen creando specs | Baja | Regla explícita en la nueva sección 11 |
 
 ## Acceptance
-- [ ] `CLAUDE.md` no menciona SDD ni "Spec Driven"
-- [ ] La nueva sección 11 declara el flujo PRD → `/plan` y prohíbe crear specs
+- [ ] `CLAUDE.md` sin menciones de SDD; nueva sección 11 con el flujo PRD → `/plan`
+- [ ] `claude.yml` y `claude-code-review.yml` eliminados
 - [ ] `docs/specs/` y ADR-001 intactos
 - [ ] Validación pasa
