@@ -32,6 +32,9 @@ export interface BookingRow {
   duration_minutes: number;
   zone: 'gym' | 'gabinete';
   status: 'confirmed' | 'cancelled' | 'pending';
+  starts_at: string | null;        // TIMESTAMPTZ (UTC), calculado en el servidor
+  client_timezone: string | null;  // Zona IANA del cliente al reservar
+  program_id: string | null;       // FK → programs.id (sesión consumida)
   created_at: string;
 }
 

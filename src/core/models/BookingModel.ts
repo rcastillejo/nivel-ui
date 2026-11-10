@@ -1,14 +1,28 @@
-import { Booking, ClientAppointments, Trainer, ZoneType, ZONE_CONFIG } from '../types';
-import { BookingCapacityError, BookingValidationError } from '../types/errors';
+import {
+  Booking,
+  CANCELLATION_NOTICE_MINUTES,
+  ClientAppointments,
+  Trainer,
+  ZoneType,
+  ZONE_CONFIG,
+} from '../types';
+import {
+  BookingAlreadyCancelledError,
+  BookingCancellationNoticeError,
+  BookingCapacityError,
+  BookingNotFoundError,
+  BookingValidationError,
+} from '../types/errors';
 import { IDataService } from '../repositories';
-import { addMinutes, isSameDay, startOfDay } from 'date-fns';
+import { formatDateInTimeZone } from '../utils/timezone';
+import { addMinutes, format, isSameDay, startOfDay } from 'date-fns';
 
 export class BookingModel {
   constructor(private dataService: IDataService) {}
 
-  async createBooking(booking: Omit<Booking, 'id'>): Promise<Booking> {
+  async createBooking(booking: Omit<Booking, 'id'>, now: Date = new Date()): Promise<Booking> {
     // Validaciones de negocio
-    this.validateBooking(booking);
+    this.validateBooking(booking, now);
     
     // Verificar disponibilidad
     await this.checkAvailability(booking.trainerId, booking.date, booking.time);
@@ -57,6 +71,49 @@ export class BookingModel {
     past.sort((a, b) => this.getBookingStart(b).getTime() - this.getBookingStart(a).getTime());
 
     return { upcoming, past };
+  }
+
+  async attachProgram(bookingId: string, programId: string): Promise<void> {
+    await this.dataService.bookings.update(bookingId, { programId });
+  }
+
+  /** Indica si una cita puede cancelarse ahora (confirmada, no terminada y con la anticipación mínima). */
+  canCancel(booking: Booking, now: Date): boolean {
+    if (booking.status !== 'confirmed') return false;
+    if (this.getBookingEnd(booking) <= now) return false;
+    return this.hasEnoughNotice(booking, now);
+  }
+
+  async cancelBooking(bookingId: string, clientId: string, now: Date): Promise<Booking> {
+    if (!clientId.trim()) {
+      throw new BookingValidationError('El cliente es requerido');
+    }
+
+    const booking = await this.dataService.bookings.getById(bookingId);
+    // Una cita ajena se trata igual que una inexistente para no revelar su existencia
+    if (!booking || booking.clientId !== clientId) {
+      throw new BookingNotFoundError(bookingId);
+    }
+
+    if (booking.status === 'cancelled') {
+      throw new BookingAlreadyCancelledError(bookingId);
+    }
+
+    if (this.getBookingEnd(booking) <= now) {
+      throw new BookingValidationError('La cita ya terminó y no se puede cancelar');
+    }
+
+    if (!this.hasEnoughNotice(booking, now)) {
+      throw new BookingCancellationNoticeError(booking.zone, CANCELLATION_NOTICE_MINUTES[booking.zone]);
+    }
+
+    // Cancelación atómica: si otra petición ya la canceló, no se repite el efecto
+    const changed = await this.dataService.bookings.cancelIfConfirmed(bookingId);
+    if (!changed) {
+      throw new BookingAlreadyCancelledError(bookingId);
+    }
+
+    return { ...booking, status: 'cancelled' };
   }
 
   async getAvailableSlots(trainerId: string, date: Date): Promise<string[]> {
@@ -111,7 +168,16 @@ export class BookingModel {
     });
   }
 
+  private hasEnoughNotice(booking: Booking, now: Date): boolean {
+    const minNoticeMs = CANCELLATION_NOTICE_MINUTES[booking.zone] * 60_000;
+    return this.getBookingStart(booking).getTime() - now.getTime() >= minNoticeMs;
+  }
+
   private getBookingStart(booking: Booking): Date {
+    // Si el servidor ya calculó el instante UTC, ese es el inicio real
+    if (booking.startsAt) {
+      return booking.startsAt;
+    }
     const [hours, minutes] = booking.time.split(':').map(Number);
     const start = startOfDay(booking.date);
     start.setHours(hours, minutes, 0, 0);
@@ -122,7 +188,7 @@ export class BookingModel {
     return addMinutes(this.getBookingStart(booking), booking.duration);
   }
 
-  private validateBooking(booking: Omit<Booking, 'id'>): void {
+  private validateBooking(booking: Omit<Booking, 'id'>, now: Date): void {
     if (!booking.clientId.trim()) {
       throw new BookingValidationError('El cliente es requerido');
     }
@@ -135,7 +201,11 @@ export class BookingModel {
       throw new BookingValidationError('La duración máxima es 180 minutos');
     }
 
-    if (startOfDay(booking.date) < startOfDay(new Date())) {
+    // "Hoy" se evalúa en la zona del cliente cuando se conoce (el servidor corre en UTC)
+    const today = booking.clientTimezone
+      ? formatDateInTimeZone(now, booking.clientTimezone)
+      : format(now, 'yyyy-MM-dd');
+    if (format(booking.date, 'yyyy-MM-dd') < today) {
       throw new BookingValidationError('No se pueden hacer reservas en el pasado');
     }
   }

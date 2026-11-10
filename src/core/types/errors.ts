@@ -14,6 +14,39 @@ export class BookingValidationError extends Error {
   }
 }
 
+export class BookingNotFoundError extends Error {
+  constructor(public bookingId: string) {
+    super('La cita no fue encontrada');
+    this.name = 'BookingNotFoundError';
+  }
+}
+
+export class BookingAlreadyCancelledError extends Error {
+  constructor(public bookingId: string) {
+    super('La cita ya está cancelada');
+    this.name = 'BookingAlreadyCancelledError';
+  }
+}
+
+export class BookingCancellationNoticeError extends Error {
+  constructor(
+    public zone: ZoneType,
+    public minNoticeMinutes: number
+  ) {
+    const hours = minNoticeMinutes / 60;
+    const label = hours === 1 ? '1 hora' : `${hours} horas`;
+    super(`Solo puedes cancelar una cita del ${ZONE_CONFIG[zone].name} con al menos ${label} de anticipación`);
+    this.name = 'BookingCancellationNoticeError';
+  }
+}
+
+export class InvalidTimeZoneError extends Error {
+  constructor(public timeZone: string) {
+    super(`Zona horaria inválida: ${timeZone}`);
+    this.name = 'InvalidTimeZoneError';
+  }
+}
+
 export class BookingCapacityError extends Error {
   constructor(
     public zone: ZoneType,
