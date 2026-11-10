@@ -46,6 +46,7 @@ const mockDataService: IDataService = {
     create: vi.fn(),
     save: vi.fn(),
     update: vi.fn(),
+    cancelIfConfirmed: vi.fn(),
     delete: vi.fn()
   },
   programs: mockProgramRepository,
@@ -481,6 +482,54 @@ describe('ProgramModel', () => {
 
       expect(result).toEqual(programs);
       expect(mockProgramRepository.getByClient).toHaveBeenCalledWith('client1');
+    });
+  });
+
+  describe('restoreSession', () => {
+    const program: Program = {
+      id: 'program1',
+      name: 'Program',
+      description: 'Test',
+      trainerId: 'trainer1',
+      clientIds: ['client1'],
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      totalSessions: 10,
+      usedSessions: 5,
+      status: 'active'
+    };
+
+    it('should decrement usedSessions and return the updated program', async () => {
+      mockProgramRepository.getById.mockResolvedValue(program);
+      mockProgramRepository.save.mockResolvedValue(undefined);
+
+      const result = await programModel.restoreSession('program1');
+
+      expect(result).toMatchObject({ ...program, usedSessions: 4 });
+      expect(mockProgramRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ usedSessions: 4 })
+      );
+    });
+
+    it('should return null without error when the program no longer exists', async () => {
+      mockProgramRepository.getById.mockResolvedValue(null);
+
+      await expect(programModel.restoreSession('missing')).resolves.toBeNull();
+      expect(mockProgramRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should return null when there is no consumed session to restore', async () => {
+      mockProgramRepository.getById.mockResolvedValue({ ...program, usedSessions: 0 });
+
+      await expect(programModel.restoreSession('program1')).resolves.toBeNull();
+      expect(mockProgramRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should return null when the program already expired', async () => {
+      mockProgramRepository.getById.mockResolvedValue({ ...program, status: 'expired' });
+
+      await expect(programModel.restoreSession('program1')).resolves.toBeNull();
+      expect(mockProgramRepository.save).not.toHaveBeenCalled();
     });
   });
 

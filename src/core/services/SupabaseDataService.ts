@@ -258,12 +258,26 @@ export class SupabaseBookingRepository implements IBookingRepository {
     if (booking.duration   !== undefined) updates['duration_minutes'] = booking.duration;
     if (booking.zone       !== undefined) updates['zone']             = booking.zone;
     if (booking.status     !== undefined) updates['status']           = booking.status;
+    if (booking.startsAt   !== undefined) updates['starts_at']        = booking.startsAt.toISOString();
+    if (booking.clientTimezone !== undefined) updates['client_timezone'] = booking.clientTimezone;
+    if (booking.programId  !== undefined) updates['program_id']       = booking.programId;
 
     const { error } = await this.client
       .from('bookings')
       .update(updates)
       .eq('id', id);
     if (error) throw new Error(error.message);
+  }
+
+  async cancelIfConfirmed(id: string): Promise<boolean> {
+    const { data, error } = await this.client
+      .from('bookings')
+      .update({ status: 'cancelled' })
+      .eq('id', id)
+      .eq('status', 'confirmed')
+      .select('id');
+    if (error) throw new Error(error.message);
+    return Array.isArray(data) && data.length > 0;
   }
 
   async delete(id: string): Promise<void> {

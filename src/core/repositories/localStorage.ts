@@ -342,6 +342,17 @@ class LocalStorageBookingRepository implements IBookingRepository {
     }
   }
 
+  async cancelIfConfirmed(id: string): Promise<boolean> {
+    const bookings = await this.getAll();
+    const index = bookings.findIndex(b => b.id === id);
+    if (index < 0 || bookings[index].status !== 'confirmed') {
+      return false;
+    }
+    bookings[index] = { ...bookings[index], status: 'cancelled' };
+    localStorage.setItem(this.key, JSON.stringify(bookings));
+    return true;
+  }
+
   async delete(id: string): Promise<void> {
     const bookings = await this.getAll();
     const filtered = bookings.filter(b => b.id !== id);
@@ -349,10 +360,11 @@ class LocalStorageBookingRepository implements IBookingRepository {
   }
 
   private parseBookings(data: string): Booking[] {
-    const parsed = JSON.parse(data) as Array<Omit<Booking, 'date'> & { date: string }>;
+    const parsed = JSON.parse(data) as Array<Omit<Booking, 'date' | 'startsAt'> & { date: string; startsAt?: string }>;
     return parsed.map((b) => ({
       ...b,
-      date: new Date(b.date)
+      date: new Date(b.date),
+      startsAt: b.startsAt ? new Date(b.startsAt) : undefined
     }));
   }
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BookingViewModel } from '@/core/view-models/BookingViewModel';
 import { BookingModel } from '@/core/models/BookingModel';
-import { ProgramModel } from '@/core/models/ProgramModel';
+import { IBookingCommands } from '@/core/repositories';
 import { Booking, Trainer, ZoneType } from '@/core/types';
 
 // Mock de BookingModel
@@ -15,9 +15,10 @@ const mockBookingModel = {
   getAllZonesOccupancy: vi.fn()
 };
 
-// Mock de ProgramModel
-const mockProgramModel = {
-  consumeSessionForClient: vi.fn()
+// Mock del gateway de comandos (la reserva se ejecuta en el backend)
+const mockCommands = {
+  create: vi.fn(),
+  cancel: vi.fn()
 };
 
 const mockTrainer: Trainer = {
@@ -33,7 +34,8 @@ describe('BookingViewModel', () => {
   beforeEach(() => {
     vm = new BookingViewModel(
       mockBookingModel as unknown as BookingModel,
-      mockProgramModel as unknown as ProgramModel
+      mockCommands as IBookingCommands,
+      () => 'America/Lima'
     );
     vi.clearAllMocks();
     mockBookingModel.getBookingsByDate.mockResolvedValue([]);
@@ -56,63 +58,64 @@ describe('BookingViewModel', () => {
       vm.setClientId('client1');
     };
 
-    it('delegates session consumption to ProgramModel after a successful booking', async () => {
+    const confirmedBooking = (): Booking => ({
+      id: 'booking1',
+      clientId: 'client1',
+      trainerId: 'trainer1',
+      trainerName: 'Entrenador John',
+      date: vm.selectedDate!,
+      time: '09:00',
+      duration: 60,
+      zone: 'gym',
+      status: 'confirmed'
+    });
+
+    it('sends the selection and the browser time zone to the commands gateway', async () => {
       await setupForBooking();
-
-      const createdBooking: Booking = {
-        id: 'booking1',
-        clientId: 'client1',
-        trainerId: 'trainer1',
-        trainerName: 'Entrenador John',
-        date: vm.selectedDate!,
-        time: '09:00',
-        duration: 60,
-        zone: 'gym',
-        status: 'confirmed'
-      };
-
-      mockBookingModel.createBooking.mockResolvedValue(createdBooking);
-      mockProgramModel.consumeSessionForClient.mockResolvedValue(undefined);
+      mockCommands.create.mockResolvedValue(confirmedBooking());
 
       const success = await vm.createBooking();
 
       expect(success).toBe(true);
-      expect(mockProgramModel.consumeSessionForClient).toHaveBeenCalledWith('client1');
-    });
-
-    it('succeeds when client has no active program', async () => {
-      await setupForBooking();
-
-      const createdBooking: Booking = {
-        id: 'booking1',
-        clientId: 'client1',
+      expect(mockCommands.create).toHaveBeenCalledWith({
         trainerId: 'trainer1',
-        trainerName: 'Entrenador John',
-        date: vm.selectedDate!,
+        date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
         time: '09:00',
-        duration: 60,
         zone: 'gym',
-        status: 'confirmed'
-      };
-
-      mockBookingModel.createBooking.mockResolvedValue(createdBooking);
-      mockProgramModel.consumeSessionForClient.mockResolvedValue(null);
-
-      const success = await vm.createBooking();
-
-      expect(success).toBe(true);
-      expect(mockProgramModel.consumeSessionForClient).toHaveBeenCalledWith('client1');
+        timeZone: 'America/Lima'
+      });
     });
 
-    it('does not call consumeSessionForClient when booking fails', async () => {
+    it('opens the success modal with the booking returned by the backend', async () => {
       await setupForBooking();
+      const booking = confirmedBooking();
+      mockCommands.create.mockResolvedValue(booking);
 
-      mockBookingModel.createBooking.mockRejectedValue(new Error('Slot not available'));
+      await vm.createBooking();
+
+      expect(vm.showSuccessModal).toBe(true);
+      expect(vm.confirmedBooking).toEqual(booking);
+      expect(vm.error).toBeNull();
+    });
+
+    it('does not touch the booking or program models directly (the backend consumes the session)', async () => {
+      await setupForBooking();
+      mockCommands.create.mockResolvedValue(confirmedBooking());
+
+      await vm.createBooking();
+
+      expect(mockBookingModel.createBooking).not.toHaveBeenCalled();
+    });
+
+    it('shows the backend message and no success modal when booking fails', async () => {
+      await setupForBooking();
+      mockCommands.create.mockRejectedValue(new Error('El horario seleccionado no está disponible'));
 
       const success = await vm.createBooking();
 
       expect(success).toBe(false);
-      expect(mockProgramModel.consumeSessionForClient).not.toHaveBeenCalled();
+      expect(vm.error).toBe('El horario seleccionado no está disponible');
+      expect(vm.showSuccessModal).toBe(false);
     });
 
     it('returns false and sets error when clientId is not set', async () => {
@@ -123,10 +126,10 @@ describe('BookingViewModel', () => {
 
       expect(success).toBe(false);
       expect(vm.error).toBeTruthy();
-      expect(mockBookingModel.createBooking).not.toHaveBeenCalled();
+      expect(mockCommands.create).not.toHaveBeenCalled();
     });
 
-    it('delegates capacity check entirely to BookingModel — does not short-circuit based on local bookings cache', async () => {
+    it('delegates the capacity check to the backend — does not short-circuit based on local bookings cache', async () => {
       await setupForBooking();
 
       // Fill local cache with 10 gym bookings for the same slot
@@ -158,14 +161,13 @@ describe('BookingViewModel', () => {
         status: 'confirmed',
       };
 
-      mockBookingModel.createBooking.mockResolvedValue(createdBooking);
-      mockProgramModel.consumeSessionForClient.mockResolvedValue(null);
+      mockCommands.create.mockResolvedValue(createdBooking);
 
-      // BookingModel says ok — ViewModel must trust Model, not its own stale cache
+      // The backend decides capacity — ViewModel must not short-circuit on its own stale cache
       const success = await vm.createBooking();
 
       expect(success).toBe(true);
-      expect(mockBookingModel.createBooking).toHaveBeenCalledOnce();
+      expect(mockCommands.create).toHaveBeenCalledOnce();
     });
   });
 

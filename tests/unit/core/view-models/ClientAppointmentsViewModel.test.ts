@@ -1,11 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ClientAppointmentsViewModel } from '@/core/view-models/ClientAppointmentsViewModel';
 import { BookingModel } from '@/core/models/BookingModel';
+import { IBookingCommands } from '@/core/repositories';
 import { Booking } from '@/core/types';
 import { BookingValidationError } from '@/core/types/errors';
 
 const mockBookingModel = {
   getClientAppointments: vi.fn(),
+  canCancel: vi.fn(),
+};
+
+const mockCommands = {
+  create: vi.fn(),
+  cancel: vi.fn(),
 };
 
 const fixedNow = new Date(2026, 10, 10, 9, 30);
@@ -30,7 +37,7 @@ describe('ClientAppointmentsViewModel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vm = new ClientAppointmentsViewModel(mockBookingModel as unknown as BookingModel, () => fixedNow);
+    vm = new ClientAppointmentsViewModel(mockBookingModel as unknown as BookingModel, mockCommands as IBookingCommands, () => fixedNow);
   });
 
   it('starts empty, not loading and without error', () => {
@@ -109,5 +116,110 @@ describe('ClientAppointmentsViewModel', () => {
     await vm.load('client1');
 
     expect(vm.error).toBeNull();
+  });
+
+  describe('cancelling an appointment', () => {
+    const upcoming = makeBooking('b1');
+    const cancelledCopy = { ...upcoming, status: 'cancelled' as const };
+
+    beforeEach(async () => {
+      mockBookingModel.getClientAppointments.mockResolvedValue({ upcoming: [upcoming], past: [] });
+      await vm.load('client1');
+      mockBookingModel.getClientAppointments.mockClear();
+    });
+
+    it('canCancel delegates the rule to the model with the injected clock', () => {
+      mockBookingModel.canCancel.mockReturnValue(true);
+
+      expect(vm.canCancel(upcoming)).toBe(true);
+      expect(mockBookingModel.canCancel).toHaveBeenCalledWith(upcoming, fixedNow);
+    });
+
+    it('explains the minimum notice of the booking zone', () => {
+      expect(vm.cancellationNotice(upcoming)).toContain('1 hora');
+      expect(vm.cancellationNotice({ ...upcoming, zone: 'gabinete' })).toContain('24 horas');
+    });
+
+    it('requestCancel opens the confirmation and dismissCancel closes it', () => {
+      vm.requestCancel(upcoming);
+      expect(vm.cancelTarget).toEqual(upcoming);
+
+      vm.dismissCancel();
+      expect(vm.cancelTarget).toBeNull();
+      expect(vm.cancelError).toBeNull();
+    });
+
+    it('confirmCancel cancels through the gateway, closes the dialog and refreshes the lists', async () => {
+      mockCommands.cancel.mockResolvedValue(cancelledCopy);
+      mockBookingModel.getClientAppointments.mockResolvedValue({ upcoming: [], past: [cancelledCopy] });
+      vm.requestCancel(upcoming);
+
+      const ok = await vm.confirmCancel();
+
+      expect(ok).toBe(true);
+      expect(mockCommands.cancel).toHaveBeenCalledWith('b1');
+      expect(vm.cancelTarget).toBeNull();
+      expect(vm.cancellingId).toBeNull();
+      expect(vm.upcoming).toEqual([]);
+      expect(vm.past).toEqual([cancelledCopy]);
+      expect(vm.error).toBeNull();
+    });
+
+    it('refreshes without showing the full-page loading state', async () => {
+      mockCommands.cancel.mockResolvedValue(cancelledCopy);
+      mockBookingModel.getClientAppointments.mockResolvedValue({ upcoming: [], past: [cancelledCopy] });
+      vm.requestCancel(upcoming);
+
+      const pending = vm.confirmCancel();
+      expect(vm.cancellingId).toBe('b1');
+      expect(vm.isLoading).toBe(false);
+      await pending;
+    });
+
+    it('keeps the dialog open and shows the backend message when cancelling fails', async () => {
+      mockCommands.cancel.mockRejectedValue(new Error('Solo puedes cancelar con al menos 1 hora de anticipación'));
+      vm.requestCancel(upcoming);
+
+      const ok = await vm.confirmCancel();
+
+      expect(ok).toBe(false);
+      expect(vm.cancelError).toBe('Solo puedes cancelar con al menos 1 hora de anticipación');
+      expect(vm.cancelTarget).toEqual(upcoming);
+      expect(vm.cancellingId).toBeNull();
+      expect(vm.upcoming).toEqual([upcoming]); // la lista no se pierde
+      expect(vm.error).toBeNull();
+    });
+
+    it('does nothing when there is no cancellation in progress', async () => {
+      expect(await vm.confirmCancel()).toBe(false);
+      expect(mockCommands.cancel).not.toHaveBeenCalled();
+    });
+
+    it('ignores a second confirmation while one is running (double click)', async () => {
+      let resolveCancel: (b: Booking) => void = () => {};
+      mockCommands.cancel.mockReturnValue(new Promise<Booking>((r) => { resolveCancel = r; }));
+      mockBookingModel.getClientAppointments.mockResolvedValue({ upcoming: [], past: [cancelledCopy] });
+      vm.requestCancel(upcoming);
+
+      const first = vm.confirmCancel();
+      const second = await vm.confirmCancel();
+      resolveCancel(cancelledCopy);
+      await first;
+
+      expect(second).toBe(false);
+      expect(mockCommands.cancel).toHaveBeenCalledTimes(1);
+    });
+
+    it('clears a previous cancel error when a new cancellation is requested', async () => {
+      mockCommands.cancel.mockRejectedValue(new Error('x'));
+      vm.requestCancel(upcoming);
+      await vm.confirmCancel();
+      expect(vm.cancelError).toBe('x');
+
+      vm.dismissCancel();
+      vm.requestCancel(upcoming);
+
+      expect(vm.cancelError).toBeNull();
+    });
   });
 });
