@@ -15,7 +15,7 @@ import {
   BookingValidationError,
 } from '../types/errors';
 import { IDataService } from '../repositories';
-import { formatDateInTimeZone } from '../utils/timezone';
+import { zonedDateTimeToUtc } from '../utils/timezone';
 import { addMinutes, format, isSameDay, startOfDay } from 'date-fns';
 
 export class BookingModel {
@@ -120,7 +120,19 @@ export class BookingModel {
     return { ...booking, status: 'cancelled' };
   }
 
-  async getAvailableSlots(trainerId: string, date: Date): Promise<string[]> {
+  /**
+   * Horarios con cupo para un entrenador y una fecha. Si se indica `now`, se omiten los
+   * horarios del día que ya empezaron (hora local), para no ofrecer lo que no se puede reservar.
+   */
+  async getAvailableSlots(trainerId: string, date: Date, now?: Date): Promise<string[]> {
+    const slots = await this.listOpenSlots(trainerId, date);
+    if (!now) {
+      return slots;
+    }
+    return slots.filter(time => this.getBookingStart({ date, time }).getTime() > now.getTime());
+  }
+
+  private async listOpenSlots(trainerId: string, date: Date): Promise<string[]> {
     const trainer = await this.getTrainerById(trainerId);
     if (!trainer) return [];
 
@@ -177,7 +189,7 @@ export class BookingModel {
     return this.getBookingStart(booking).getTime() - now.getTime() >= minNoticeMs;
   }
 
-  private getBookingStart(booking: Booking): Date {
+  private getBookingStart(booking: Pick<Booking, 'startsAt' | 'date' | 'time'>): Date {
     // Si el servidor ya calculó el instante UTC, ese es el inicio real
     if (booking.startsAt) {
       return booking.startsAt;
@@ -205,13 +217,25 @@ export class BookingModel {
       throw new BookingValidationError('La duración máxima es 180 minutos');
     }
 
-    // "Hoy" se evalúa en la zona del cliente cuando se conoce (el servidor corre en UTC)
-    const today = booking.clientTimezone
-      ? formatDateInTimeZone(now, booking.clientTimezone)
-      : format(now, 'yyyy-MM-dd');
-    if (format(booking.date, 'yyyy-MM-dd') < today) {
+    // La reserva debe empezar después de "ahora": comparar solo el día dejaba reservar
+    // hoy en un horario que ya pasó.
+    if (this.resolveBookingStart(booking).getTime() <= now.getTime()) {
       throw new BookingValidationError('No se pueden hacer reservas en el pasado');
     }
+  }
+
+  /**
+   * Instante en que empieza la reserva: el que ya calculó el servidor (startsAt), o bien
+   * fecha + hora en la zona del cliente (el servidor corre en UTC), o en hora local.
+   */
+  private resolveBookingStart(booking: Pick<Booking, 'startsAt' | 'clientTimezone' | 'date' | 'time'>): Date {
+    if (booking.startsAt) {
+      return booking.startsAt;
+    }
+    if (booking.clientTimezone) {
+      return zonedDateTimeToUtc(format(booking.date, 'yyyy-MM-dd'), booking.time, booking.clientTimezone);
+    }
+    return this.getBookingStart(booking);
   }
 
   private async checkAvailability(trainerId: string, date: Date, time: string): Promise<void> {

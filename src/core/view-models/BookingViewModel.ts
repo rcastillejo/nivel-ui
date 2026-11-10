@@ -44,7 +44,8 @@ export class BookingViewModel {
   constructor(
     private model: BookingModel,
     private commands: IBookingCommands,
-    private getTimeZone: () => string = getBrowserTimeZone
+    private getTimeZone: () => string = getBrowserTimeZone,
+    private now: () => Date = () => new Date()
   ) {
     makeAutoObservable(this);
     // No cargar automáticamente en constructor para evitar hydration issues
@@ -78,7 +79,7 @@ export class BookingViewModel {
     this.setLoading(true);
     try {
       // Pre-cargar capacidades para los slots disponibles
-      const slots = await this.model.getAvailableSlots(trainerId, date);
+      const slots = await this.model.getAvailableSlots(trainerId, date, this.now());
       
       // Pre-cachear capacidades para todos los slots
       await this.preloadCapacities(trainerId, date, slots);
@@ -103,7 +104,7 @@ export class BookingViewModel {
     try {
       const entries = await Promise.all(
         this.trainers.map(async (trainer) => {
-          const slots = await this.model.getAvailableSlots(trainer.id, date);
+          const slots = await this.model.getAvailableSlots(trainer.id, date, this.now());
           return [trainer.id, slots] as const;
         })
       );

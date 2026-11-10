@@ -28,6 +28,8 @@ const mockTrainer: Trainer = {
   availableSlots: ['09:00', '10:00']
 };
 
+const fixedNow = new Date(2026, 10, 10, 10, 0);
+
 describe('BookingViewModel', () => {
   let vm: BookingViewModel;
 
@@ -35,7 +37,8 @@ describe('BookingViewModel', () => {
     vm = new BookingViewModel(
       mockBookingModel as unknown as BookingModel,
       mockCommands as IBookingCommands,
-      () => 'America/Lima'
+      () => 'America/Lima',
+      () => fixedNow
     );
     vi.clearAllMocks();
     mockBookingModel.getBookingsByDate.mockResolvedValue([]);
@@ -284,6 +287,30 @@ describe('BookingViewModel', () => {
       await vm.loadTrainers();
 
       expect(vm.error).toBe('API error');
+    });
+  });
+
+  describe('slots that already passed today', () => {
+    it('asks the model for the slots of every trainer with the current time', async () => {
+      mockBookingModel.getTrainers.mockResolvedValue([mockTrainer]);
+      await vm.loadTrainers();
+      mockBookingModel.getAvailableSlots.mockResolvedValue(['11:00']);
+      const date = new Date(2026, 10, 10);
+
+      await vm.loadAvailableSlotsForDate(date);
+
+      expect(mockBookingModel.getAvailableSlots).toHaveBeenCalledWith('trainer1', date, fixedNow);
+      expect(vm.getSlotsForTrainer('trainer1')).toEqual(['11:00']);
+    });
+
+    it('asks for a single trainer\'s slots with the current time too', async () => {
+      mockBookingModel.getAvailableSlots.mockResolvedValue(['11:00']);
+      mockBookingModel.getAllZonesOccupancy.mockResolvedValue({ gym: 0, gabinete: 0 });
+      const date = new Date(2026, 10, 10);
+
+      await vm.loadAvailableSlots('trainer1', date);
+
+      expect(mockBookingModel.getAvailableSlots).toHaveBeenCalledWith('trainer1', date, fixedNow);
     });
   });
 });
