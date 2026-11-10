@@ -52,9 +52,11 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Versión fija: `latest` consulta la API de GitHub (rate limit) y el comportamiento del CLI cambia.
+          version: 3.1.0
 
       - name: Deploy bookings
-        run: supabase functions deploy bookings --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
+        # --yes: el CLI 3.x pide confirmación para cambios en un proyecto hospedado y un runner no tiene terminal.
+        run: supabase functions deploy bookings --project-ref ${{ secrets.SUPABASE_PROJECT_ID }} --yes
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
