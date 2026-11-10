@@ -1,6 +1,8 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { BookingModel } from '../models/BookingModel';
-import { ProgramModel } from '../models/ProgramModel';
+import { IBookingCommands } from '../repositories';
+import { getBrowserTimeZone } from '../utils/timezone';
+import { format } from 'date-fns';
 import { Booking, Trainer, ZoneType, ZONE_CONFIG } from '../types';
 import { BookingCapacityError } from '../types/errors';
 
@@ -38,7 +40,11 @@ export class BookingViewModel {
   showSuccessModal = false;
   confirmedBooking: Booking | null = null;
 
-  constructor(private model: BookingModel, private programModel: ProgramModel) {
+  constructor(
+    private model: BookingModel,
+    private commands: IBookingCommands,
+    private getTimeZone: () => string = getBrowserTimeZone
+  ) {
     makeAutoObservable(this);
     // No cargar automáticamente en constructor para evitar hydration issues
   }
@@ -125,21 +131,15 @@ export class BookingViewModel {
 
     this.setLoading(true);
     try {
-      const bookingData: Omit<Booking, 'id'> = {
-        clientId: this.clientId,
+      // El backend valida disponibilidad y aforo, consume la sesión del programa
+      // y calcula el instante UTC a partir de la zona horaria del cliente.
+      const createdBooking = await this.commands.create({
         trainerId: this.selectedTrainer!.id,
-        trainerName: `Entrenador ${this.selectedTrainer!.name}`,
-        date: this.selectedDate!,
+        date: format(this.selectedDate!, 'yyyy-MM-dd'),
         time: this.selectedTime!,
-        duration: 60,
         zone: this.selectedZone!,
-        status: 'confirmed',
-      };
-
-      const createdBooking = await this.model.createBooking(bookingData);
-
-      // Delegar consumo de sesión al ProgramModel — ProgramViewModel se recarga en la UI
-      await this.programModel.consumeSessionForClient(this.clientId);
+        timeZone: this.getTimeZone(),
+      });
 
       runInAction(() => {
         this.error = null;

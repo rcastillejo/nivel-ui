@@ -16,8 +16,17 @@ import { LocalStorageDataService } from '@/core/repositories/localStorage';
 import { BookingModel } from '@/core/models/BookingModel';
 import { BookingViewModel } from '@/core/view-models/BookingViewModel';
 import { ProgramModel } from '@/core/models/ProgramModel';
+import { BookingCommandsModel } from '@/core/models/BookingCommandsModel';
+import { LocalBookingCommands } from '@/core/services/LocalBookingCommands';
 import { Booking, ZoneType } from '@/core/types';
-import { BookingCapacityError, BookingValidationError } from '@/core/types/errors';
+import {
+  BookingAlreadyCancelledError,
+  BookingCancellationNoticeError,
+  BookingCapacityError,
+  BookingNotFoundError,
+  BookingValidationError,
+} from '@/core/types/errors';
+import { format } from 'date-fns';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -264,7 +273,8 @@ describe('BookingViewModel ↔ BookingModel ↔ LocalStorageDataService', () => 
 
   beforeEach(() => {
     const programModel = new ProgramModel(service);
-    vm = new BookingViewModel(model, programModel);
+    const commands = new LocalBookingCommands(new BookingCommandsModel(model, programModel), () => 'client-test-uuid');
+    vm = new BookingViewModel(model, commands);
     vm.setClientId('client-test-uuid');
   });
 
@@ -475,6 +485,101 @@ describe('BookingModel.getClientAppointments ↔ LocalStorageDataService', () =>
     const result = await model.getClientAppointments('client-a', new Date());
 
     expect(result.upcoming.map(b => b.id)).toContain(created.id);
+  });
+});
+
+describe('Reservar y cancelar: LocalBookingCommands ↔ BookingCommandsModel ↔ LocalStorageDataService', () => {
+  const CLIENT = 'client-cancel';
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  let programModel: ProgramModel;
+  let commandsModel: BookingCommandsModel;
+  let commands: LocalBookingCommands;
+  let programId: string;
+
+  const request = () => ({
+    trainerId: 'trainer1',
+    date: format(tomorrow(), 'yyyy-MM-dd'),
+    time: '09:00',
+    zone: 'gym' as ZoneType,
+    timeZone,
+  });
+  const usedSessions = async (): Promise<number> => (await service.programs.getById(programId))!.usedSessions;
+
+  beforeEach(async () => {
+    programModel = new ProgramModel(service);
+    commandsModel = new BookingCommandsModel(model, programModel);
+    commands = new LocalBookingCommands(commandsModel, () => CLIENT);
+    const program = await service.programs.create({
+      name: 'Programa de prueba',
+      description: 'Integración',
+      trainerId: 'trainer1',
+      clientIds: [CLIENT],
+      startDate: new Date(2026, 0, 1),
+      endDate: new Date(2099, 0, 1),
+      totalSessions: 10,
+      usedSessions: 2,
+      status: 'active',
+    });
+    programId = program.id;
+  });
+
+  it('reservar guarda el instante UTC, la zona y el programa, y consume una sesión', async () => {
+    const booking = await commands.create(request());
+
+    const saved = await service.bookings.getById(booking.id);
+    expect(saved?.startsAt).toBeInstanceOf(Date);
+    expect(saved?.clientTimezone).toBe(timeZone);
+    expect(saved?.programId).toBe(programId);
+    expect(await usedSessions()).toBe(3);
+  });
+
+  it('cancelar persiste el estado, devuelve la sesión y la cita pasa al historial', async () => {
+    const booking = await commands.create(request());
+
+    const cancelled = await commands.cancel(booking.id);
+
+    expect(cancelled.status).toBe('cancelled');
+    expect((await service.bookings.getById(booking.id))?.status).toBe('cancelled');
+    expect(await usedSessions()).toBe(2);
+
+    const appointments = await model.getClientAppointments(CLIENT, new Date());
+    expect(appointments.upcoming.map((b) => b.id)).not.toContain(booking.id);
+    expect(appointments.past.map((b) => b.id)).toContain(booking.id);
+  });
+
+  it('cancelar dos veces no devuelve la sesión dos veces', async () => {
+    const booking = await commands.create(request());
+    await commands.cancel(booking.id);
+
+    await expect(commands.cancel(booking.id)).rejects.toThrow(BookingAlreadyCancelledError);
+    expect(await usedSessions()).toBe(2);
+  });
+
+  it('no deja cancelar una cita de otro cliente', async () => {
+    const booking = await commands.create(request());
+    const other = new LocalBookingCommands(commandsModel, () => 'otro-cliente');
+
+    await expect(other.cancel(booking.id)).rejects.toThrow(BookingNotFoundError);
+    expect((await service.bookings.getById(booking.id))?.status).toBe('confirmed');
+    expect(await usedSessions()).toBe(3);
+  });
+
+  it('rechaza cancelar con menos de 1 hora de anticipación (gym) y no toca la sesión', async () => {
+    const booking = await commands.create(request());
+    const thirtyMinutesBefore = new Date(booking.startsAt!.getTime() - 30 * 60_000);
+    const late = new LocalBookingCommands(commandsModel, () => CLIENT, () => thirtyMinutesBefore);
+
+    await expect(late.cancel(booking.id)).rejects.toThrow(BookingCancellationNoticeError);
+    expect((await service.bookings.getById(booking.id))?.status).toBe('confirmed');
+    expect(await usedSessions()).toBe(3);
+  });
+
+  it('cancelar sin sesión consumida no falla ni devuelve nada', async () => {
+    await service.programs.save({ ...(await service.programs.getById(programId))!, status: 'expired' });
+    const booking = await commands.create(request());
+    expect((await service.bookings.getById(booking.id))?.programId ?? null).toBeNull();
+
+    await expect(commands.cancel(booking.id)).resolves.toMatchObject({ status: 'cancelled' });
   });
 });
 

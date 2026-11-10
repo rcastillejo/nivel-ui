@@ -1,4 +1,4 @@
-import { Trainer, Booking, TrainerSchedule, Client, Program } from '../types';
+import { Trainer, Booking, TrainerSchedule, Client, Program, CreateBookingCommand } from '../types';
 
 // Interfaces de repositorios para abstracción de datos
 export interface IClientRepository {
@@ -30,6 +30,13 @@ export interface IBookingRepository {
   /** Cancela la reserva solo si sigue confirmada. Devuelve true si cambió una fila (operación atómica). */
   cancelIfConfirmed(id: string): Promise<boolean>;
   delete(id: string): Promise<void>;
+}
+
+// Comandos de reserva que deben ejecutarse donde se garantizan las reglas de negocio
+// (backend). El cliente se identifica por su sesión, nunca por un parámetro.
+export interface IBookingCommands {
+  create(request: Omit<CreateBookingCommand, 'action'>): Promise<Booking>;
+  cancel(bookingId: string): Promise<Booking>;
 }
 
 export interface IProgramRepository {
