@@ -19,6 +19,8 @@ import { LocalStorageDataService } from '@/core/repositories/localStorage';
 import { BookingModel } from '@/core/models/BookingModel';
 import { BookingViewModel } from '@/core/view-models/BookingViewModel';
 import { ProgramModel } from '@/core/models/ProgramModel';
+import { BookingCommandsModel } from '@/core/models/BookingCommandsModel';
+import { LocalBookingCommands } from '@/core/services/LocalBookingCommands';
 import { ClientModel } from '@/core/models/ClientModel';
 import { ClientViewModel } from '@/core/view-models/ClientViewModel';
 
@@ -94,7 +96,8 @@ describe('BookingViewModel con service inicializado', () => {
     await service.initialize(); // simula lo que DataProvider hace al montar
     const bookingModel = new BookingModel(service);
     const programModel = new ProgramModel(service);
-    bookingVM = new BookingViewModel(bookingModel, programModel);
+    const commands = new LocalBookingCommands(new BookingCommandsModel(bookingModel, programModel), () => 'client-test-uuid');
+    bookingVM = new BookingViewModel(bookingModel, commands);
   });
 
   it('loadTrainers carga los entrenadores sembrados por initialize()', async () => {

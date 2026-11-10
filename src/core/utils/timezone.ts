@@ -58,3 +58,8 @@ export function formatDateInTimeZone(instant: Date, timeZone: string): string {
   const pad = (n: number): string => String(n).padStart(2, '0');
   return `${p.year}-${pad(p.month)}-${pad(p.day)}`;
 }
+
+/** Zona horaria IANA del navegador (p. ej. "America/Lima"). */
+export function getBrowserTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}

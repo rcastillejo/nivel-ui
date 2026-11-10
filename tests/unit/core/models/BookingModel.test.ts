@@ -788,4 +788,14 @@ describe('BookingModel', () => {
       )
     })
   })
+
+  describe('attachProgram', () => {
+    it('records the program a booking consumed its session from', async () => {
+      mockBookingRepository.update.mockResolvedValue(undefined)
+
+      await bookingModel.attachProgram('b1', 'program1')
+
+      expect(mockBookingRepository.update).toHaveBeenCalledWith('b1', { programId: 'program1' })
+    })
+  })
 })

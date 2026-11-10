@@ -360,10 +360,11 @@ class LocalStorageBookingRepository implements IBookingRepository {
   }
 
   private parseBookings(data: string): Booking[] {
-    const parsed = JSON.parse(data) as Array<Omit<Booking, 'date'> & { date: string }>;
+    const parsed = JSON.parse(data) as Array<Omit<Booking, 'date' | 'startsAt'> & { date: string; startsAt?: string }>;
     return parsed.map((b) => ({
       ...b,
-      date: new Date(b.date)
+      date: new Date(b.date),
+      startsAt: b.startsAt ? new Date(b.startsAt) : undefined
     }));
   }
 

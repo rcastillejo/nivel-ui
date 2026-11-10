@@ -36,6 +36,9 @@ El cliente cancela una cita futura desde `/client/citas`, respetando la anticipa
 | Next.js Route Handler | Descartada por el usuario |
 | RPC / trigger en Postgres | Descartada por el usuario (lógica en BD) |
 
+## Decisión de empaquetado: C (bundle con esbuild) — implementada
+Resultado del spike y decisión tomada con el usuario; ver `docs/specs/client-appointments-cancel.spec.md` y `DEVELOPMENT.md` para el flujo final.
+
 ## Resultado del spike (Task 0, hecho)
 Probado con `supabase start` y `supabase functions serve` (CLI 3.1.0, Edge Runtime 1.78.1, Deno 2.1.4):
 - **Sí se puede** importar `src/core/...` desde la función: el runtime monta el proyecto completo. Las 5 migraciones existentes se aplican bien en local.

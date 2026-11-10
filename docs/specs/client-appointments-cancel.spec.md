@@ -205,11 +205,11 @@ ALTER TABLE public.bookings ALTER COLUMN starts_at SET NOT NULL;
 - [ ] Modo local (sin Supabase): mismo contrato con `LocalBookingCommands`; la garantía de servidor solo aplica con backend real.
 
 ### Restricciones técnicas (spike, 2026-11-10)
-- El Edge Runtime (Deno 2.1.4, CLI 3.1.0) monta el proyecto completo y **puede importar `src/core/...`**, pero **no resuelve imports sin extensión** (`'../types'`): hace falta `'../types/index.ts'`. Implica `allowImportingTsExtensions` en `tsconfig.json` (`noEmit` ya está activo) y reescribir los imports del código alcanzable desde la función.
-- Las dependencias npm (`date-fns`, `@supabase/supabase-js`) se declaran en `supabase/functions/bookings/deno.json`; el flag `--import-map` y un `import_map.json` suelto no se aplicaron en el CLI 3.1.0.
-- En el sandbox de desarrollo remoto el contenedor del runtime no confía en el CA del proxy y no puede bajar paquetes de npm: la prueba de punta a punta de la función se hace en una máquina con red directa; aquí se prueba el handler con Vitest.
-- `supabase/config.toml` estaba desactualizado para el CLI 3.1.0 (`[inbucket]` → `[local_smtp]`, `major_version` 15 → 17, igual que producción).
-- No verificado: que `supabase functions deploy` empaquete archivos de `src/` fuera de `supabase/functions/`. Se comprueba al primer despliegue.
+- El Edge Runtime (Deno 2.1.4, CLI 3.1.0) **no resuelve imports sin extensión** (`'../types'`) ni descarga paquetes de npm en el entorno de desarrollo remoto. **Decisión: empaquetar la función con esbuild** (`npm run build:functions`) en un único archivo `supabase/functions/bookings/index.js` con `src/core`, `@supabase/supabase-js` y `date-fns` incluidos. `src/` no cambia y la función no tiene imports externos.
+- El archivo generado no se versiona; el CI lo construye y `supabase-functions.yml` lo despliega.
+- `supabase/config.toml` estaba desactualizado para el CLI 3.1.0 (`[inbucket]` → `[local_smtp]`, `major_version` 15 → 17, igual que producción) y declara `[functions.bookings]` con `entrypoint`.
+- El trigger `guard_client_program_update` también se dispara con el service role; la migración lo exceptúa para que el backend pueda devolver sesiones.
+- Verificado en local (stack Docker): 22 chequeos de punta a punta de la función con JWT reales, y el cierre de la vía directa (`supabase/cutover/`). Sin verificar: despliegue a producción con `supabase functions deploy` y la prueba desde el navegador real (el login es solo con Google).
 
 ### Tests Requeridos
 - [ ] Unitario: `tests/unit/core/models/BookingModel.test.ts` (cancelar, plazos, límite, ajena, ya cancelada, zona horaria)
@@ -247,7 +247,7 @@ sequenceDiagram
 
 ## ADRs Relacionados
 
-- Pendiente evaluar un ADR: "Lógica de negocio de reservas en Supabase Edge Functions" (cambia el modelo de acceso a datos del cliente).
+- Ninguno por ahora (se pospone el ADR sobre mover la lógica de reservas a Edge Functions).
 
 ## Notas de Implementación
 
