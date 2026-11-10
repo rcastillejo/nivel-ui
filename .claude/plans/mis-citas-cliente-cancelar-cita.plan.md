@@ -36,10 +36,14 @@ El cliente cancela una cita futura desde `/client/citas`, respetando la anticipa
 | Next.js Route Handler | Descartada por el usuario |
 | RPC / trigger en Postgres | Descartada por el usuario (lógica en BD) |
 
-## Spike obligatorio antes de implementar (Task 0)
-El plan depende de **reutilizar `src/core/models` desde la Edge Function**. No está verificado que el bundler del CLI admita imports fuera de `supabase/functions/` ni cómo resolver `date-fns` (import map con `npm:`). Se prueba con una función mínima que importe `BookingModel`:
-- Si funciona: la función importa `src/core/...` por ruta relativa + `import_map.json`.
-- Si no: mover el código de dominio compartido a `supabase/functions/_shared/` y que `src/` lo importe desde ahí, o generar la copia con un script en CI. Decisión con el resultado del spike.
+## Resultado del spike (Task 0, hecho)
+Probado con `supabase start` y `supabase functions serve` (CLI 3.1.0, Edge Runtime 1.78.1, Deno 2.1.4):
+- **Sí se puede** importar `src/core/...` desde la función: el runtime monta el proyecto completo. Las 5 migraciones existentes se aplican bien en local.
+- **El runtime no resuelve imports sin extensión** (`'../types'`). Solución elegida: `.ts` explícito en los imports alcanzables desde la función + `allowImportingTsExtensions` en `tsconfig.json` (`noEmit` ya está activo). Es un cambio mecánico y amplio en `src/core`.
+- `date-fns` y `@supabase/supabase-js` van en `supabase/functions/bookings/deno.json`; `--import-map` no se aplicó.
+- Limitación del sandbox: el contenedor del runtime no puede bajar paquetes de npm (CA del proxy). La prueba de punta a punta de la función no se puede hacer aquí; el handler se prueba con Vitest.
+- `supabase/config.toml` se actualizó para el CLI 3.1.0.
+- Sin verificar: que `functions deploy` empaquete archivos fuera de `supabase/functions/` (se comprueba al primer despliegue; fallback `_shared`).
 
 ## Patterns to Mirror
 | Category | Source | Pattern |
@@ -77,7 +81,7 @@ El plan depende de **reutilizar `src/core/models` desde la Edge Function**. No e
 | `tests/unit/...`, `tests/integration/BookingFlow.integration.test.ts`, `e2e/client-appointments.spec.ts` | UPDATE/CREATE | Ver Tasks |
 
 ## Tasks
-### Task 0: Spike de bundling
+### Task 0: Spike de bundling (HECHO, ver resultado arriba)
 - **Action**: Función mínima que importe `BookingModel` desde `src/core` y se ejecute con `supabase functions serve`. Decidir entre import relativo o `_shared`.
 - **Validate**: la función responde localmente y `deno check` pasa. **Sin esto no se sigue.**
 
