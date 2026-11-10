@@ -10,6 +10,7 @@ import {
   BookingAlreadyCancelledError,
   BookingCancellationNoticeError,
   BookingCapacityError,
+  BookingDuplicateError,
   BookingNotFoundError,
   BookingValidationError,
 } from '../types/errors';
@@ -27,9 +28,12 @@ export class BookingModel {
     // Verificar disponibilidad
     await this.checkAvailability(booking.trainerId, booking.date, booking.time);
     
+    // Un cliente no puede tener dos reservas confirmadas en el mismo horario (con cualquier entrenador)
+    await this.validateNoDuplicate(booking);
+
     // Validar capacidad en tiempo real
     await this.validateCapacity(booking);
-    
+
     return this.dataService.bookings.create(booking);
   }
 
@@ -214,6 +218,18 @@ export class BookingModel {
     const availableSlots = await this.getAvailableSlots(trainerId, date);
     if (!availableSlots.includes(time)) {
       throw new BookingValidationError('El horario seleccionado no está disponible');
+    }
+  }
+
+  private async validateNoDuplicate(booking: Omit<Booking, 'id'>): Promise<void> {
+    const clientBookings = await this.dataService.bookings.getByClient(booking.clientId);
+    const hasSameSlot = clientBookings.some(
+      b => b.status === 'confirmed' &&
+           b.time === booking.time &&
+           isSameDay(b.date, booking.date)
+    );
+    if (hasSameSlot) {
+      throw new BookingDuplicateError();
     }
   }
 

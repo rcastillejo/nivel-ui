@@ -6,6 +6,7 @@ import {
   BookingAlreadyCancelledError,
   BookingCancellationNoticeError,
   BookingCapacityError,
+  BookingDuplicateError,
   BookingNotFoundError,
   BookingValidationError,
 } from '@/core/types/errors'
@@ -40,6 +41,8 @@ const mockProgramRepository = {
   getByClient: vi.fn(),
   create: vi.fn(),
   save: vi.fn(),
+  consumeSession: vi.fn(),
+  restoreSession: vi.fn(),
   delete: vi.fn()
 }
 
@@ -84,6 +87,72 @@ describe('BookingModel', () => {
       zone: 'gym',
       status: 'confirmed'
     }
+
+    beforeEach(() => {
+      // Por defecto el cliente no tiene otras reservas
+      mockBookingRepository.getByClient.mockResolvedValue([])
+    })
+
+    describe('duplicate bookings (same client, same date and time)', () => {
+      const existingBooking = (overrides: Partial<Booking>): Booking => ({
+        ...validBookingData,
+        id: 'existing1',
+        ...overrides
+      })
+
+      beforeEach(() => {
+        mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
+        mockTrainerRepository.getSchedule.mockResolvedValue(null)
+        mockBookingRepository.getByDate.mockResolvedValue([])
+        mockBookingRepository.create.mockResolvedValue({ ...validBookingData, id: 'new1' })
+      })
+
+      it('rejects a second confirmed booking at the same date, time, trainer and zone', async () => {
+        mockBookingRepository.getByClient.mockResolvedValue([existingBooking({})])
+
+        await expect(bookingModel.createBooking(validBookingData)).rejects.toThrow(BookingDuplicateError)
+        expect(mockBookingRepository.create).not.toHaveBeenCalled()
+      })
+
+      it('rejects the same date and time with a different trainer', async () => {
+        mockBookingRepository.getByClient.mockResolvedValue([
+          existingBooking({ trainerId: 'trainer2', trainerName: 'Entrenador Ana' })
+        ])
+
+        await expect(bookingModel.createBooking(validBookingData)).rejects.toThrow(BookingDuplicateError)
+      })
+
+      it('rejects the same date and time in a different zone', async () => {
+        mockBookingRepository.getByClient.mockResolvedValue([existingBooking({ zone: 'gabinete' })])
+
+        await expect(bookingModel.createBooking(validBookingData)).rejects.toThrow(BookingDuplicateError)
+      })
+
+      it('uses a clear message for the user', async () => {
+        mockBookingRepository.getByClient.mockResolvedValue([existingBooking({})])
+
+        await expect(bookingModel.createBooking(validBookingData)).rejects.toThrow('Ya tienes una reserva en ese horario')
+      })
+
+      it('allows the same time on a different date', async () => {
+        const otherDay = new Date(validBookingData.date.getTime() + 24 * 60 * 60 * 1000)
+        mockBookingRepository.getByClient.mockResolvedValue([existingBooking({ date: otherDay })])
+
+        await expect(bookingModel.createBooking(validBookingData)).resolves.toBeDefined()
+      })
+
+      it('allows a different time on the same date', async () => {
+        mockBookingRepository.getByClient.mockResolvedValue([existingBooking({ time: '10:00' })])
+
+        await expect(bookingModel.createBooking(validBookingData)).resolves.toBeDefined()
+      })
+
+      it('ignores cancelled bookings in the same slot', async () => {
+        mockBookingRepository.getByClient.mockResolvedValue([existingBooking({ status: 'cancelled' })])
+
+        await expect(bookingModel.createBooking(validBookingData)).resolves.toBeDefined()
+      })
+    })
 
     it('should create a booking successfully', async () => {
       const createdBooking = { ...validBookingData, id: 'generated-uuid' }
