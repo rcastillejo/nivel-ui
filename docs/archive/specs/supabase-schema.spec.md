@@ -19,7 +19,7 @@ Esta spec define el schema de base de datos que refleja el modelo de dominio act
 las políticas de Row Level Security (RLS) que garantizan que cada usuario solo acceda a los
 datos que le corresponden.
 
-**ADR relacionado**: [ADR-002: Estrategia de Despliegue a Producción MVP](../adr/ADR-002-produccion-mvp-deployment.md)
+**ADR relacionado**: [ADR-002: Estrategia de Despliegue a Producción MVP](../../adr/ADR-002-produccion-mvp-deployment.md)
 
 ## Roles Involucrados
 
@@ -222,7 +222,7 @@ erDiagram
 
 ## ADRs Relacionados
 
-- [ADR-002: Estrategia de Despliegue a Producción MVP](../adr/ADR-002-produccion-mvp-deployment.md)
+- [ADR-002: Estrategia de Despliegue a Producción MVP](../../adr/ADR-002-produccion-mvp-deployment.md)
 
 ## Notas de Implementación
 
