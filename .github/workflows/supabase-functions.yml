@@ -1,0 +1,60 @@
+name: Supabase Functions Deploy
+
+# Despliega la Edge Function `bookings` cuando se mergea a main y cambia el código
+# que empaqueta (src/core, src/server) o su configuración.
+#
+# La función se empaqueta con esbuild (npm run build:functions): src/core se reutiliza
+# sin cambios y el resultado es un único archivo, sin dependencias externas.
+#
+# Secrets requeridos (los mismos que supabase-migrate.yml):
+#   SUPABASE_ACCESS_TOKEN  — supabase.com → Account → Access Tokens
+#   SUPABASE_PROJECT_ID    — ref del proyecto
+#
+# ORDEN DE PUESTA EN PRODUCCIÓN: ver supabase/cutover/ (la migración que cierra las
+# escrituras directas del cliente se aplica a mano, DESPUÉS de verificar esta función).
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/core/**'
+      - 'src/server/**'
+      - 'scripts/build-edge-functions.mjs'
+      - 'supabase/config.toml'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Deploy bookings function
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bundle Edge Functions
+        run: npm run build:functions
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy bookings
+        run: supabase functions deploy bookings --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
