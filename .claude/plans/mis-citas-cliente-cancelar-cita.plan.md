@@ -37,7 +37,7 @@ El cliente cancela una cita futura desde `/client/citas`, respetando la anticipa
 | RPC / trigger en Postgres | Descartada por el usuario (lógica en BD) |
 
 ## Decisión de empaquetado: C (bundle con esbuild) — implementada
-Resultado del spike y decisión tomada con el usuario; ver `docs/specs/client-appointments-cancel.spec.md` y `DEVELOPMENT.md` para el flujo final.
+Resultado del spike y decisión tomada con el usuario; ver `DEVELOPMENT.md` para el flujo final y la descripción del PR para lo verificado.
 
 ## Resultado del spike (Task 0, hecho)
 Probado con `supabase start` y `supabase functions serve` (CLI 3.1.0, Edge Runtime 1.78.1, Deno 2.1.4):
@@ -64,7 +64,6 @@ Probado con `supabase start` y `supabase functions serve` (CLI 3.1.0, Edge Runti
 ## Files to Change
 | File | Action | Why |
 |---|---|---|
-| `docs/specs/client-appointments-cancel.spec.md` | CREATE | SDD: Gherkin, contratos, D1–D9 |
 | `.claude/prds/mis-citas-cliente.prd.md` | UPDATE | Registrar decisiones; hito 2 → `complete` al final |
 | `supabase/migrations/…_bookings_starts_at.sql` | CREATE | `starts_at TIMESTAMPTZ`, `client_timezone TEXT`, `program_id UUID REFERENCES programs ON DELETE SET NULL`. Backfill `starts_at = (date + time_slot::time) AT TIME ZONE 'UTC'`; luego `starts_at NOT NULL` |
 | `supabase/migrations/…_bookings_close_direct_writes.sql` | CREATE | Quita las policies `bookings: client insert` y `bookings: client cancel` (solo la Edge Function escribe). Se aplica **después** de desplegar la función |
