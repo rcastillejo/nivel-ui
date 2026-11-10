@@ -23,7 +23,7 @@ We'll know we're right when **una feature nueva se implementa sin crear ningún 
 | Menciones de SDD en `CLAUDE.md` | 0 | Búsqueda de "SDD" / "Spec Driven" |
 
 ## Scope
-**MVP** — Quitar la sección 11 de `CLAUDE.md` y el checklist SDD de la sección 9; reemplazar por una línea que indique el flujo vigente (PRD → `/plan` → implementación). Los specs y ADR-001 se dejan donde están por ahora, solo dejan de crearse.
+**MVP** — Quitar la sección 11 de `CLAUDE.md` (incluye su checklist SDD); reemplazar por una línea que indique el flujo vigente (PRD → `/plan` → implementación). Los specs y ADR-001 se dejan donde están por ahora, solo dejan de crearse.
 
 **Out of scope**
 - ADR-002 y plantilla de ADR — los ADR no son exclusivos de SDD.
@@ -36,7 +36,7 @@ We'll know we're right when **una feature nueva se implementa sin crear ningún 
 
 | # | Milestone | Outcome | Status | Plan |
 |---|---|---|---|---|
-| 1 | Dejar de crear specs | `CLAUDE.md` ya no instruye SDD y declara el flujo PRD → `/plan` | pending | — |
+| 1 | Dejar de crear specs | `CLAUDE.md` ya no instruye SDD y declara el flujo PRD → `/plan` | in-progress | [retirar-sdd.plan.md](../plans/retirar-sdd.plan.md) |
 | 2 | Archivar artefactos SDD | Specs y ADR-001 movidos a `docs/archive/`; referencias en `docs/adr/README.md` y `.claude/prds/mis-citas-cliente.prd.md` actualizadas | pending | — |
 
 ## Open Questions
