@@ -192,6 +192,35 @@ describe('ProgramModel', () => {
         ActiveProgramAlreadyExistsError
       );
     });
+
+    it('should include the client name (not the id) in the active program error message', async () => {
+      const existingProgram: Program = {
+        id: 'program1',
+        name: 'Existing Program',
+        description: 'Already active',
+        trainerId: 'trainer1',
+        clientIds: ['client1'],
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        totalSessions: 10,
+        usedSessions: 0,
+        status: 'active'
+      };
+
+      mockProgramRepository.getByClient.mockResolvedValue([existingProgram]);
+      vi.mocked(mockDataService.clients.getById).mockResolvedValue({
+        id: 'client1',
+        name: 'Juan Pérez',
+        email: 'juan@example.com',
+        phone: '555-0000',
+        status: 'active',
+        createdAt: new Date()
+      });
+
+      await expect(programModel.createProgram(validProgramData)).rejects.toThrow(
+        "El cliente 'Juan Pérez' ya tiene un programa activo"
+      );
+    });
   });
 
   describe('getActiveProgram', () => {
