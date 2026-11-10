@@ -105,7 +105,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
             Nombre del programa <span className="text-red-500">*</span>
           </label>
           <input
@@ -119,7 +119,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
             Total de sesiones <span className="text-red-500">*</span>
           </label>
           <input
@@ -136,7 +136,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
             Fecha de inicio <span className="text-red-500">*</span>
           </label>
           <input
@@ -154,7 +154,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
             Fecha de fin <span className="text-red-500">*</span>
           </label>
           <input
@@ -173,7 +173,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-semibold text-gray-700 mb-1">
           Frecuencia semanal estimada
         </label>
         <div data-testid="weekly-frequency-display" className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-600">
@@ -182,7 +182,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-semibold text-gray-700 mb-1">
           Descripción <span className="text-red-500">*</span>
         </label>
         <textarea
@@ -196,7 +196,7 @@ const CreateProgramForm = observer(function CreateProgramForm() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
           Cliente(s) <span className="text-red-500">*</span>
         </label>
         {clientVM.error && (
