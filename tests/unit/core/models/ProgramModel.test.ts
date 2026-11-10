@@ -194,6 +194,64 @@ describe('ProgramModel', () => {
     });
   });
 
+  describe('createProgram with multiple clients', () => {
+    const multiClientData = {
+      name: 'Programa grupal',
+      description: 'Programa para varios clientes',
+      trainerId: 'trainer1',
+      clientIds: ['client1', 'client2', 'client3'],
+      startDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      totalSessions: 10
+    };
+
+    it('should create a single program containing all the clients', async () => {
+      mockProgramRepository.getByClient.mockResolvedValue([]);
+      mockProgramRepository.create.mockImplementation(async (p: Omit<Program, 'id'>) => ({
+        id: 'p1',
+        ...p
+      }));
+
+      const result = await programModel.createProgram(multiClientData);
+
+      expect(result.clientIds).toEqual(['client1', 'client2', 'client3']);
+      expect(mockProgramRepository.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('should validate every client for an existing active program', async () => {
+      mockProgramRepository.getByClient.mockResolvedValue([]);
+      mockProgramRepository.create.mockResolvedValue({ id: 'p1' });
+
+      await programModel.createProgram(multiClientData);
+
+      expect(mockProgramRepository.getByClient).toHaveBeenCalledWith('client1');
+      expect(mockProgramRepository.getByClient).toHaveBeenCalledWith('client2');
+      expect(mockProgramRepository.getByClient).toHaveBeenCalledWith('client3');
+    });
+
+    it('should throw ActiveProgramAlreadyExistsError when only the last client has an active program', async () => {
+      const activeProgram = { id: 'other', status: 'active', clientIds: ['client3'] } as Program;
+      mockProgramRepository.getByClient.mockImplementation(async (id: string) =>
+        id === 'client3' ? [activeProgram] : []
+      );
+
+      await expect(programModel.createProgram(multiClientData)).rejects.toThrow(
+        ActiveProgramAlreadyExistsError
+      );
+      expect(mockProgramRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('should allow a client whose previous program is expired', async () => {
+      const expired = { id: 'old', status: 'expired', clientIds: ['client2'] } as Program;
+      mockProgramRepository.getByClient.mockImplementation(async (id: string) =>
+        id === 'client2' ? [expired] : []
+      );
+      mockProgramRepository.create.mockResolvedValue({ id: 'p1', clientIds: multiClientData.clientIds });
+
+      await expect(programModel.createProgram(multiClientData)).resolves.toBeDefined();
+    });
+  });
+
   describe('getActiveProgram', () => {
     it('should return active program for client', async () => {
       const activeProgram: Program = {
