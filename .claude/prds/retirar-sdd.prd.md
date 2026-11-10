@@ -37,7 +37,7 @@ We'll know we're right when **una feature nueva se implementa sin crear ningún 
 | # | Milestone | Outcome | Status | Plan |
 |---|---|---|---|---|
 | 1 | Dejar de crear specs | `CLAUDE.md` ya no instruye SDD, declara el flujo PRD → `/plan` y los workflows de Claude desaparecen | complete | [retirar-sdd.plan.md](../plans/retirar-sdd.plan.md) |
-| 2 | Archivar artefactos SDD | Specs y ADR-001 movidos a `docs/archive/`; referencias en `docs/adr/README.md` y `.claude/prds/mis-citas-cliente.prd.md` actualizadas | pending | — |
+| 2 | Archivar artefactos SDD | Specs y ADR-001 movidos a `docs/archive/`; referencias en `docs/adr/README.md` y `.claude/prds/mis-citas-cliente.prd.md` actualizadas | in-progress | [retirar-sdd-hito-2.plan.md](../plans/retirar-sdd-hito-2.plan.md) |
 
 ## Open Questions
 - [ ] Contradicción en las respuestas: "por ahora deja los specs y ADR" vs. "muévelas al archive". Se asume hito 1 ahora y hito 2 después; confirmar si el archivado va en el mismo PR.
