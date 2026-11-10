@@ -218,17 +218,47 @@ describe('BookingModel', () => {
       await expect(bookingModel.createBooking(invalidBooking)).rejects.toThrow(BookingValidationError)
     })
 
-    it('should allow a same-day booking even when the date has no time-of-day set', async () => {
-      const todayAtMidnight = new Date()
-      todayAtMidnight.setHours(0, 0, 0, 0)
-      const sameDayBooking = { ...validBookingData, date: todayAtMidnight }
+    describe('same-day bookings only for a time still in the future', () => {
+      // Hoy a las 09:00 (hora local) es el horario reservado; `now` se inyecta para no depender del reloj real
+      const today = new Date(2026, 10, 10)
+      const sameDayBooking = { ...validBookingData, date: today, time: '09:00' }
+      const at = (hours: number, minutes = 0) => new Date(2026, 10, 10, hours, minutes)
 
-      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
-      mockTrainerRepository.getSchedule.mockResolvedValue(null)
-      mockBookingRepository.getByDate.mockResolvedValue([])
-      mockBookingRepository.create.mockResolvedValue({ ...sameDayBooking, id: 'generated-uuid' })
+      beforeEach(() => {
+        mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
+        mockTrainerRepository.getSchedule.mockResolvedValue(null)
+        mockBookingRepository.getByDate.mockResolvedValue([])
+        mockBookingRepository.create.mockImplementation(async (b: Omit<Booking, 'id'>) => ({ ...b, id: 'generated-uuid' }))
+      })
 
-      await expect(bookingModel.createBooking(sameDayBooking)).resolves.not.toThrow()
+      it('allows a same-day booking whose time is later than now', async () => {
+        await expect(bookingModel.createBooking(sameDayBooking, at(8, 0))).resolves.toMatchObject({ id: 'generated-uuid' })
+      })
+
+      it('allows a booking starting one minute from now', async () => {
+        await expect(bookingModel.createBooking(sameDayBooking, at(8, 59))).resolves.toMatchObject({ id: 'generated-uuid' })
+      })
+
+      it('rejects a same-day booking whose time already passed', async () => {
+        await expect(bookingModel.createBooking(sameDayBooking, at(10, 0))).rejects.toThrow(
+          'No se pueden hacer reservas en el pasado'
+        )
+        expect(mockBookingRepository.create).not.toHaveBeenCalled()
+      })
+
+      it('rejects a booking that starts exactly now', async () => {
+        await expect(bookingModel.createBooking(sameDayBooking, at(9, 0))).rejects.toThrow(BookingValidationError)
+      })
+
+      it('uses the server-computed startsAt instead of the local date and time', async () => {
+        const startsAt = new Date('2026-11-10T14:00:00.000Z')
+        const withStartsAt = { ...sameDayBooking, startsAt }
+
+        await expect(bookingModel.createBooking(withStartsAt, new Date('2026-11-10T13:59:00.000Z'))).resolves.toMatchObject({ id: 'generated-uuid' })
+        await expect(bookingModel.createBooking(withStartsAt, new Date('2026-11-10T14:00:01.000Z'))).rejects.toThrow(
+          'No se pueden hacer reservas en el pasado'
+        )
+      })
     })
 
     it('should throw error for unavailable time slot', async () => {
@@ -446,6 +476,45 @@ describe('BookingModel', () => {
       const result = await bookingModel.getAvailableSlots('trainer1', date)
 
       expect(result).toEqual(['09:00', '10:00', '11:00'])
+    })
+
+    describe('hiding slots that already passed (same day)', () => {
+      const today = new Date(2026, 10, 10) // martes
+      const tomorrow = new Date(2026, 10, 11)
+
+      beforeEach(() => {
+        mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
+        mockTrainerRepository.getSchedule.mockResolvedValue(null)
+        mockBookingRepository.getByDate.mockResolvedValue([])
+      })
+
+      it('removes today\'s slots that start at or before now', async () => {
+        const now = new Date(2026, 10, 10, 10, 0)
+
+        const result = await bookingModel.getAvailableSlots('trainer1', today, now)
+
+        expect(result).toEqual(['11:00'])
+      })
+
+      it('keeps every slot for a future day', async () => {
+        const now = new Date(2026, 10, 10, 23, 0)
+
+        const result = await bookingModel.getAvailableSlots('trainer1', tomorrow, now)
+
+        expect(result).toEqual(['09:00', '10:00', '11:00'])
+      })
+
+      it('returns nothing for today once every slot has passed', async () => {
+        const result = await bookingModel.getAvailableSlots('trainer1', today, new Date(2026, 10, 10, 20, 0))
+
+        expect(result).toEqual([])
+      })
+
+      it('does not filter by time when no clock is given', async () => {
+        const result = await bookingModel.getAvailableSlots('trainer1', today)
+
+        expect(result).toEqual(['09:00', '10:00', '11:00'])
+      })
     })
 
     it('should return empty array when trainer not found', async () => {
@@ -822,13 +891,13 @@ describe('BookingModel', () => {
   })
 
   describe('createBooking with client timezone', () => {
-    const trainer: Trainer = { id: 'trainer1', userId: 'user1', name: 'John', availableSlots: ['09:00'] }
+    const trainer: Trainer = { id: 'trainer1', userId: 'user1', name: 'John', availableSlots: ['09:00', '21:30'] }
     const data: Omit<Booking, 'id'> = {
       clientId: 'client1',
       trainerId: 'trainer1',
       trainerName: 'Entrenador John',
       date: new Date(2026, 10, 10),
-      time: '09:00',
+      time: '21:30',
       duration: 60,
       zone: 'gym',
       status: 'confirmed',
@@ -843,10 +912,19 @@ describe('BookingModel', () => {
     })
 
     it('treats the client\'s calendar day as today even when the server is already on the next UTC day', async () => {
-      // 2026-11-11T02:00Z es todavía 10 de noviembre en Lima
+      // 2026-11-11T02:00Z son las 21:00 del 10 de noviembre en Lima; las 21:30 de Lima todavía son futuro
       const serverNow = new Date('2026-11-11T02:00:00.000Z')
 
       await expect(bookingModel.createBooking(data, serverNow)).resolves.toMatchObject({ id: 'new' })
+    })
+
+    it('rejects a same-day slot that already passed in the client\'s zone', async () => {
+      // 09:00 en Lima del 10 de noviembre ya pasó a las 21:00 de Lima (02:00Z del día siguiente)
+      const serverNow = new Date('2026-11-11T02:00:00.000Z')
+
+      await expect(bookingModel.createBooking({ ...data, time: '09:00' }, serverNow)).rejects.toThrow(
+        'No se pueden hacer reservas en el pasado'
+      )
     })
 
     it('rejects a date that is already past in the client\'s zone', async () => {
