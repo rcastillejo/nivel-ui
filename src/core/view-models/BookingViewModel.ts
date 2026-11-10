@@ -24,6 +24,7 @@ export class BookingViewModel {
   availableSlotsByTrainer: Record<string, string[]> = {};
   bookings: Booking[] = [];
   isLoading = false;
+  isSubmitting = false;
   error: string | null = null;
   
   // Cache para capacidades (para acceso síncrono desde UI)
@@ -124,11 +125,17 @@ export class BookingViewModel {
   }
 
   async createBooking(): Promise<boolean> {
+    // Evita reservas duplicadas por clics repetidos mientras la petición sigue en curso
+    if (this.isSubmitting) {
+      return false;
+    }
+
     if (!this.canCreateBooking) {
       this.setError('Faltan datos para crear la reserva');
       return false;
     }
 
+    this.isSubmitting = true;
     this.setLoading(true);
     try {
       // El backend valida disponibilidad y aforo, consume la sesión del programa
@@ -158,6 +165,9 @@ export class BookingViewModel {
       });
       return false;
     } finally {
+      runInAction(() => {
+        this.isSubmitting = false;
+      });
       this.setLoading(false);
     }
   }
