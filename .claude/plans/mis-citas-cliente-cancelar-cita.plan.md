@@ -5,45 +5,41 @@
 **Complexity**: Medium
 
 ## Summary
-El cliente cancela una cita futura desde `/client/citas`, respetando la anticipación mínima (1 h gym, 24 h gabinete) y **recuperando la sesión de su programa**. La regla se garantiza **en un backend** (Next.js Route Handler en Vercel), no en la BD: usa la hora del servidor y la zona horaria del cliente, y reutiliza `BookingModel`/`ProgramModel` en TypeScript. El navegador deja de hacer el `UPDATE` directo. Reprogramar queda para el hito 3.
+El cliente cancela una cita futura desde `/client/citas`, respetando la anticipación mínima (1 h gym, 24 h gabinete) y **recuperando la sesión de su programa**. La regla de negocio se garantiza en el **backend**, como una **Supabase Edge Function** (TypeScript/Deno) que reutiliza `BookingModel` y `ProgramModel`; no hay lógica en la BD ni en Next.js. Las reservas guardan un instante UTC (`starts_at`) calculado **en el servidor**, así cancelar solo compara `starts_at` con el `now()` del servidor. Para eso, la **creación** de reservas también pasa por la Edge Function. Reprogramar queda para el hito 3.
 
 ## Decisiones
 | # | Tema | Decisión |
 |---|---|---|
-| D1 | Medición del plazo | Contra el inicio de la cita; el límite exacto se permite (pendiente de confirmar) |
-| D2 | Reloj y zona horaria | **Servidor**: `now` lo toma el servidor. Zona horaria: la del **cliente** (IANA, enviada por el navegador y validada) para convertir `date + time_slot` a instante UTC |
-| D3 | Sesión del programa | **Se devuelve al cancelar** (decidido por el usuario). Ver "Devolución de sesión" |
-| D4 | Qué es cancelar | Misma fila con `status = 'cancelled'` (rastro en Historial) |
-| D5 | Fuera de plazo | Rechazo con error de dominio (HTTP 409/422); la UI oculta el botón y explica el motivo |
-| D6 | Aviso al entrenador | No por ahora (decidido por el usuario) |
-| D7 | Garantía en servidor | **Sí, en backend** (decidido por el usuario), no en RPC/trigger de la BD |
+| D1 | Medición del plazo | Contra `starts_at` (inicio de la cita); el límite exacto se permite |
+| D2 | Reloj y zona horaria | `now` del servidor. La zona IANA **del cliente** se envía solo al **reservar** para convertir `date + time_slot` a UTC; al cancelar ya no hace falta |
+| D3 | Sesión del programa | Se devuelve al cancelar (decidido). Usa `bookings.program_id`, registrado al reservar |
+| D4 | Qué es cancelar | Misma fila con `status = 'cancelled'` |
+| D5 | Fuera de plazo | Error de dominio (HTTP 409); la UI oculta el botón y explica el motivo |
+| D6 | Aviso al entrenador | No por ahora (decidido) |
+| D7 | Garantía en servidor | **Edge Function** (decidido): ni Next.js ni RPC/trigger en la BD |
+| D8 | `starts_at` UTC | **Opción A** (decidido): columna `TIMESTAMPTZ`, calculada en servidor al reservar |
+| D9 | Backfill | Zona horaria **del servidor de BD = UTC** (verificada: `current_setting('TimeZone') = 'UTC'`) |
 
-## Hallazgos del repo (base de D3 y D7)
-- Funciones en Supabase hoy: solo `get_my_role()`, `handle_new_user()` y el trigger `guard_client_program_update` (`supabase/migrations/`). No hay RPC (`.rpc`), Edge Functions (`supabase/functions` no existe) ni rutas `/api`; el navegador habla directo con Supabase bajo RLS.
-- `guard_client_program_update` solo deja a un cliente hacer `used_sessions + 1`. **Devolver una sesión (`- 1`) hoy falla** con RLS/trigger. Aflojar el trigger dejaría a cualquier cliente restar sesiones sin cancelar nada; por eso la devolución debe hacerla el backend con service role.
-- Hoy `bookings` guarda `date` (DATE) + `time_slot` (TEXT) sin zona horaria, y `created_at` (TIMESTAMPTZ).
-- La reserva no registra si consumió una sesión (`consumeSessionForClient` puede devolver `null`).
+## Hallazgos (repo y proyecto Supabase `nivel-gym2026`)
+- Mismas cinco tablas que el esquema del repo (`user_profiles`, `trainers`, `trainer_schedules`, `bookings`, `programs`). El repo no declara el ref del proyecto; se identificó por nombre y esquema, hay que confirmarlo.
+- **Edge Functions: ninguna** (`supabase/functions` no existe, tampoco en remoto). Funciones SQL: solo `get_my_role()`, `handle_new_user()` y el trigger `guard_client_program_update`. Nadie usa `.rpc()`.
+- `bookings` tiene 52 filas, **todas confirmadas y en el pasado**: el backfill no afecta a ninguna cita cancelable.
+- Zona horaria del servidor de BD: **UTC**.
+- `guard_client_program_update` solo deja a un cliente hacer `used_sessions + 1`; devolver una sesión falla con RLS/trigger. La Edge Function lo hace con service role, que Supabase inyecta en el runtime (**no hay que crear ningún secreto**).
+- Con service role el backend ve todas las reservas: el aforo se cuenta sin el límite de RLS (parte de #182). La inconsistencia gym global vs por entrenador sigue fuera de alcance.
+- Las Edge Functions recomiendan "fat functions" y código compartido en `supabase/functions/_shared` (docs: *Development tips*).
 
 ## Alternativas evaluadas para D7
-| Opción | Lógica de negocio | Coste | Veredicto |
-|---|---|---|---|
-| **A. Next.js Route Handler** `POST /api/bookings/[id]/cancel` | En TS, reutilizando `BookingModel`/`ProgramModel` con un `IDataService` de servidor | Nueva variable secreta `SUPABASE_SERVICE_ROLE_KEY` en Vercel; sin migración | **Recomendada**: una sola implementación, mismo despliegue |
-| B. Supabase Edge Function (Deno) | Duplicada o reescrita para Deno (no puede importar `src/`) | Infra nueva (`supabase/functions`, deploy aparte) | Solo si algún día se sale de Next/Vercel |
-| C. RPC / trigger en Postgres | En SQL | Migración + test contra Postgres real | Descartada por el usuario (lógica en BD) |
+| Opción | Veredicto |
+|---|---|
+| **Edge Function de Supabase** | **Elegida.** Corre junto a la BD, recibe el service role sin configurar secretos |
+| Next.js Route Handler | Descartada por el usuario |
+| RPC / trigger en Postgres | Descartada por el usuario (lógica en BD) |
 
-## Devolución de sesión
-- Nuevo `ProgramModel.restoreSessionForClient(clientId)`: devuelve 1 sesión al programa activo si `usedSessions > 0`; sin programa activo no es error (igual que `consumeSessionForClient`).
-- Anti-abuso sin cambiar esquema: solo se devuelve si el programa activo existía al reservar (`program.created_at <= booking.created_at`). Limitación conocida: si la reserva se hizo con el programa agotado y no consumió sesión, la devolución daría una gratis. Cierre definitivo: columna `bookings.program_id` (ver pendientes).
-- Idempotencia: el backend cancela con `UPDATE ... WHERE id = $1 AND status = 'confirmed'` y solo devuelve la sesión si afectó 1 fila; así un doble clic no devuelve dos veces.
-- Sin transacción entre dos tablas con supabase-js: si falla la devolución tras cancelar, se registra el error y se informa al usuario (reintento manual por el entrenador). Riesgo aceptado.
-
-## Pendientes de decisión
-1. **Timestamp UTC en `bookings` (`starts_at TIMESTAMPTZ`)**, que el usuario pidió. Calcularlo en servidor al reservar exige mover también la **creación** de reservas al backend (`POST /api/bookings`), porque hoy el navegador inserta directo. Opciones:
-   - **A (completa)**: migración `starts_at` + backfill + endpoint de crear + cancelar. Cierra la zona horaria de raíz y permite guardar `program_id`. Más alcance.
-   - **B (mínima)**: solo el endpoint de cancelar; el instante se calcula con `date + time_slot` en la zona del cliente enviada en la petición. `starts_at` pasa al hito 3 (reprogramar).
-2. Si es A: zona horaria para el backfill de las reservas existentes (producto aún sin producción).
-3. Riesgo de zona horaria: `time_slot` es la hora local del gimnasio; si el cliente viaja y reserva con otra zona, el instante saldría desfasado. Mitigación posible: guardar la zona usada al reservar.
-4. Que el usuario cree `SUPABASE_SERVICE_ROLE_KEY` (secreto) en Vercel y en `.env.local`; no se guarda en el repo.
+## Spike obligatorio antes de implementar (Task 0)
+El plan depende de **reutilizar `src/core/models` desde la Edge Function**. No está verificado que el bundler del CLI admita imports fuera de `supabase/functions/` ni cómo resolver `date-fns` (import map con `npm:`). Se prueba con una función mínima que importe `BookingModel`:
+- Si funciona: la función importa `src/core/...` por ruta relativa + `import_map.json`.
+- Si no: mover el código de dominio compartido a `supabase/functions/_shared/` y que `src/` lo importe desde ahí, o generar la copia con un script en CI. Decisión con el resultado del spike.
 
 ## Patterns to Mirror
 | Category | Source | Pattern |
@@ -59,56 +55,59 @@ El cliente cancela una cita futura desde `/client/citas`, respetando la anticipa
 | E2E | `e2e/trainer-programs-flow.spec.ts` | Playwright (único spec existente; no hay e2e del flujo cliente) |
 
 ## Files to Change
-Base común (aplica a las opciones A y B de "Pendientes"). Con la opción A se añaden la migración `starts_at`, su backfill y `POST /api/bookings`.
-
 | File | Action | Why |
 |---|---|---|
-| `docs/specs/client-appointments-cancel.spec.md` | CREATE | SDD: Gherkin, contratos, D1–D7 y criterios (copiar `TEMPLATE.spec.md`) |
-| `.claude/prds/mis-citas-cliente.prd.md` | UPDATE | Hito 2 → `complete` al final; registrar D3/D6/D7 en Open Questions |
-| `src/core/types/index.ts` | UPDATE | `CANCELLATION_NOTICE_MINUTES` (gym 60, gabinete 1440); tipos de petición/respuesta del endpoint |
-| `src/core/types/errors.ts` | UPDATE | `BookingNotFoundError`, `BookingCancellationNoticeError(zone, minNoticeMinutes)` |
-| `src/core/models/BookingModel.ts` | UPDATE | `cancelBooking(bookingId, clientId, now, timeZone)` y `canCancel` puro; `getBookingStart` pasa a aceptar zona (hoy usa hora local) |
-| `src/core/models/ProgramModel.ts` | UPDATE | `restoreSessionForClient(clientId, bookedAt)` |
-| `src/app/api/bookings/[id]/cancel/route.ts` | CREATE | Route Handler: valida JWT del usuario, toma `now` del servidor, llama al Model y traduce errores de dominio a HTTP |
-| `src/core/services/ServerDataService.ts` | CREATE | `IDataService` de servidor (service role) reutilizando los repositorios Supabase existentes; sin tocar el Model |
-| `src/core/repositories/index.ts` | UPDATE | Nueva interfaz pequeña `IBookingCancellationGateway` (cliente → endpoint), sin ampliar `IBookingRepository` (ISP) |
-| `src/core/services/HttpBookingCancellationGateway.ts` | CREATE | Llama al endpoint con el token y la zona horaria del navegador; en modo local, implementación con `LocalStorageDataService` |
-| `src/core/view-models/ClientAppointmentsViewModel.ts` | UPDATE | `cancelBooking(id)`, `cancellingId`, `canCancel` (pista de UI), error string, recarga |
-| `src/components/client/ClientAppointmentsView.tsx` | UPDATE | Botón "Cancelar" solo en próximas y mensaje de plazo |
-| `src/components/client/CancelAppointmentDialog.tsx` | CREATE | Confirmación (mirar `ConfirmationModal.tsx`) |
-| `supabase/migrations/…_bookings_client_cancel_via_backend.sql` | CREATE | Quitar la policy `bookings: client cancel` para que el cliente ya no pueda cancelar por la API directa (cierra la evasión del plazo). Se aplica **después** de desplegar el endpoint |
-| `tests/unit/...` (Model, ProgramModel, VM, componente, route handler) | UPDATE/CREATE | Ver Tasks |
-| `tests/integration/BookingFlow.integration.test.ts` | UPDATE | Cancelar + devolver sesión con `LocalStorageDataService` real |
-| `e2e/client-appointments.spec.ts` | CREATE | Solo si hay modo autenticable (ver Riesgos) |
+| `docs/specs/client-appointments-cancel.spec.md` | CREATE | SDD: Gherkin, contratos, D1–D9 |
+| `.claude/prds/mis-citas-cliente.prd.md` | UPDATE | Registrar decisiones; hito 2 → `complete` al final |
+| `supabase/migrations/…_bookings_starts_at.sql` | CREATE | `starts_at TIMESTAMPTZ`, `client_timezone TEXT`, `program_id UUID REFERENCES programs ON DELETE SET NULL`. Backfill `starts_at = (date + time_slot::time) AT TIME ZONE 'UTC'`; luego `starts_at NOT NULL` |
+| `supabase/migrations/…_bookings_close_direct_writes.sql` | CREATE | Quita las policies `bookings: client insert` y `bookings: client cancel` (solo la Edge Function escribe). Se aplica **después** de desplegar la función |
+| `supabase/functions/bookings/index.ts` | CREATE | Fat function: `POST` con `action: 'create' \| 'cancel'`; valida JWT, rol y zona IANA; `now` del servidor; mapea errores de dominio a HTTP |
+| `supabase/functions/import_map.json`, `supabase/config.toml` | CREATE/UPDATE | Import map (`date-fns`) y `[functions.bookings]` con `verify_jwt = true` |
+| `src/core/types/index.ts` | UPDATE | `Booking.startsAt`, `programId`; `CANCELLATION_NOTICE_MINUTES`; tipos de petición/respuesta |
+| `src/core/types/errors.ts` | UPDATE | `BookingNotFoundError`, `BookingCancellationNoticeError`, `InvalidTimeZoneError` |
+| `src/core/mappers/BookingMapper.ts` | UPDATE | Mapear `starts_at`, `client_timezone`, `program_id` |
+| `src/core/models/BookingModel.ts` | UPDATE | `createBooking(..., now, timeZone)` calcula `startsAt` UTC; `cancelBooking(id, clientId, now)`; `canCancel(booking, now)` puro |
+| `src/core/models/ProgramModel.ts` | UPDATE | `restoreSession(programId)` (idempotente por el `UPDATE` condicional del cancel) |
+| `src/core/repositories/index.ts` | UPDATE | Interfaz pequeña `IBookingCommands { create; cancel }` (ISP); `IBookingRepository` sin cambios |
+| `src/core/services/EdgeFunctionBookingCommands.ts` | CREATE | Llama a `supabase.functions.invoke('bookings')`, envía la zona IANA del navegador |
+| `src/core/services/LocalBookingCommands.ts` | CREATE | Modo local: mismo contrato con `BookingModel`/`ProgramModel` y `LocalStorageDataService` |
+| `src/core/view-models/BookingViewModel.ts` | UPDATE | Reservar vía `IBookingCommands` (la sesión se consume en el servidor) |
+| `src/core/view-models/ClientAppointmentsViewModel.ts` | UPDATE | `cancelBooking`, `cancellingId`, `canCancel`, error string, recarga |
+| `src/components/client/ClientAppointmentsView.tsx`, `CancelAppointmentDialog.tsx` | UPDATE/CREATE | Botón y confirmación; sin lógica de plazo |
+| `tests/unit/...`, `tests/integration/BookingFlow.integration.test.ts`, `e2e/client-appointments.spec.ts` | UPDATE/CREATE | Ver Tasks |
 
 ## Tasks
-### Task 1: Spec (SDD)
-- **Action**: Crear la spec con Gherkin: cancelar OK y devuelve sesión; gym a <1 h bloqueado; gabinete a <24 h bloqueado; límite exacto; cita pasada; ya cancelada; cita ajena; sin programa activo; zona horaria del cliente distinta de UTC; doble clic.
-- **Validate**: confirmación del usuario de los pendientes 1–4 antes de seguir.
+### Task 0: Spike de bundling
+- **Action**: Función mínima que importe `BookingModel` desde `src/core` y se ejecute con `supabase functions serve`. Decidir entre import relativo o `_shared`.
+- **Validate**: la función responde localmente y `deno check` pasa. **Sin esto no se sigue.**
 
-### Task 2: Tipos, errores y zona horaria
-- **Action**: Constantes y errores; helper puro para convertir `date + time_slot` + IANA a instante (usar `date-fns-tz` o `Temporal`/`Intl`; evaluar dependencia nueva antes de agregarla). Validar el nombre IANA recibido.
-- **Validate**: `npx tsc --noEmit`
+### Task 1: Spec (SDD)
+- **Action**: Gherkin: cancelar OK + sesión devuelta; gym <1 h y gabinete <24 h bloqueados; límite exacto; ya cancelada; cita ajena; sin `program_id` (sin devolución, sin error); reserva en zona IANA distinta de UTC; zona inválida; doble clic; token ausente.
+- **Validate**: revisión del usuario.
+
+### Task 2: Migración `starts_at` + tipos y mapper (TDD)
+- **Action**: Migración en rama/entorno de pruebas primero; tipos, errores y `BookingMapper`.
+- **Validate**: `npx tsc --noEmit`; `npx vitest run tests/unit/core/mappers`
 
 ### Task 3: Models (TDD: tests primero)
-- **Action**: `BookingModel.cancelBooking`: validar ids → `getById` (inexistente o ajena → `BookingNotFoundError`) → ya cancelada/terminada → `BookingValidationError` → plazo por zona con `now` y zona recibidos → `update` condicional → devolver cita. `ProgramModel.restoreSessionForClient` con la regla anti-abuso.
+- **Action**: Conversión `date + time_slot + IANA → UTC` (`Intl`, sin dependencia nueva si basta); `createBooking` con `startsAt` y `programId` (consumir sesión); `cancelBooking` (ids → `getById` → ajena = `BookingNotFoundError` → ya cancelada → plazo contra `startsAt` y `now` → `UPDATE ... WHERE status='confirmed'`); `ProgramModel.restoreSession` solo si el `UPDATE` afectó 1 fila.
 - **Mirror**: `getClientAppointments`, `consumeSessionForClient`
 - **Validate**: `npx vitest run tests/unit/core/models`
 
-### Task 4: Backend (Route Handler)
-- **Action**: Verificar el JWT del usuario con Supabase, usar service role solo para escribir, `now = new Date()` del servidor, mapear errores (401 sin sesión, 404 ajena/inexistente, 409 fuera de plazo o ya cancelada). Devolución de sesión solo si el `UPDATE` afectó 1 fila.
-- **Validate**: tests unitarios del handler con `IDataService` falso; `npm run build`
+### Task 4: Edge Function
+- **Action**: Handler como función pura sobre un `IDataService` inyectado (testeable con Vitest); `index.ts` solo cablea Supabase y HTTP. Errores: 401 sin sesión, 403 rol incorrecto, 404 ajena, 409 plazo/ya cancelada, 422 zona inválida.
+- **Validate**: tests del handler; `supabase functions serve` + `curl`
 
-### Task 5: Cliente (gateway, ViewModel, componentes)
-- **Action**: Gateway HTTP, `cancelBooking` en el ViewModel (el error del backend se traduce a `string`), botón y diálogo. Sin lógica de plazo en componentes.
+### Task 5: Cliente (gateway, ViewModels, componentes)
+- **Action**: `IBookingCommands` + implementaciones Edge/local; `BookingViewModel` y `ClientAppointmentsViewModel`; botón y diálogo.
 - **Validate**: `npx vitest run tests/unit/core/view-models tests/unit/components`
 
-### Task 6: Integración, E2E y cierre de la vía directa
-- **Action**: Integración Model→`LocalStorageDataService`. Desplegar el endpoint y **después** aplicar la migración que quita `bookings: client cancel` (aplicarla requiere tu aprobación).
-- **Validate**: `npx vitest run tests/integration`; `npx playwright test e2e/client-appointments.spec.ts --trace off` si aplica
+### Task 6: Despliegue y cierre de la vía directa
+- **Action**: Desplegar la función (requiere tu aprobación), verificar reservar y cancelar de punta a punta, **y después** aplicar la migración que quita las policies de escritura directa del cliente. Evaluar quitar `programs: client consume own session` y su trigger (ya no los usa el cliente).
+- **Validate**: reservar/cancelar con una cuenta de prueba; intentar `UPDATE` directo y comprobar que falla
 
-### Task 7: Cierre
-- **Action**: Spec a `implemented`, PRD hito 2 a `complete`.
+### Task 7: Integración, E2E y cierre
+- **Action**: Integración Model→`LocalStorageDataService`; E2E si hay modo autenticable; spec a `implemented`; PRD hito 2 a `complete`.
 - **Validate**: bloque Validation completo.
 
 ## Validation
@@ -117,24 +116,26 @@ npm run lint
 npx tsc --noEmit
 npx vitest run
 npm run build
+supabase functions serve bookings
 ```
 
 ## Risks
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| Falta `SUPABASE_SERVICE_ROLE_KEY` en Vercel/entorno local | High | Pendiente 4; el endpoint falla cerrado (500) sin la clave |
-| Cancelar y devolver sesión no son atómicos | Medium | `UPDATE` condicional (idempotente) + log del fallo de devolución; riesgo aceptado |
-| Devolución de sesión gratis si la reserva no consumió (programa agotado) | Low | Regla `program.created_at <= booking.created_at`; cierre definitivo con `bookings.program_id` |
-| Zona horaria del cliente distinta de la del gimnasio al reservar | Medium | Pendiente 3; validar IANA y guardar la zona usada al reservar |
-| Quitar `bookings: client cancel` antes de desplegar el endpoint rompe la cancelación | Medium | Orden estricto: desplegar endpoint → verificar → migración |
-| Modo local (sin Google ni backend) no puede usar el endpoint | High | Gateway alternativo con `LocalStorageDataService`; la garantía de servidor solo aplica con backend real |
-| E2E difícil sin Google real | High | Cobertura con handler + integración + componente; anotarlo en la spec |
-| `date-fns-tz` es una dependencia nueva | Low | Evaluar `Intl` nativo primero |
+| El bundler de Edge Functions no admite importar `src/core` | Medium | Task 0 (spike) antes de todo; fallback `_shared` |
+| Mover la creación al backend cambia el flujo de reserva ya en uso | High | Despliegue en dos pasos; modo local con el mismo contrato; tests de integración del flujo existente |
+| Quitar las policies antes de desplegar la función rompe reservar y cancelar | Medium | Orden estricto: función → verificación → migración |
+| Reservas hechas con otra zona horaria del cliente quedan desfasadas | Medium | Se guarda `client_timezone`; `time_slot` se interpreta en la zona enviada; validar IANA |
+| Backfill en UTC no coincide con la hora local real | Low | Las 52 filas son pasadas; no afecta cancelación |
+| Reservar, consumir sesión y guardar `program_id` no son atómicos | Medium | Orden: crear → consumir → actualizar `program_id`; compensar con log si falla |
+| Cold start de la Edge Function aumenta la latencia al reservar | Low | Medir; si molesta, mantener caliente o revisar |
+| Probar contra el proyecto remoto sin entorno aislado | Medium | Usar una rama de Supabase (`create_branch`, requiere tu aprobación) o `supabase start` |
+| Modo local no ejerce la garantía de servidor | High | Declararlo en la spec; la regla del plazo vive igual en `BookingModel` |
 
 ## Acceptance
-- [ ] Pendientes 1–4 resueltos por el usuario
-- [ ] Spec creada y en `implemented`
-- [ ] Un cliente no puede cancelar fuera de plazo ni llamando a la API de Supabase directamente
+- [ ] Spike superado y decisión de empaquetado registrada
+- [ ] Un cliente no puede reservar ni cancelar fuera de reglas llamando a Supabase directamente
+- [ ] `bookings.starts_at` se guarda en UTC, calculado por el servidor
 - [ ] Cancelar devuelve la sesión del programa una sola vez
-- [ ] `lint`, `tsc`, `vitest` y `build` pasan
+- [ ] Spec en `implemented`; `lint`, `tsc`, `vitest` y `build` pasan
 - [ ] Sin `any`; lógica de negocio solo en Models; dependencias inyectadas
