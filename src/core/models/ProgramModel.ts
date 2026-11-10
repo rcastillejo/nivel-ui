@@ -63,7 +63,7 @@ export class ProgramModel {
       const activePrograms = clientPrograms.filter(p => p.status === 'active');
       // Si hay más de un programa activo, significa que hay otro además del que estamos renovando
       if (activePrograms.length > 1) {
-        throw new ActiveProgramAlreadyExistsError(clientId);
+        throw new ActiveProgramAlreadyExistsError(clientId, await this.getClientName(clientId));
       }
     }
 
@@ -158,9 +158,14 @@ export class ProgramModel {
     for (const clientId of clientIds) {
       const activeProgram = await this.getActiveProgram(clientId);
       if (activeProgram) {
-        throw new ActiveProgramAlreadyExistsError(clientId);
+        throw new ActiveProgramAlreadyExistsError(clientId, await this.getClientName(clientId));
       }
     }
+  }
+
+  private async getClientName(clientId: string): Promise<string> {
+    const client = await this.dataService.clients.getById(clientId);
+    return client?.name ?? clientId;
   }
 
   private validateProgramData(data: {
