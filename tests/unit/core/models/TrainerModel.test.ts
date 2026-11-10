@@ -22,6 +22,7 @@ const mockBookingRepository = {
   create: vi.fn(),
   save: vi.fn(),
   update: vi.fn(),
+  cancelIfConfirmed: vi.fn(),
   delete: vi.fn()
 };
 

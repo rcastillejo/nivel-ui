@@ -55,6 +55,9 @@ const bookingRow: BookingRow = {
   duration_minutes: 60,
   zone: 'gym',
   status: 'confirmed',
+  starts_at: null,
+  client_timezone: null,
+  program_id: null,
   created_at: '2026-05-01T00:00:00Z',
 };
 
@@ -300,6 +303,60 @@ describe('SupabaseBookingRepository', () => {
 
       const [updateArg] = (builder.update as ReturnType<typeof vi.fn>).mock.calls[0];
       expect(Object.keys(updateArg)).toEqual(['status']);
+    });
+  });
+
+  describe('update (server fields)', () => {
+    it('maps programId, startsAt and clientTimezone to their columns', async () => {
+      const builder = makeBuilder({ data: null, error: null });
+      (builder.update as ReturnType<typeof vi.fn>).mockReturnValue(builder);
+      const repo = new SupabaseBookingRepository(makeClient(builder));
+
+      await repo.update('b1', {
+        programId: 'p1',
+        startsAt: new Date('2026-05-11T14:00:00.000Z'),
+        clientTimezone: 'America/Lima',
+      });
+
+      expect(builder.update).toHaveBeenCalledWith({
+        program_id: 'p1',
+        starts_at: '2026-05-11T14:00:00.000Z',
+        client_timezone: 'America/Lima',
+      });
+    });
+  });
+
+  describe('cancelIfConfirmed', () => {
+    it('updates only a confirmed booking and returns true when a row changed', async () => {
+      const builder = makeBuilder({ data: [{ id: 'b1' }], error: null });
+      (builder.update as ReturnType<typeof vi.fn>).mockReturnValue(builder);
+      const client = makeClient(builder);
+      const repo = new SupabaseBookingRepository(client);
+
+      const changed = await repo.cancelIfConfirmed('b1');
+
+      expect(changed).toBe(true);
+      expect(client.from).toHaveBeenCalledWith('bookings');
+      expect(builder.update).toHaveBeenCalledWith({ status: 'cancelled' });
+      expect(builder.eq).toHaveBeenCalledWith('id', 'b1');
+      expect(builder.eq).toHaveBeenCalledWith('status', 'confirmed');
+      expect(builder.select).toHaveBeenCalledWith('id');
+    });
+
+    it('returns false when no confirmed row matched (already cancelled)', async () => {
+      const builder = makeBuilder({ data: [], error: null });
+      (builder.update as ReturnType<typeof vi.fn>).mockReturnValue(builder);
+      const repo = new SupabaseBookingRepository(makeClient(builder));
+
+      expect(await repo.cancelIfConfirmed('b1')).toBe(false);
+    });
+
+    it('throws when the database reports an error', async () => {
+      const builder = makeBuilder({ data: null, error: { message: 'boom' } });
+      (builder.update as ReturnType<typeof vi.fn>).mockReturnValue(builder);
+      const repo = new SupabaseBookingRepository(makeClient(builder));
+
+      await expect(repo.cancelIfConfirmed('b1')).rejects.toThrow('boom');
     });
   });
 

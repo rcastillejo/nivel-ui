@@ -27,6 +27,8 @@ export interface IBookingRepository {
   create(booking: Omit<Booking, 'id'>): Promise<Booking>;
   save(booking: Booking): Promise<void>;
   update(id: string, booking: Partial<Booking>): Promise<void>;
+  /** Cancela la reserva solo si sigue confirmada. Devuelve true si cambió una fila (operación atómica). */
+  cancelIfConfirmed(id: string): Promise<boolean>;
   delete(id: string): Promise<void>;
 }
 

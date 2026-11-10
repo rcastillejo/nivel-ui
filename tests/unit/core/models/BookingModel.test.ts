@@ -2,7 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { BookingModel } from '@/core/models/BookingModel'
 import { IDataService } from '@/core/repositories'
 import { Booking, Trainer, ZoneType } from '@/core/types'
-import { BookingCapacityError, BookingValidationError } from '@/core/types/errors'
+import {
+  BookingAlreadyCancelledError,
+  BookingCancellationNoticeError,
+  BookingCapacityError,
+  BookingNotFoundError,
+  BookingValidationError,
+} from '@/core/types/errors'
 
 // Mock del data service
 const mockTrainerRepository = {
@@ -23,6 +29,7 @@ const mockBookingRepository = {
   create: vi.fn(),
   save: vi.fn(),
   update: vi.fn(),
+  cancelIfConfirmed: vi.fn(),
   delete: vi.fn()
 }
 
@@ -608,6 +615,177 @@ describe('BookingModel', () => {
 
       expect(result.upcoming.map(b => b.id)).toEqual(['sooner', 'later'])
       expect(result.past.map(b => b.id)).toEqual(['newer', 'older'])
+    })
+  })
+
+  describe('canCancel', () => {
+    const base: Booking = {
+      id: 'b1',
+      clientId: 'client1',
+      trainerId: 'trainer1',
+      trainerName: 'Entrenador John',
+      date: new Date(2026, 10, 10),
+      time: '10:00',
+      duration: 60,
+      zone: 'gym',
+      status: 'confirmed',
+    }
+
+    it('allows a gym booking with exactly 60 minutes of notice', () => {
+      expect(bookingModel.canCancel(base, new Date(2026, 10, 10, 9, 0))).toBe(true)
+    })
+
+    it('rejects a gym booking with less than 60 minutes of notice', () => {
+      expect(bookingModel.canCancel(base, new Date(2026, 10, 10, 9, 1))).toBe(false)
+    })
+
+    it('allows a gabinete booking with exactly 24 hours of notice', () => {
+      const gabinete: Booking = { ...base, zone: 'gabinete' }
+      expect(bookingModel.canCancel(gabinete, new Date(2026, 10, 9, 10, 0))).toBe(true)
+    })
+
+    it('rejects a gabinete booking with 23 hours of notice', () => {
+      const gabinete: Booking = { ...base, zone: 'gabinete' }
+      expect(bookingModel.canCancel(gabinete, new Date(2026, 10, 9, 11, 0))).toBe(false)
+    })
+
+    it('uses startsAt (UTC instant) when present instead of date + time', () => {
+      const withStartsAt: Booking = { ...base, startsAt: new Date('2026-11-10T14:00:00.000Z') }
+      expect(bookingModel.canCancel(withStartsAt, new Date('2026-11-10T13:00:00.000Z'))).toBe(true)
+      expect(bookingModel.canCancel(withStartsAt, new Date('2026-11-10T13:00:01.000Z'))).toBe(false)
+    })
+
+    it('rejects cancelled bookings and bookings that already ended', () => {
+      const now = new Date(2026, 10, 1, 9, 0)
+      expect(bookingModel.canCancel({ ...base, status: 'cancelled' }, now)).toBe(false)
+      expect(bookingModel.canCancel(base, new Date(2026, 10, 10, 12, 0))).toBe(false)
+    })
+  })
+
+  describe('cancelBooking', () => {
+    const now = new Date(2026, 10, 10, 6, 0)
+    const confirmed: Booking = {
+      id: 'b1',
+      clientId: 'client1',
+      trainerId: 'trainer1',
+      trainerName: 'Entrenador John',
+      date: new Date(2026, 10, 10),
+      time: '10:00',
+      duration: 60,
+      zone: 'gym',
+      status: 'confirmed',
+      programId: 'program1',
+    }
+
+    it('cancels a confirmed booking with enough notice and returns it as cancelled', async () => {
+      mockBookingRepository.getById.mockResolvedValue(confirmed)
+      mockBookingRepository.cancelIfConfirmed.mockResolvedValue(true)
+
+      const result = await bookingModel.cancelBooking('b1', 'client1', now)
+
+      expect(mockBookingRepository.cancelIfConfirmed).toHaveBeenCalledWith('b1')
+      expect(result).toEqual({ ...confirmed, status: 'cancelled' })
+      expect(mockBookingRepository.update).not.toHaveBeenCalled()
+    })
+
+    it('throws BookingNotFoundError when the booking does not exist', async () => {
+      mockBookingRepository.getById.mockResolvedValue(null)
+
+      await expect(bookingModel.cancelBooking('missing', 'client1', now)).rejects.toThrow(BookingNotFoundError)
+      expect(mockBookingRepository.cancelIfConfirmed).not.toHaveBeenCalled()
+    })
+
+    it('throws BookingNotFoundError (not a permission error) for another client\'s booking', async () => {
+      mockBookingRepository.getById.mockResolvedValue({ ...confirmed, clientId: 'someone-else' })
+
+      await expect(bookingModel.cancelBooking('b1', 'client1', now)).rejects.toThrow(BookingNotFoundError)
+      expect(mockBookingRepository.cancelIfConfirmed).not.toHaveBeenCalled()
+    })
+
+    it('requires a client id', async () => {
+      await expect(bookingModel.cancelBooking('b1', ' ', now)).rejects.toThrow(BookingValidationError)
+    })
+
+    it('throws BookingAlreadyCancelledError when the booking is already cancelled', async () => {
+      mockBookingRepository.getById.mockResolvedValue({ ...confirmed, status: 'cancelled' })
+
+      await expect(bookingModel.cancelBooking('b1', 'client1', now)).rejects.toThrow(BookingAlreadyCancelledError)
+    })
+
+    it('throws BookingValidationError when the booking already ended', async () => {
+      mockBookingRepository.getById.mockResolvedValue(confirmed)
+
+      await expect(
+        bookingModel.cancelBooking('b1', 'client1', new Date(2026, 10, 10, 12, 0))
+      ).rejects.toThrow(BookingValidationError)
+      expect(mockBookingRepository.cancelIfConfirmed).not.toHaveBeenCalled()
+    })
+
+    it('throws BookingCancellationNoticeError for a gym booking starting in 30 minutes', async () => {
+      mockBookingRepository.getById.mockResolvedValue(confirmed)
+
+      const error = await bookingModel
+        .cancelBooking('b1', 'client1', new Date(2026, 10, 10, 9, 30))
+        .catch((e: unknown) => e)
+
+      expect(error).toBeInstanceOf(BookingCancellationNoticeError)
+      expect((error as BookingCancellationNoticeError).minNoticeMinutes).toBe(60)
+      expect(mockBookingRepository.cancelIfConfirmed).not.toHaveBeenCalled()
+    })
+
+    it('throws BookingCancellationNoticeError for a gabinete booking starting in 23 hours', async () => {
+      mockBookingRepository.getById.mockResolvedValue({ ...confirmed, zone: 'gabinete' })
+
+      const error = await bookingModel
+        .cancelBooking('b1', 'client1', new Date(2026, 10, 9, 11, 0))
+        .catch((e: unknown) => e)
+
+      expect(error).toBeInstanceOf(BookingCancellationNoticeError)
+      expect((error as BookingCancellationNoticeError).minNoticeMinutes).toBe(1440)
+    })
+
+    it('throws BookingAlreadyCancelledError when another request cancelled it first (race)', async () => {
+      mockBookingRepository.getById.mockResolvedValue(confirmed)
+      mockBookingRepository.cancelIfConfirmed.mockResolvedValue(false)
+
+      await expect(bookingModel.cancelBooking('b1', 'client1', now)).rejects.toThrow(BookingAlreadyCancelledError)
+    })
+  })
+
+  describe('createBooking with client timezone', () => {
+    const trainer: Trainer = { id: 'trainer1', userId: 'user1', name: 'John', availableSlots: ['09:00'] }
+    const data: Omit<Booking, 'id'> = {
+      clientId: 'client1',
+      trainerId: 'trainer1',
+      trainerName: 'Entrenador John',
+      date: new Date(2026, 10, 10),
+      time: '09:00',
+      duration: 60,
+      zone: 'gym',
+      status: 'confirmed',
+      clientTimezone: 'America/Lima',
+    }
+
+    beforeEach(() => {
+      mockTrainerRepository.getById.mockResolvedValue(trainer)
+      mockTrainerRepository.getSchedule.mockResolvedValue(null)
+      mockBookingRepository.getByDate.mockResolvedValue([])
+      mockBookingRepository.create.mockImplementation(async (b: Omit<Booking, 'id'>) => ({ ...b, id: 'new' }))
+    })
+
+    it('treats the client\'s calendar day as today even when the server is already on the next UTC day', async () => {
+      // 2026-11-11T02:00Z es todavía 10 de noviembre en Lima
+      const serverNow = new Date('2026-11-11T02:00:00.000Z')
+
+      await expect(bookingModel.createBooking(data, serverNow)).resolves.toMatchObject({ id: 'new' })
+    })
+
+    it('rejects a date that is already past in the client\'s zone', async () => {
+      const serverNow = new Date('2026-11-11T06:00:00.000Z') // 11 nov 01:00 en Lima
+
+      await expect(bookingModel.createBooking(data, serverNow)).rejects.toThrow(
+        'No se pueden hacer reservas en el pasado'
+      )
     })
   })
 })
