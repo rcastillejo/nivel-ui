@@ -11,7 +11,12 @@ import { TrainerModel } from '../models/TrainerModel';
 import { ClientViewModel } from '../view-models/ClientViewModel';
 import { ClientModel } from '../models/ClientModel';
 import { ClientAppointmentsViewModel } from '../view-models/ClientAppointmentsViewModel';
-import { useDataService } from './DataProvider';
+import { BookingCommandsModel } from '../models/BookingCommandsModel';
+import { IBookingCommands } from '../repositories';
+import { EdgeFunctionBookingCommands } from '../services/EdgeFunctionBookingCommands';
+import { LocalBookingCommands } from '../services/LocalBookingCommands';
+import { getSupabaseBrowserClient } from '@/lib/supabase';
+import { useDataService, useIsLocalStorageFallback } from './DataProvider';
 import { useAuthViewModel } from './AuthProvider';
 
 interface ViewModelContextType {
@@ -30,6 +35,7 @@ interface ViewModelProviderProps {
 
 export const ViewModelProvider = observer(function ViewModelProvider({ children }: ViewModelProviderProps) {
   const service = useDataService();
+  const isLocalStorageFallback = useIsLocalStorageFallback();
   const authVM = useAuthViewModel();
 
   const viewModels = useMemo(() => {
@@ -38,14 +44,25 @@ export const ViewModelProvider = observer(function ViewModelProvider({ children 
     const trainerModel = new TrainerModel(service);
     const clientModel = new ClientModel(service);
 
-    const bookingVM = new BookingViewModel(bookingModel, programModel);
+    // Con Supabase las reservas se ejecutan en la Edge Function (reglas garantizadas en
+    // el servidor); sin Supabase (modo local) se ejecutan los mismos casos de uso en el navegador.
+    const supabase = getSupabaseBrowserClient();
+    const commands: IBookingCommands =
+      supabase && !isLocalStorageFallback
+        ? new EdgeFunctionBookingCommands(supabase)
+        : new LocalBookingCommands(
+            new BookingCommandsModel(bookingModel, programModel),
+            () => authVM.currentUser?.id ?? ''
+          );
+
+    const bookingVM = new BookingViewModel(bookingModel, commands);
     const programVM = new ProgramViewModel(programModel);
     const trainerVM = new TrainerViewModel(bookingModel, trainerModel);
     const clientVM = new ClientViewModel(clientModel);
     const clientAppointmentsVM = new ClientAppointmentsViewModel(bookingModel);
 
     return { bookingVM, programVM, trainerVM, clientVM, clientAppointmentsVM };
-  }, [service]);
+  }, [service, isLocalStorageFallback, authVM]);
 
   useEffect(() => {
     viewModels.clientVM.loadClients();
