@@ -59,7 +59,7 @@ export const ViewModelProvider = observer(function ViewModelProvider({ children 
     const programVM = new ProgramViewModel(programModel);
     const trainerVM = new TrainerViewModel(bookingModel, trainerModel);
     const clientVM = new ClientViewModel(clientModel);
-    const clientAppointmentsVM = new ClientAppointmentsViewModel(bookingModel);
+    const clientAppointmentsVM = new ClientAppointmentsViewModel(bookingModel, commands);
 
     return { bookingVM, programVM, trainerVM, clientVM, clientAppointmentsVM };
   }, [service, isLocalStorageFallback, authVM]);
