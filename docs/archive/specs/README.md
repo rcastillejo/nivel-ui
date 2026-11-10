@@ -1,5 +1,7 @@
 # Feature Specs
 
+> **Archivado.** Este directorio conserva las specs del flujo retirado. Las features nuevas no crean specs; ver `CLAUDE.md` §11.
+
 Este directorio contiene las especificaciones de features de nivel-ui, siguiendo la metodología **Spec Driven Development (SDD)**.
 
 Cada spec describe:

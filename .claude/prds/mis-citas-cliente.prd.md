@@ -39,13 +39,13 @@ We'll know we're right when **TBD — métrica y meta pendientes de definir** (c
 ## Delivery Milestones
 | # | Milestone | Outcome | Status | Plan |
 |---|---|---|---|---|
-| 1 | Ver mis citas | El cliente consulta sus citas próximas y su historial | complete | [client-appointments.spec.md](../../docs/specs/client-appointments.spec.md) |
+| 1 | Ver mis citas | El cliente consulta sus citas próximas y su historial | complete | [client-appointments.spec.md](../../docs/archive/specs/client-appointments.spec.md) |
 | 2 | Cancelar cita | El cliente cancela una cita futura respetando la anticipación mínima | pending | — |
 | 3 | Reprogramar cita | El cliente mueve una cita futura (horario, entrenador, zona) respetando anticipación, aforo y disponibilidad | pending | — |
 
 ## Open Questions
 - [x] ¿El aforo y la anticipación deben garantizarse del lado servidor? **Decisión: no en este alcance.** Se mantiene el aforo actual (validación en el cliente, igual que reservar) y la garantía en servidor queda en [#182](https://github.com/rcastillejo/nivel-ui/issues/182) y [#178](https://github.com/rcastillejo/nivel-ui/issues/178). La anticipación de 1 h / 24 h también queda solo en el cliente y se puede saltar llamando a la API directamente.
-- [x] ¿El aforo del gym es global (10 por hueco) o por entrenador? **Por entrenador**, según `docs/specs/booking-flow.spec.md` y `ZONE_CONFIG`. La inconsistencia de `BookingModel.validateCapacity` (cuenta global) se corrige en [#182](https://github.com/rcastillejo/nivel-ui/issues/182).
+- [x] ¿El aforo del gym es global (10 por hueco) o por entrenador? **Por entrenador**, según `docs/archive/specs/booking-flow.spec.md` y `ZONE_CONFIG`. La inconsistencia de `BookingModel.validateCapacity` (cuenta global) se corrige en [#182](https://github.com/rcastillejo/nivel-ui/issues/182).
 - [ ] ¿Reprogramar modifica la misma reserva o crea una nueva? ¿Debe quedar rastro de la cita original?
 - [ ] ¿La anticipación se mide contra la cita original, la nueva o ambas? Al pasar de gym a gabinete, ¿aplican 24 h al nuevo hueco?
 - [ ] ¿En qué zona horaria se evalúan los cortes y la división entre próximas y pasadas? ¿Una cita es "pasada" al empezar o al terminar?

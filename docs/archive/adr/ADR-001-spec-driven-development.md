@@ -1,7 +1,7 @@
 # ADR-001: Adoptar Spec Driven Development (SDD) como metodología de trabajo
 
 **Fecha**: 2026-04-10
-**Estado**: Accepted
+**Estado**: Superseded
 **Autores**: rcastillejo
 **Issues relacionados**: #77
 

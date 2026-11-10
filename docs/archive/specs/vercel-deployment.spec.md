@@ -20,7 +20,7 @@ App Router nativamente, despliega automáticamente desde GitHub, y genera previe
 por cada PR para facilitar la revisión de cambios.
 
 **Prerequisito**: `supabase-data-service.spec.md` y `auth.spec.md` implementadas.
-**ADR relacionado**: [ADR-002: Estrategia de Despliegue a Producción MVP](../adr/ADR-002-produccion-mvp-deployment.md)
+**ADR relacionado**: [ADR-002: Estrategia de Despliegue a Producción MVP](../../adr/ADR-002-produccion-mvp-deployment.md)
 
 ## Roles Involucrados
 
@@ -160,7 +160,7 @@ sequenceDiagram
 
 ## ADRs Relacionados
 
-- [ADR-002: Estrategia de Despliegue a Producción MVP](../adr/ADR-002-produccion-mvp-deployment.md)
+- [ADR-002: Estrategia de Despliegue a Producción MVP](../../adr/ADR-002-produccion-mvp-deployment.md)
 
 ## Notas de Implementación
 
