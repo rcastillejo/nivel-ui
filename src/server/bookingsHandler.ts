@@ -6,6 +6,7 @@ import {
   BookingAlreadyCancelledError,
   BookingCancellationNoticeError,
   BookingCapacityError,
+  BookingDuplicateError,
   BookingNotFoundError,
   BookingValidationError,
   InvalidTimeZoneError,
@@ -89,7 +90,8 @@ function toErrorResponse(error: unknown): BookingsResponse {
   if (
     error instanceof BookingCancellationNoticeError ||
     error instanceof BookingAlreadyCancelledError ||
-    error instanceof BookingCapacityError
+    error instanceof BookingCapacityError ||
+    error instanceof BookingDuplicateError
   ) {
     return errorResponse(409, error.name, error.message);
   }
