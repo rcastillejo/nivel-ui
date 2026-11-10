@@ -107,6 +107,38 @@ describe('BookingViewModel', () => {
       expect(mockBookingModel.createBooking).not.toHaveBeenCalled();
     });
 
+    it('ignores repeated calls while a booking is in flight (no duplicate bookings)', async () => {
+      await setupForBooking();
+      let resolveCreate!: (b: Booking) => void;
+      mockCommands.create.mockReturnValue(
+        new Promise<Booking>((resolve) => { resolveCreate = resolve; })
+      );
+
+      const first = vm.createBooking();
+      const second = vm.createBooking();
+      const third = vm.createBooking();
+
+      expect(vm.isSubmitting).toBe(true);
+      expect(await second).toBe(false);
+      expect(await third).toBe(false);
+
+      resolveCreate(confirmedBooking());
+      expect(await first).toBe(true);
+
+      expect(mockCommands.create).toHaveBeenCalledTimes(1);
+      expect(vm.isSubmitting).toBe(false);
+    });
+
+    it('allows booking again after a failed attempt', async () => {
+      await setupForBooking();
+      mockCommands.create.mockRejectedValueOnce(new Error('fallo'));
+      mockCommands.create.mockResolvedValueOnce(confirmedBooking());
+
+      expect(await vm.createBooking()).toBe(false);
+      expect(vm.isSubmitting).toBe(false);
+      expect(await vm.createBooking()).toBe(true);
+    });
+
     it('shows the backend message and no success modal when booking fails', async () => {
       await setupForBooking();
       mockCommands.create.mockRejectedValue(new Error('El horario seleccionado no está disponible'));
