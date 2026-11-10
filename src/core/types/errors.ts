@@ -14,6 +14,13 @@ export class BookingValidationError extends Error {
   }
 }
 
+export class BookingDuplicateError extends Error {
+  constructor() {
+    super('Ya tienes una reserva en ese horario');
+    this.name = 'BookingDuplicateError';
+  }
+}
+
 export class BookingNotFoundError extends Error {
   constructor(public bookingId: string) {
     super('La cita no fue encontrada');

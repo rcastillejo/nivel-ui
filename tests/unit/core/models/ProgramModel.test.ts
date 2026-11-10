@@ -18,6 +18,8 @@ const mockProgramRepository = {
   getByClient: vi.fn(),
   create: vi.fn(),
   save: vi.fn(),
+  consumeSession: vi.fn(),
+  restoreSession: vi.fn(),
   delete: vi.fn()
 };
 
@@ -499,37 +501,28 @@ describe('ProgramModel', () => {
       status: 'active'
     };
 
-    it('should decrement usedSessions and return the updated program', async () => {
-      mockProgramRepository.getById.mockResolvedValue(program);
-      mockProgramRepository.save.mockResolvedValue(undefined);
+    it('should restore atomically through the repository and return the updated program', async () => {
+      mockProgramRepository.restoreSession.mockResolvedValue({ ...program, usedSessions: 4 });
 
       const result = await programModel.restoreSession('program1');
 
       expect(result).toMatchObject({ ...program, usedSessions: 4 });
-      expect(mockProgramRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining({ usedSessions: 4 })
-      );
+      expect(mockProgramRepository.restoreSession).toHaveBeenCalledWith('program1');
     });
 
-    it('should return null without error when the program no longer exists', async () => {
-      mockProgramRepository.getById.mockResolvedValue(null);
+    it('should not read and write the program in two steps (no lost updates)', async () => {
+      mockProgramRepository.restoreSession.mockResolvedValue({ ...program, usedSessions: 4 });
 
-      await expect(programModel.restoreSession('missing')).resolves.toBeNull();
+      await programModel.restoreSession('program1');
+
+      expect(mockProgramRepository.getById).not.toHaveBeenCalled();
       expect(mockProgramRepository.save).not.toHaveBeenCalled();
     });
 
-    it('should return null when there is no consumed session to restore', async () => {
-      mockProgramRepository.getById.mockResolvedValue({ ...program, usedSessions: 0 });
+    it('should return null without error when the repository has nothing to restore', async () => {
+      mockProgramRepository.restoreSession.mockResolvedValue(null);
 
       await expect(programModel.restoreSession('program1')).resolves.toBeNull();
-      expect(mockProgramRepository.save).not.toHaveBeenCalled();
-    });
-
-    it('should return null when the program already expired', async () => {
-      mockProgramRepository.getById.mockResolvedValue({ ...program, status: 'expired' });
-
-      await expect(programModel.restoreSession('program1')).resolves.toBeNull();
-      expect(mockProgramRepository.save).not.toHaveBeenCalled();
     });
   });
 
@@ -547,21 +540,27 @@ describe('ProgramModel', () => {
       status: 'active'
     };
 
-    it('should increment usedSessions and return the updated program', async () => {
-      mockProgramRepository.getById.mockResolvedValue(program);
-      mockProgramRepository.save.mockResolvedValue(undefined);
+    it('should consume atomically through the repository and return the updated program', async () => {
+      mockProgramRepository.consumeSession.mockResolvedValue({ ...program, usedSessions: 6 });
 
       const result = await programModel.consumeSession('program1');
 
       expect(result).toMatchObject({ ...program, usedSessions: 6 });
-      expect(mockProgramRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining({ usedSessions: 6 })
-      );
+      expect(mockProgramRepository.consumeSession).toHaveBeenCalledWith('program1');
     });
 
-    it('should return null when sessions are exhausted (usedSessions >= totalSessions)', async () => {
-      const exhaustedProgram: Program = { ...program, usedSessions: 10, totalSessions: 10 };
-      mockProgramRepository.getById.mockResolvedValue(exhaustedProgram);
+    it('should not read and write the program in two steps (no lost updates)', async () => {
+      mockProgramRepository.consumeSession.mockResolvedValue({ ...program, usedSessions: 6 });
+
+      await programModel.consumeSession('program1');
+
+      expect(mockProgramRepository.getById).not.toHaveBeenCalled();
+      expect(mockProgramRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should return null when sessions are exhausted', async () => {
+      mockProgramRepository.consumeSession.mockResolvedValue(null);
+      mockProgramRepository.getById.mockResolvedValue({ ...program, usedSessions: 10, totalSessions: 10 });
 
       const result = await programModel.consumeSession('program1');
 
@@ -570,6 +569,7 @@ describe('ProgramModel', () => {
     });
 
     it('should throw ProgramNotFoundError when program does not exist', async () => {
+      mockProgramRepository.consumeSession.mockResolvedValue(null);
       mockProgramRepository.getById.mockResolvedValue(null);
 
       await expect(programModel.consumeSession('nonexistent')).rejects.toThrow(ProgramNotFoundError);
@@ -592,13 +592,12 @@ describe('ProgramModel', () => {
 
     it('should consume a session when client has an active program with available sessions', async () => {
       mockProgramRepository.getByClient.mockResolvedValue([activeProgram]);
-      mockProgramRepository.getById.mockResolvedValue(activeProgram);
-      mockProgramRepository.save.mockResolvedValue(undefined);
+      mockProgramRepository.consumeSession.mockResolvedValue({ ...activeProgram, usedSessions: 6 });
 
       const result = await programModel.consumeSessionForClient('client1');
 
       expect(result).toMatchObject({ ...activeProgram, usedSessions: 6 });
-      expect(mockProgramRepository.save).toHaveBeenCalled();
+      expect(mockProgramRepository.consumeSession).toHaveBeenCalledWith('program1');
     });
 
     it('should return null when client has no active program', async () => {
@@ -613,6 +612,7 @@ describe('ProgramModel', () => {
     it('should return null when client program has no sessions left', async () => {
       const exhaustedProgram: Program = { ...activeProgram, usedSessions: 10, totalSessions: 10 };
       mockProgramRepository.getByClient.mockResolvedValue([exhaustedProgram]);
+      mockProgramRepository.consumeSession.mockResolvedValue(null);
       mockProgramRepository.getById.mockResolvedValue(exhaustedProgram);
 
       const result = await programModel.consumeSessionForClient('client1');
