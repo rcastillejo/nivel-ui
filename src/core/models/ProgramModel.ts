@@ -145,6 +145,20 @@ export class ProgramModel {
     return this.updateUsedSessions(programId, program.usedSessions + 1);
   }
 
+  /** Devuelve una sesión consumida (p. ej. al cancelar una cita). No es error si no procede. */
+  async restoreSession(programId: string): Promise<Program | null> {
+    const program = await this.dataService.programs.getById(programId);
+    if (!program) {
+      return null; // El programa ya no existe
+    }
+
+    if (program.status !== 'active' || program.usedSessions <= 0) {
+      return null; // Programa vencido o sin sesiones consumidas
+    }
+
+    return this.updateUsedSessions(programId, program.usedSessions - 1);
+  }
+
   async consumeSessionForClient(clientId: string): Promise<Program | null> {
     const activeProgram = await this.getActiveProgram(clientId);
     if (!activeProgram) {
