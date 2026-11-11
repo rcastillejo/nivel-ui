@@ -10,7 +10,7 @@
 --
 -- Migración ADITIVA y retrocompatible: las columnas son opcionales, así que
 -- el flujo actual (inserts directos desde el navegador) sigue funcionando
--- hasta que se despliegue la Edge Function. Ver supabase/cutover/.
+-- hasta que se despliegue la Edge Function. El cierre llegó en 20261111000000_close_direct_writes.sql.
 -- ============================================================
 
 ALTER TABLE public.bookings
