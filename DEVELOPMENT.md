@@ -130,8 +130,9 @@ supabase functions serve       # sirve la función en http://127.0.0.1:54321/fun
 
 ### Puesta en producción (orden obligatorio)
 
-1. Mergear: `supabase-migrate.yml` aplica `20261110000000_bookings_starts_at.sql` (aditiva).
+1. Mergear `20261110000000_bookings_starts_at.sql` (aditiva): `supabase-migrate.yml` la aplica.
 2. `supabase-functions.yml` despliega la función. Verifica reservar y cancelar con una cuenta de cliente.
 3. Desplegar la app (Vercel) que llama a la función.
-4. **Recién entonces**, aplicar a mano `supabase/cutover/20261110_bookings_close_direct_writes.sql`
-   (cierra las escrituras directas del cliente). Aplicarlo antes impide reservar y cancelar.
+4. **Recién entonces** mergear `20261111000000_close_direct_writes.sql`: `starts_at` pasa a NOT NULL y se
+   cierran las escrituras directas del cliente sobre `bookings` y `programs`. Aplicarla antes impide reservar
+   y cancelar. Aborta si queda alguna reserva sin `starts_at` (rellénala antes, no se adivina su zona horaria).

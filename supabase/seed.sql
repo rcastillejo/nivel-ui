@@ -186,17 +186,21 @@ BEGIN
     monday := monday + 1;
   END LOOP;
 
+  -- starts_at es NOT NULL (ver 20261111000000_close_direct_writes.sql): se calcula en UTC.
   INSERT INTO public.bookings
-    (client_id, trainer_id, trainer_name, date, time_slot, duration_minutes, zone, status)
-  VALUES
-    ('cccccccc-0000-0000-0000-000000000001','bbbbbbbb-0000-0000-0000-000000000001','Diego Lamas',      monday,     '09:00', 60, 'gym',      'confirmed'),
-    ('cccccccc-0000-0000-0000-000000000002','bbbbbbbb-0000-0000-0000-000000000001','Diego Lamas',      monday,     '11:00', 60, 'gym',      'confirmed'),
-    ('cccccccc-0000-0000-0000-000000000003','bbbbbbbb-0000-0000-0000-000000000002','Jeanpierre Casas', monday,     '09:00', 60, 'gabinete', 'confirmed'),
-    ('cccccccc-0000-0000-0000-000000000004','bbbbbbbb-0000-0000-0000-000000000001','Diego Lamas',      monday + 1, '10:00', 60, 'gym',      'confirmed'),
-    ('cccccccc-0000-0000-0000-000000000005','bbbbbbbb-0000-0000-0000-000000000002','Jeanpierre Casas', monday + 1, '16:00', 60, 'gym',      'confirmed'),
-    ('cccccccc-0000-0000-0000-000000000006','bbbbbbbb-0000-0000-0000-000000000001','Diego Lamas',      monday + 2, '16:00', 60, 'gym',      'confirmed'),
-    ('cccccccc-0000-0000-0000-000000000007','bbbbbbbb-0000-0000-0000-000000000002','Jeanpierre Casas', monday + 2, '09:00', 60, 'gym',      'confirmed'),
-    ('cccccccc-0000-0000-0000-000000000008','bbbbbbbb-0000-0000-0000-000000000001','Diego Lamas',      monday + 3, '09:00', 60, 'gym',      'confirmed'),
+    (client_id, trainer_id, trainer_name, date, time_slot, duration_minutes, zone, status, starts_at, client_timezone)
+  SELECT v.client_id::uuid, v.trainer_id::uuid, v.trainer_name, v.date, v.time_slot, v.duration_minutes, v.zone, v.status,
+         (v.date + v.time_slot::time) AT TIME ZONE 'UTC', 'UTC'
+  FROM (VALUES
+    ('cccccccc-0000-0000-0000-000000000001','bbbbbbbb-0000-0000-0000-000000000001','Diego Lamas', monday, '09:00', 60, 'gym', 'confirmed'),
+    ('cccccccc-0000-0000-0000-000000000002','bbbbbbbb-0000-0000-0000-000000000001','Diego Lamas', monday, '11:00', 60, 'gym', 'confirmed'),
+    ('cccccccc-0000-0000-0000-000000000003','bbbbbbbb-0000-0000-0000-000000000002','Jeanpierre Casas', monday, '09:00', 60, 'gabinete', 'confirmed'),
+    ('cccccccc-0000-0000-0000-000000000004','bbbbbbbb-0000-0000-0000-000000000001','Diego Lamas', monday + 1, '10:00', 60, 'gym', 'confirmed'),
+    ('cccccccc-0000-0000-0000-000000000005','bbbbbbbb-0000-0000-0000-000000000002','Jeanpierre Casas', monday + 1, '16:00', 60, 'gym', 'confirmed'),
+    ('cccccccc-0000-0000-0000-000000000006','bbbbbbbb-0000-0000-0000-000000000001','Diego Lamas', monday + 2, '16:00', 60, 'gym', 'confirmed'),
+    ('cccccccc-0000-0000-0000-000000000007','bbbbbbbb-0000-0000-0000-000000000002','Jeanpierre Casas', monday + 2, '09:00', 60, 'gym', 'confirmed'),
+    ('cccccccc-0000-0000-0000-000000000008','bbbbbbbb-0000-0000-0000-000000000001','Diego Lamas', monday + 3, '09:00', 60, 'gym', 'confirmed'),
     ('cccccccc-0000-0000-0000-000000000009','bbbbbbbb-0000-0000-0000-000000000002','Jeanpierre Casas', monday + 3, '08:00', 60, 'gabinete', 'cancelled')
+  ) AS v(client_id, trainer_id, trainer_name, date, time_slot, duration_minutes, zone, status)
   ;
 END $$;

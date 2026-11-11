@@ -10,8 +10,8 @@ name: Supabase Functions Deploy
 #   SUPABASE_ACCESS_TOKEN  — supabase.com → Account → Access Tokens
 #   SUPABASE_PROJECT_ID    — ref del proyecto
 #
-# ORDEN DE PUESTA EN PRODUCCIÓN: ver supabase/cutover/ (la migración que cierra las
-# escrituras directas del cliente se aplica a mano, DESPUÉS de verificar esta función).
+# ORDEN DE PUESTA EN PRODUCCIÓN: ver DEVELOPMENT.md (la migración que cierra las
+# escrituras directas del cliente se mergea DESPUÉS de verificar esta función).
 
 on:
   push:
