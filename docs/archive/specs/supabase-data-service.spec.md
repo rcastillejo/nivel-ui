@@ -21,7 +21,7 @@ agregar `SupabaseDataService implements IDataService` **sin modificar** `Booking
 `TrainerViewModel`, ni ningún componente existente.
 
 **Prerequisito**: `supabase-schema.spec.md` implementada (tablas y RLS configurados).
-**ADR relacionado**: [ADR-002: Estrategia de Despliegue a Producción MVP](../adr/ADR-002-produccion-mvp-deployment.md)
+**ADR relacionado**: [ADR-002: Estrategia de Despliegue a Producción MVP](../../adr/ADR-002-produccion-mvp-deployment.md)
 
 ## Roles Involucrados
 
@@ -164,7 +164,7 @@ sequenceDiagram
 
 ## ADRs Relacionados
 
-- [ADR-002: Estrategia de Despliegue a Producción MVP](../adr/ADR-002-produccion-mvp-deployment.md)
+- [ADR-002: Estrategia de Despliegue a Producción MVP](../../adr/ADR-002-produccion-mvp-deployment.md)
 
 ## Notas de Implementación
 

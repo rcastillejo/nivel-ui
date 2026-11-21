@@ -22,6 +22,7 @@ const mockBookingRepository = {
   create: vi.fn(),
   save: vi.fn(),
   update: vi.fn(),
+  cancelIfConfirmed: vi.fn(),
   delete: vi.fn()
 };
 
@@ -42,6 +43,8 @@ const mockDataService: IDataService = {
     getByClient: vi.fn(),
     create: vi.fn(),
     save: vi.fn(),
+    consumeSession: vi.fn(),
+    restoreSession: vi.fn(),
     delete: vi.fn()
   },
   initialize: vi.fn(),

@@ -13,6 +13,9 @@ const baseRow: BookingRow = {
   duration_minutes: 60,
   zone: 'gym',
   status: 'confirmed',
+  starts_at: null,
+  client_timezone: null,
+  program_id: null,
   created_at: '2026-05-10T12:00:00Z',
 }
 
@@ -106,6 +109,84 @@ describe('BookingMapper', () => {
       expect(roundTripped.duration).toBe(baseDomain.duration)
       expect(roundTripped.zone).toBe(baseDomain.zone)
       expect(roundTripped.status).toBe(baseDomain.status)
+    })
+  })
+
+  describe('server-calculated fields', () => {
+    const withServerFields: BookingRow = {
+      ...baseRow,
+      starts_at: '2026-05-15T14:00:00.000Z',
+      client_timezone: 'America/Lima',
+      program_id: 'uuid-program-1',
+    }
+
+    it('maps starts_at, client_timezone and program_id to the domain', () => {
+      const result = BookingMapper.toDomain(withServerFields)
+
+      expect(result.startsAt?.toISOString()).toBe('2026-05-15T14:00:00.000Z')
+      expect(result.clientTimezone).toBe('America/Lima')
+      expect(result.programId).toBe('uuid-program-1')
+    })
+
+    it('leaves startsAt and clientTimezone undefined and programId null for legacy rows', () => {
+      const result = BookingMapper.toDomain(baseRow)
+
+      expect(result.startsAt).toBeUndefined()
+      expect(result.clientTimezone).toBeUndefined()
+      expect(result.programId).toBeNull()
+    })
+
+    it('maps the server fields to the insert payload', () => {
+      const insert = BookingMapper.toInsert({
+        ...baseDomain,
+        startsAt: new Date('2026-05-15T14:00:00.000Z'),
+        clientTimezone: 'America/Lima',
+        programId: 'uuid-program-1',
+      })
+
+      expect(insert.starts_at).toBe('2026-05-15T14:00:00.000Z')
+      expect(insert.client_timezone).toBe('America/Lima')
+      expect(insert.program_id).toBe('uuid-program-1')
+    })
+
+    it('inserts nulls when the server fields are absent', () => {
+      const insert = BookingMapper.toInsert(baseDomain)
+
+      expect(insert.starts_at).toBeNull()
+      expect(insert.client_timezone).toBeNull()
+      expect(insert.program_id).toBeNull()
+    })
+  })
+
+  describe('DTO', () => {
+    it('round-trips a booking through toDto/fromDto', () => {
+      const booking: Booking = {
+        ...baseDomain,
+        id: 'b-1',
+        date: new Date(2026, 4, 15),
+        startsAt: new Date('2026-05-15T14:00:00.000Z'),
+        clientTimezone: 'America/Lima',
+        programId: 'p-1',
+      }
+
+      const dto = BookingMapper.toDto(booking)
+      expect(dto.date).toBe('2026-05-15')
+      expect(dto.startsAt).toBe('2026-05-15T14:00:00.000Z')
+      expect(JSON.parse(JSON.stringify(dto))).toEqual(dto)
+
+      const back = BookingMapper.fromDto(dto)
+      expect(back.date.getDate()).toBe(15)
+      expect(back.startsAt?.toISOString()).toBe('2026-05-15T14:00:00.000Z')
+      expect(back.programId).toBe('p-1')
+      expect(back.clientTimezone).toBe('America/Lima')
+    })
+
+    it('maps absent optional fields to nulls in the DTO and back to undefined', () => {
+      const dto = BookingMapper.toDto({ ...baseDomain, id: 'b-2' })
+
+      expect(dto.startsAt).toBeNull()
+      expect(dto.programId).toBeNull()
+      expect(BookingMapper.fromDto(dto).startsAt).toBeUndefined()
     })
   })
 })

@@ -18,7 +18,7 @@ No crear un ADR para decisiones de implementación rutinarias.
 
 | ADR | Título | Estado | Fecha |
 |-----|--------|--------|-------|
-| [ADR-001](ADR-001-spec-driven-development.md) | Adoptar Spec Driven Development como metodología | Accepted | 2026-04-10 |
+| [ADR-001](../archive/adr/ADR-001-spec-driven-development.md) | Adoptar Spec Driven Development como metodología | Superseded | 2026-04-10 |
 | [ADR-002](ADR-002-produccion-mvp-deployment.md) | Estrategia de Despliegue a Producción para el MVP | Proposed | 2026-04-11 |
 
 ## Cómo crear un ADR
@@ -27,7 +27,7 @@ No crear un ADR para decisiones de implementación rutinarias.
    - `NNN` es el siguiente número correlativo (3 dígitos: 001, 002, ...)
 2. Rellena todas las secciones
 3. Agrega una entrada a la tabla de Índice en este README
-4. Abre un PR con el ADR (puede ir junto con la spec o la implementación)
+4. Abre un PR con el ADR (puede ir junto con la implementación)
 
 ## Ciclo de Vida de un ADR
 

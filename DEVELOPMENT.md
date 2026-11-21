@@ -109,3 +109,30 @@ git commit --no-verify -m "fix urgente"
 npm install --save-dev husky
 npx husky init
 chmod +x .husky/pre-commit .husky/pre-push
+## Edge Function `bookings` (reservar y cancelar citas)
+
+Las reglas de negocio de reservar y cancelar (anticipación mínima de 1 h en gym / 24 h en
+gabinete, devolución de la sesión del programa, instante UTC `starts_at`) se ejecutan en el
+backend como una **Supabase Edge Function**. La función reutiliza `src/core` sin cambios: se
+empaqueta con esbuild en un único archivo (`supabase/functions/bookings/index.js`, generado y
+no versionado).
+
+```bash
+npm run build:functions        # genera supabase/functions/bookings/index.js
+supabase start                 # stack local (Docker)
+supabase functions serve       # sirve la función en http://127.0.0.1:54321/functions/v1/bookings
+```
+
+- Código: `src/server/` (handler HTTP, autenticación) y `src/core/models/BookingCommandsModel.ts`.
+- La función es la única que escribe reservas con el service role. Sin Supabase configurado
+  (modo local) la app ejecuta los mismos casos de uso en el navegador (`LocalBookingCommands`).
+- Tras cambiar `src/core` o `src/server`, vuelve a ejecutar `npm run build:functions`.
+
+### Puesta en producción (orden obligatorio)
+
+1. Mergear `20261110000000_bookings_starts_at.sql` (aditiva): `supabase-migrate.yml` la aplica.
+2. `supabase-functions.yml` despliega la función. Verifica reservar y cancelar con una cuenta de cliente.
+3. Desplegar la app (Vercel) que llama a la función.
+4. **Recién entonces** mergear `20261111000000_close_direct_writes.sql`: `starts_at` pasa a NOT NULL y se
+   cierran las escrituras directas del cliente sobre `bookings` y `programs`. Aplicarla antes impide reservar
+   y cancelar. Aborta si queda alguna reserva sin `starts_at` (rellénala antes, no se adivina su zona horaria).

@@ -7,6 +7,7 @@ import { es } from 'date-fns/locale';
 import { useClientAppointmentsViewModel } from '@/core/providers/ViewModelProvider';
 import { useAuthViewModel } from '@/core/providers/AuthProvider';
 import { Booking, ZONE_CONFIG } from '@/core/types';
+import CancelAppointmentDialog from './CancelAppointmentDialog';
 
 const STATUS_LABELS: Record<Booking['status'], string> = {
   confirmed: 'Confirmada',
@@ -20,7 +21,13 @@ const STATUS_STYLES: Record<Booking['status'], string> = {
   cancelled: 'bg-red-100 text-red-800',
 };
 
-function AppointmentItem({ booking }: { booking: Booking }) {
+interface CancelControl {
+  canCancel: boolean;
+  notice: string;
+  onRequest: () => void;
+}
+
+function AppointmentItem({ booking, cancel }: { booking: Booking; cancel?: CancelControl }) {
   const zone = ZONE_CONFIG[booking.zone];
 
   return (
@@ -35,13 +42,30 @@ function AppointmentItem({ booking }: { booking: Booking }) {
         <p className="text-sm text-gray-600">
           {booking.trainerName} · {zone.icon} {zone.name}
         </p>
+        {cancel && !cancel.canCancel && (
+          <p data-testid={`appointment-cancel-blocked-${booking.id}`} className="mt-1 text-xs text-gray-500">
+            {cancel.notice}
+          </p>
+        )}
       </div>
-      <span
-        data-testid={`appointment-status-${booking.id}`}
-        className={`px-3 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[booking.status]}`}
-      >
-        {STATUS_LABELS[booking.status]}
-      </span>
+      <div className="flex flex-col items-end gap-2">
+        <span
+          data-testid={`appointment-status-${booking.id}`}
+          className={`px-3 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[booking.status]}`}
+        >
+          {STATUS_LABELS[booking.status]}
+        </span>
+        {cancel?.canCancel && (
+          <button
+            type="button"
+            data-testid={`appointment-cancel-${booking.id}`}
+            onClick={cancel.onRequest}
+            className="text-sm font-medium text-red-600 hover:text-red-800"
+          >
+            Cancelar
+          </button>
+        )}
+      </div>
     </li>
   );
 }
@@ -88,7 +112,15 @@ const ClientAppointmentsView = observer(() => {
           <h2 className="text-xl font-semibold text-gray-900 mb-3">Próximas citas</h2>
           <ul className="space-y-3">
             {vm.upcoming.map((booking) => (
-              <AppointmentItem key={booking.id} booking={booking} />
+              <AppointmentItem
+                key={booking.id}
+                booking={booking}
+                cancel={{
+                  canCancel: vm.canCancel(booking),
+                  notice: vm.cancellationNotice(booking),
+                  onRequest: () => vm.requestCancel(booking),
+                }}
+              />
             ))}
           </ul>
         </section>
@@ -102,6 +134,15 @@ const ClientAppointmentsView = observer(() => {
             ))}
           </ul>
         </section>
+      )}
+      {vm.cancelTarget && (
+        <CancelAppointmentDialog
+          booking={vm.cancelTarget}
+          isCancelling={vm.cancellingId !== null}
+          error={vm.cancelError}
+          onConfirm={() => vm.confirmCancel()}
+          onDismiss={() => vm.dismissCancel()}
+        />
       )}
     </div>
   );

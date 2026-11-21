@@ -1,4 +1,4 @@
-import { Trainer, Booking, TrainerSchedule, Client, Program } from '../types';
+import { Trainer, Booking, TrainerSchedule, Client, Program, CreateBookingCommand } from '../types';
 
 // Interfaces de repositorios para abstracción de datos
 export interface IClientRepository {
@@ -27,7 +27,16 @@ export interface IBookingRepository {
   create(booking: Omit<Booking, 'id'>): Promise<Booking>;
   save(booking: Booking): Promise<void>;
   update(id: string, booking: Partial<Booking>): Promise<void>;
+  /** Cancela la reserva solo si sigue confirmada. Devuelve true si cambió una fila (operación atómica). */
+  cancelIfConfirmed(id: string): Promise<boolean>;
   delete(id: string): Promise<void>;
+}
+
+// Comandos de reserva que deben ejecutarse donde se garantizan las reglas de negocio
+// (backend). El cliente se identifica por su sesión, nunca por un parámetro.
+export interface IBookingCommands {
+  create(request: Omit<CreateBookingCommand, 'action'>): Promise<Booking>;
+  cancel(bookingId: string): Promise<Booking>;
 }
 
 export interface IProgramRepository {
@@ -37,6 +46,16 @@ export interface IProgramRepository {
   getByClient(clientId: string): Promise<Program[]>;
   create(program: Omit<Program, 'id'>): Promise<Program>;
   save(program: Program): Promise<void>;
+  /**
+   * Consume una sesión en una sola operación atómica (used_sessions + 1).
+   * Devuelve null si el programa no existe o no le quedan sesiones.
+   */
+  consumeSession(id: string): Promise<Program | null>;
+  /**
+   * Devuelve una sesión en una sola operación atómica (used_sessions - 1).
+   * Devuelve null si el programa no existe, no está activo o no tiene sesiones consumidas.
+   */
+  restoreSession(id: string): Promise<Program | null>;
   delete(id: string): Promise<void>;
 }
 

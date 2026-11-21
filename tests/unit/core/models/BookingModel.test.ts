@@ -2,7 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { BookingModel } from '@/core/models/BookingModel'
 import { IDataService } from '@/core/repositories'
 import { Booking, Trainer, ZoneType } from '@/core/types'
-import { BookingCapacityError, BookingValidationError } from '@/core/types/errors'
+import {
+  BookingAlreadyCancelledError,
+  BookingCancellationNoticeError,
+  BookingCapacityError,
+  BookingDuplicateError,
+  BookingNotFoundError,
+  BookingValidationError,
+} from '@/core/types/errors'
 
 // Mock del data service
 const mockTrainerRepository = {
@@ -23,6 +30,7 @@ const mockBookingRepository = {
   create: vi.fn(),
   save: vi.fn(),
   update: vi.fn(),
+  cancelIfConfirmed: vi.fn(),
   delete: vi.fn()
 }
 
@@ -33,6 +41,8 @@ const mockProgramRepository = {
   getByClient: vi.fn(),
   create: vi.fn(),
   save: vi.fn(),
+  consumeSession: vi.fn(),
+  restoreSession: vi.fn(),
   delete: vi.fn()
 }
 
@@ -77,6 +87,72 @@ describe('BookingModel', () => {
       zone: 'gym',
       status: 'confirmed'
     }
+
+    beforeEach(() => {
+      // Por defecto el cliente no tiene otras reservas
+      mockBookingRepository.getByClient.mockResolvedValue([])
+    })
+
+    describe('duplicate bookings (same client, same date and time)', () => {
+      const existingBooking = (overrides: Partial<Booking>): Booking => ({
+        ...validBookingData,
+        id: 'existing1',
+        ...overrides
+      })
+
+      beforeEach(() => {
+        mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
+        mockTrainerRepository.getSchedule.mockResolvedValue(null)
+        mockBookingRepository.getByDate.mockResolvedValue([])
+        mockBookingRepository.create.mockResolvedValue({ ...validBookingData, id: 'new1' })
+      })
+
+      it('rejects a second confirmed booking at the same date, time, trainer and zone', async () => {
+        mockBookingRepository.getByClient.mockResolvedValue([existingBooking({})])
+
+        await expect(bookingModel.createBooking(validBookingData)).rejects.toThrow(BookingDuplicateError)
+        expect(mockBookingRepository.create).not.toHaveBeenCalled()
+      })
+
+      it('rejects the same date and time with a different trainer', async () => {
+        mockBookingRepository.getByClient.mockResolvedValue([
+          existingBooking({ trainerId: 'trainer2', trainerName: 'Entrenador Ana' })
+        ])
+
+        await expect(bookingModel.createBooking(validBookingData)).rejects.toThrow(BookingDuplicateError)
+      })
+
+      it('rejects the same date and time in a different zone', async () => {
+        mockBookingRepository.getByClient.mockResolvedValue([existingBooking({ zone: 'gabinete' })])
+
+        await expect(bookingModel.createBooking(validBookingData)).rejects.toThrow(BookingDuplicateError)
+      })
+
+      it('uses a clear message for the user', async () => {
+        mockBookingRepository.getByClient.mockResolvedValue([existingBooking({})])
+
+        await expect(bookingModel.createBooking(validBookingData)).rejects.toThrow('Ya tienes una reserva en ese horario')
+      })
+
+      it('allows the same time on a different date', async () => {
+        const otherDay = new Date(validBookingData.date.getTime() + 24 * 60 * 60 * 1000)
+        mockBookingRepository.getByClient.mockResolvedValue([existingBooking({ date: otherDay })])
+
+        await expect(bookingModel.createBooking(validBookingData)).resolves.toBeDefined()
+      })
+
+      it('allows a different time on the same date', async () => {
+        mockBookingRepository.getByClient.mockResolvedValue([existingBooking({ time: '10:00' })])
+
+        await expect(bookingModel.createBooking(validBookingData)).resolves.toBeDefined()
+      })
+
+      it('ignores cancelled bookings in the same slot', async () => {
+        mockBookingRepository.getByClient.mockResolvedValue([existingBooking({ status: 'cancelled' })])
+
+        await expect(bookingModel.createBooking(validBookingData)).resolves.toBeDefined()
+      })
+    })
 
     it('should create a booking successfully', async () => {
       const createdBooking = { ...validBookingData, id: 'generated-uuid' }
@@ -142,17 +218,47 @@ describe('BookingModel', () => {
       await expect(bookingModel.createBooking(invalidBooking)).rejects.toThrow(BookingValidationError)
     })
 
-    it('should allow a same-day booking even when the date has no time-of-day set', async () => {
-      const todayAtMidnight = new Date()
-      todayAtMidnight.setHours(0, 0, 0, 0)
-      const sameDayBooking = { ...validBookingData, date: todayAtMidnight }
+    describe('same-day bookings only for a time still in the future', () => {
+      // Hoy a las 09:00 (hora local) es el horario reservado; `now` se inyecta para no depender del reloj real
+      const today = new Date(2026, 10, 10)
+      const sameDayBooking = { ...validBookingData, date: today, time: '09:00' }
+      const at = (hours: number, minutes = 0) => new Date(2026, 10, 10, hours, minutes)
 
-      mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
-      mockTrainerRepository.getSchedule.mockResolvedValue(null)
-      mockBookingRepository.getByDate.mockResolvedValue([])
-      mockBookingRepository.create.mockResolvedValue({ ...sameDayBooking, id: 'generated-uuid' })
+      beforeEach(() => {
+        mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
+        mockTrainerRepository.getSchedule.mockResolvedValue(null)
+        mockBookingRepository.getByDate.mockResolvedValue([])
+        mockBookingRepository.create.mockImplementation(async (b: Omit<Booking, 'id'>) => ({ ...b, id: 'generated-uuid' }))
+      })
 
-      await expect(bookingModel.createBooking(sameDayBooking)).resolves.not.toThrow()
+      it('allows a same-day booking whose time is later than now', async () => {
+        await expect(bookingModel.createBooking(sameDayBooking, at(8, 0))).resolves.toMatchObject({ id: 'generated-uuid' })
+      })
+
+      it('allows a booking starting one minute from now', async () => {
+        await expect(bookingModel.createBooking(sameDayBooking, at(8, 59))).resolves.toMatchObject({ id: 'generated-uuid' })
+      })
+
+      it('rejects a same-day booking whose time already passed', async () => {
+        await expect(bookingModel.createBooking(sameDayBooking, at(10, 0))).rejects.toThrow(
+          'No se pueden hacer reservas en el pasado'
+        )
+        expect(mockBookingRepository.create).not.toHaveBeenCalled()
+      })
+
+      it('rejects a booking that starts exactly now', async () => {
+        await expect(bookingModel.createBooking(sameDayBooking, at(9, 0))).rejects.toThrow(BookingValidationError)
+      })
+
+      it('uses the server-computed startsAt instead of the local date and time', async () => {
+        const startsAt = new Date('2026-11-10T14:00:00.000Z')
+        const withStartsAt = { ...sameDayBooking, startsAt }
+
+        await expect(bookingModel.createBooking(withStartsAt, new Date('2026-11-10T13:59:00.000Z'))).resolves.toMatchObject({ id: 'generated-uuid' })
+        await expect(bookingModel.createBooking(withStartsAt, new Date('2026-11-10T14:00:01.000Z'))).rejects.toThrow(
+          'No se pueden hacer reservas en el pasado'
+        )
+      })
     })
 
     it('should throw error for unavailable time slot', async () => {
@@ -370,6 +476,45 @@ describe('BookingModel', () => {
       const result = await bookingModel.getAvailableSlots('trainer1', date)
 
       expect(result).toEqual(['09:00', '10:00', '11:00'])
+    })
+
+    describe('hiding slots that already passed (same day)', () => {
+      const today = new Date(2026, 10, 10) // martes
+      const tomorrow = new Date(2026, 10, 11)
+
+      beforeEach(() => {
+        mockTrainerRepository.getById.mockResolvedValue(mockTrainer)
+        mockTrainerRepository.getSchedule.mockResolvedValue(null)
+        mockBookingRepository.getByDate.mockResolvedValue([])
+      })
+
+      it('removes today\'s slots that start at or before now', async () => {
+        const now = new Date(2026, 10, 10, 10, 0)
+
+        const result = await bookingModel.getAvailableSlots('trainer1', today, now)
+
+        expect(result).toEqual(['11:00'])
+      })
+
+      it('keeps every slot for a future day', async () => {
+        const now = new Date(2026, 10, 10, 23, 0)
+
+        const result = await bookingModel.getAvailableSlots('trainer1', tomorrow, now)
+
+        expect(result).toEqual(['09:00', '10:00', '11:00'])
+      })
+
+      it('returns nothing for today once every slot has passed', async () => {
+        const result = await bookingModel.getAvailableSlots('trainer1', today, new Date(2026, 10, 10, 20, 0))
+
+        expect(result).toEqual([])
+      })
+
+      it('does not filter by time when no clock is given', async () => {
+        const result = await bookingModel.getAvailableSlots('trainer1', today)
+
+        expect(result).toEqual(['09:00', '10:00', '11:00'])
+      })
     })
 
     it('should return empty array when trainer not found', async () => {
@@ -608,6 +753,196 @@ describe('BookingModel', () => {
 
       expect(result.upcoming.map(b => b.id)).toEqual(['sooner', 'later'])
       expect(result.past.map(b => b.id)).toEqual(['newer', 'older'])
+    })
+  })
+
+  describe('canCancel', () => {
+    const base: Booking = {
+      id: 'b1',
+      clientId: 'client1',
+      trainerId: 'trainer1',
+      trainerName: 'Entrenador John',
+      date: new Date(2026, 10, 10),
+      time: '10:00',
+      duration: 60,
+      zone: 'gym',
+      status: 'confirmed',
+    }
+
+    it('allows a gym booking with exactly 60 minutes of notice', () => {
+      expect(bookingModel.canCancel(base, new Date(2026, 10, 10, 9, 0))).toBe(true)
+    })
+
+    it('rejects a gym booking with less than 60 minutes of notice', () => {
+      expect(bookingModel.canCancel(base, new Date(2026, 10, 10, 9, 1))).toBe(false)
+    })
+
+    it('allows a gabinete booking with exactly 24 hours of notice', () => {
+      const gabinete: Booking = { ...base, zone: 'gabinete' }
+      expect(bookingModel.canCancel(gabinete, new Date(2026, 10, 9, 10, 0))).toBe(true)
+    })
+
+    it('rejects a gabinete booking with 23 hours of notice', () => {
+      const gabinete: Booking = { ...base, zone: 'gabinete' }
+      expect(bookingModel.canCancel(gabinete, new Date(2026, 10, 9, 11, 0))).toBe(false)
+    })
+
+    it('uses startsAt (UTC instant) when present instead of date + time', () => {
+      const withStartsAt: Booking = { ...base, startsAt: new Date('2026-11-10T14:00:00.000Z') }
+      expect(bookingModel.canCancel(withStartsAt, new Date('2026-11-10T13:00:00.000Z'))).toBe(true)
+      expect(bookingModel.canCancel(withStartsAt, new Date('2026-11-10T13:00:01.000Z'))).toBe(false)
+    })
+
+    it('rejects cancelled bookings and bookings that already ended', () => {
+      const now = new Date(2026, 10, 1, 9, 0)
+      expect(bookingModel.canCancel({ ...base, status: 'cancelled' }, now)).toBe(false)
+      expect(bookingModel.canCancel(base, new Date(2026, 10, 10, 12, 0))).toBe(false)
+    })
+  })
+
+  describe('cancelBooking', () => {
+    const now = new Date(2026, 10, 10, 6, 0)
+    const confirmed: Booking = {
+      id: 'b1',
+      clientId: 'client1',
+      trainerId: 'trainer1',
+      trainerName: 'Entrenador John',
+      date: new Date(2026, 10, 10),
+      time: '10:00',
+      duration: 60,
+      zone: 'gym',
+      status: 'confirmed',
+      programId: 'program1',
+    }
+
+    it('cancels a confirmed booking with enough notice and returns it as cancelled', async () => {
+      mockBookingRepository.getById.mockResolvedValue(confirmed)
+      mockBookingRepository.cancelIfConfirmed.mockResolvedValue(true)
+
+      const result = await bookingModel.cancelBooking('b1', 'client1', now)
+
+      expect(mockBookingRepository.cancelIfConfirmed).toHaveBeenCalledWith('b1')
+      expect(result).toEqual({ ...confirmed, status: 'cancelled' })
+      expect(mockBookingRepository.update).not.toHaveBeenCalled()
+    })
+
+    it('throws BookingNotFoundError when the booking does not exist', async () => {
+      mockBookingRepository.getById.mockResolvedValue(null)
+
+      await expect(bookingModel.cancelBooking('missing', 'client1', now)).rejects.toThrow(BookingNotFoundError)
+      expect(mockBookingRepository.cancelIfConfirmed).not.toHaveBeenCalled()
+    })
+
+    it('throws BookingNotFoundError (not a permission error) for another client\'s booking', async () => {
+      mockBookingRepository.getById.mockResolvedValue({ ...confirmed, clientId: 'someone-else' })
+
+      await expect(bookingModel.cancelBooking('b1', 'client1', now)).rejects.toThrow(BookingNotFoundError)
+      expect(mockBookingRepository.cancelIfConfirmed).not.toHaveBeenCalled()
+    })
+
+    it('requires a client id', async () => {
+      await expect(bookingModel.cancelBooking('b1', ' ', now)).rejects.toThrow(BookingValidationError)
+    })
+
+    it('throws BookingAlreadyCancelledError when the booking is already cancelled', async () => {
+      mockBookingRepository.getById.mockResolvedValue({ ...confirmed, status: 'cancelled' })
+
+      await expect(bookingModel.cancelBooking('b1', 'client1', now)).rejects.toThrow(BookingAlreadyCancelledError)
+    })
+
+    it('throws BookingValidationError when the booking already ended', async () => {
+      mockBookingRepository.getById.mockResolvedValue(confirmed)
+
+      await expect(
+        bookingModel.cancelBooking('b1', 'client1', new Date(2026, 10, 10, 12, 0))
+      ).rejects.toThrow(BookingValidationError)
+      expect(mockBookingRepository.cancelIfConfirmed).not.toHaveBeenCalled()
+    })
+
+    it('throws BookingCancellationNoticeError for a gym booking starting in 30 minutes', async () => {
+      mockBookingRepository.getById.mockResolvedValue(confirmed)
+
+      const error = await bookingModel
+        .cancelBooking('b1', 'client1', new Date(2026, 10, 10, 9, 30))
+        .catch((e: unknown) => e)
+
+      expect(error).toBeInstanceOf(BookingCancellationNoticeError)
+      expect((error as BookingCancellationNoticeError).minNoticeMinutes).toBe(60)
+      expect(mockBookingRepository.cancelIfConfirmed).not.toHaveBeenCalled()
+    })
+
+    it('throws BookingCancellationNoticeError for a gabinete booking starting in 23 hours', async () => {
+      mockBookingRepository.getById.mockResolvedValue({ ...confirmed, zone: 'gabinete' })
+
+      const error = await bookingModel
+        .cancelBooking('b1', 'client1', new Date(2026, 10, 9, 11, 0))
+        .catch((e: unknown) => e)
+
+      expect(error).toBeInstanceOf(BookingCancellationNoticeError)
+      expect((error as BookingCancellationNoticeError).minNoticeMinutes).toBe(1440)
+    })
+
+    it('throws BookingAlreadyCancelledError when another request cancelled it first (race)', async () => {
+      mockBookingRepository.getById.mockResolvedValue(confirmed)
+      mockBookingRepository.cancelIfConfirmed.mockResolvedValue(false)
+
+      await expect(bookingModel.cancelBooking('b1', 'client1', now)).rejects.toThrow(BookingAlreadyCancelledError)
+    })
+  })
+
+  describe('createBooking with client timezone', () => {
+    const trainer: Trainer = { id: 'trainer1', userId: 'user1', name: 'John', availableSlots: ['09:00', '21:30'] }
+    const data: Omit<Booking, 'id'> = {
+      clientId: 'client1',
+      trainerId: 'trainer1',
+      trainerName: 'Entrenador John',
+      date: new Date(2026, 10, 10),
+      time: '21:30',
+      duration: 60,
+      zone: 'gym',
+      status: 'confirmed',
+      clientTimezone: 'America/Lima',
+    }
+
+    beforeEach(() => {
+      mockTrainerRepository.getById.mockResolvedValue(trainer)
+      mockTrainerRepository.getSchedule.mockResolvedValue(null)
+      mockBookingRepository.getByDate.mockResolvedValue([])
+      mockBookingRepository.create.mockImplementation(async (b: Omit<Booking, 'id'>) => ({ ...b, id: 'new' }))
+    })
+
+    it('treats the client\'s calendar day as today even when the server is already on the next UTC day', async () => {
+      // 2026-11-11T02:00Z son las 21:00 del 10 de noviembre en Lima; las 21:30 de Lima todavía son futuro
+      const serverNow = new Date('2026-11-11T02:00:00.000Z')
+
+      await expect(bookingModel.createBooking(data, serverNow)).resolves.toMatchObject({ id: 'new' })
+    })
+
+    it('rejects a same-day slot that already passed in the client\'s zone', async () => {
+      // 09:00 en Lima del 10 de noviembre ya pasó a las 21:00 de Lima (02:00Z del día siguiente)
+      const serverNow = new Date('2026-11-11T02:00:00.000Z')
+
+      await expect(bookingModel.createBooking({ ...data, time: '09:00' }, serverNow)).rejects.toThrow(
+        'No se pueden hacer reservas en el pasado'
+      )
+    })
+
+    it('rejects a date that is already past in the client\'s zone', async () => {
+      const serverNow = new Date('2026-11-11T06:00:00.000Z') // 11 nov 01:00 en Lima
+
+      await expect(bookingModel.createBooking(data, serverNow)).rejects.toThrow(
+        'No se pueden hacer reservas en el pasado'
+      )
+    })
+  })
+
+  describe('attachProgram', () => {
+    it('records the program a booking consumed its session from', async () => {
+      mockBookingRepository.update.mockResolvedValue(undefined)
+
+      await bookingModel.attachProgram('b1', 'program1')
+
+      expect(mockBookingRepository.update).toHaveBeenCalledWith('b1', { programId: 'program1' })
     })
   })
 })

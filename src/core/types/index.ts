@@ -71,7 +71,16 @@ export interface Booking {
   zone: ZoneType;
   // TODO: 'pending' is never assigned — bookings are always created as 'confirmed'. Keep for future pre-confirmation flow.
   status: 'confirmed' | 'cancelled' | 'pending';
+  startsAt?: Date; // instante UTC de inicio, calculado en el servidor al reservar
+  clientTimezone?: string; // zona IANA del cliente usada al reservar
+  programId?: string | null; // programa del que se consumió la sesión (si hubo)
 }
+
+// Anticipación mínima (en minutos) para cancelar una cita, por zona
+export const CANCELLATION_NOTICE_MINUTES: Record<ZoneType, number> = {
+  gym: 60,
+  gabinete: 24 * 60,
+};
 
 export interface ClientAppointments {
   upcoming: Booking[]; // no canceladas, aún no terminadas; orden ascendente
@@ -116,4 +125,36 @@ export interface Program {
   // TODO: 'inactive' is never assigned — programs transition from 'active' to 'expired' only. Keep for future manual deactivation feature.
   status: 'active' | 'inactive' | 'expired';
   previousProgramId?: string; // Referencia al programa anterior en caso de renovación
+}
+// Comandos de reserva ejecutados en el backend (Edge Function `bookings`)
+export interface CreateBookingCommand {
+  action: 'create';
+  trainerId: string;
+  date: string; // yyyy-MM-dd
+  time: string; // HH:mm
+  zone: ZoneType;
+  timeZone: string; // zona IANA del cliente
+}
+
+export interface CancelBookingCommand {
+  action: 'cancel';
+  bookingId: string;
+}
+
+export type BookingCommand = CreateBookingCommand | CancelBookingCommand;
+
+// Representación serializable de una reserva (respuesta de la Edge Function)
+export interface BookingDto {
+  id: string;
+  clientId: string;
+  trainerId: string;
+  trainerName: string;
+  date: string; // yyyy-MM-dd
+  time: string;
+  duration: number;
+  zone: ZoneType;
+  status: Booking['status'];
+  startsAt: string | null; // ISO 8601 UTC
+  clientTimezone: string | null;
+  programId: string | null;
 }

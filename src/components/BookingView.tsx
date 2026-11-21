@@ -151,7 +151,8 @@ const BookingView = observer(() => {
             onZoneSelect={handleZoneSelect}
             onBack={handleBackToCalendar}
             onConfirm={handleConfirmBooking}
-            canConfirm={vm.canCreateBooking}
+            canConfirm={vm.canCreateBooking && !vm.isSubmitting}
+            isSubmitting={vm.isSubmitting}
           />
         )}
       </div>
@@ -188,6 +189,7 @@ interface TimeSelectionViewProps {
   onBack: () => void;
   onConfirm: () => void;
   canConfirm: boolean;
+  isSubmitting: boolean;
 }
 
 const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
@@ -202,7 +204,8 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
   onZoneSelect,
   onBack,
   onConfirm,
-  canConfirm
+  canConfirm,
+  isSubmitting
 }) => {
 
   // Function to calculate capacity for a specific zone, time slot and trainer
@@ -393,7 +396,7 @@ const TimeSelectionView: React.FC<TimeSelectionViewProps> = ({
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >
-              Confirmar Reserva
+              {isSubmitting ? 'Confirmando...' : 'Confirmar Reserva'}
             </button>
           </div>
         </div>

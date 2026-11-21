@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Edge Functions empaquetadas (se generan con npm run build:functions)
+supabase/functions/*/index.js

@@ -369,67 +369,16 @@ npx playwright install
 
 ---
 
-## 11. Flujo de Trabajo SDD (Spec Driven Development)
+## 11. Flujo de Trabajo de Features
 
-> **Ver ADR-001** (`docs/adr/ADR-001-spec-driven-development.md`) para el contexto completo de esta decisión.
-
-### Regla de Oro
-
-> **"La spec es la verdad; el código es su implementación; los tests son su prueba."**
-
-### Los 3 Artefactos del SDD
-
-| Artefacto | Ubicación | Propósito |
-|-----------|-----------|-----------|
-| Feature Spec | `docs/specs/[feature].spec.md` | Requerimientos, casos de uso (Gherkin), contratos TypeScript, criterios de aceptación |
-| ADR | `docs/adr/ADR-NNN-[decision].md` | Decisiones arquitectónicas con contexto y consecuencias |
-| Tests | `tests/` y `e2e/` | La spec ejecutable — si pasan, la spec se cumple |
-
-### Flujo de Trabajo por Feature
+Las features se definen y planifican con los artefactos del plugin ECC:
 
 ```
-GitHub Issue
-    │
-    ▼
-1. Crear docs/specs/[feature].spec.md
-   - Copiar TEMPLATE.spec.md
-   - Definir casos de uso en Gherkin
-   - Definir contratos TypeScript
-   - Definir criterios de aceptación
-    │
-    ▼
-2. (Opcional) Crear docs/adr/ADR-NNN.md
-   - Solo si hay una decisión arquitectónica importante
-    │
-    ▼
-3. Implementar siguiendo la spec y el CLAUDE.md
-   - Model → ViewModel → Repository → Componentes
-    │
-    ▼
-4. Crear tests (la spec ejecutable)
-   - tests/unit/  → Verifica reglas de negocio del Model
-   - tests/integration/ → Verifica flujo Model → Repository
-   - e2e/ → Verifica criterios de aceptación de la UI
-    │
-    ▼
-5. Pull Request
-   - Cambiar estado de la spec a implemented
-   - CI ejecuta todos los tests automáticamente
+/plan-prd   →  .claude/prds/[feature].prd.md     (requisitos)
+/plan       →  .claude/plans/[feature].plan.md   (plan por hito)
+implementar →  tests (secciones 5–7)  →  PR
 ```
 
-### Cuándo Crear una Spec
-
-| Situación | ¿Crear spec? |
-|-----------|-------------|
-| Nueva feature con lógica de negocio | ✅ Siempre |
-| Cambio de UI que afecta flujo de usuario | ✅ Sí |
-| Bug fix menor (1-3 líneas) | ❌ No necesario |
-| Refactor sin cambio de comportamiento | ❌ No necesario |
-| Nueva decisión arquitectónica | ✅ ADR (no spec) |
-
-### Checklist SDD para Cada PR con Feature Nueva
-
-- [ ] ¿Existe `docs/specs/[feature].spec.md` con estado `implemented`?
-- [ ] ¿Los casos de uso Gherkin de la spec tienen tests E2E o unitarios correspondientes?
-- [ ] ¿Los contratos TypeScript de la spec coinciden con los tipos en `src/core/types/`?
-- [ ] ¿Si hubo decisión arquitectónica, existe el ADR correspondiente?
+- **No crear** `docs/specs/*.spec.md`. Ese flujo está retirado.
+- Los ADR (`docs/adr/`) se reservan para decisiones arquitectónicas puntuales.
+- Cada PR debe cumplir los checklists de las secciones 1 a 9.

@@ -11,7 +11,7 @@ adr: []
 
 ## Contexto
 
-Los clientes no pueden ver las citas que reservaron: hoy deben coordinar con el entrenador. El PRD [`.claude/prds/mis-citas-cliente.prd.md`](../../.claude/prds/mis-citas-cliente.prd.md) define tres hitos (ver, cancelar, reprogramar). Esta spec cubre solo el **hito 1: ver mis citas** (solo lectura). Cancelar y reprogramar tendrán su propia spec.
+Los clientes no pueden ver las citas que reservaron: hoy deben coordinar con el entrenador. El PRD [`.claude/prds/mis-citas-cliente.prd.md`](../../../.claude/prds/mis-citas-cliente.prd.md) define tres hitos (ver, cancelar, reprogramar). Esta spec cubre solo el **hito 1: ver mis citas** (solo lectura). Cancelar y reprogramar tendrán su propia spec.
 
 **Issue**: TBD
 

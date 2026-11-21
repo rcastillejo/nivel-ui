@@ -19,7 +19,7 @@ Esta feature agrega una pantalla de login y registra el rol del usuario (`client
 en la tabla `user_profiles` para que el sistema pueda determinar qué vista y qué datos mostrar.
 
 **Prerequisito**: `supabase-schema.spec.md` y `supabase-data-service.spec.md` implementadas.
-**ADR relacionado**: [ADR-002: Estrategia de Despliegue a Producción MVP](../adr/ADR-002-produccion-mvp-deployment.md)
+**ADR relacionado**: [ADR-002: Estrategia de Despliegue a Producción MVP](../../adr/ADR-002-produccion-mvp-deployment.md)
 
 ## Roles Involucrados
 
@@ -188,7 +188,7 @@ sequenceDiagram
 
 ## ADRs Relacionados
 
-- [ADR-002: Estrategia de Despliegue a Producción MVP](../adr/ADR-002-produccion-mvp-deployment.md)
+- [ADR-002: Estrategia de Despliegue a Producción MVP](../../adr/ADR-002-produccion-mvp-deployment.md)
 
 ## Notas de Implementación
 

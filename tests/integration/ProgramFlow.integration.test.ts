@@ -299,6 +299,45 @@ describe('ProgramModel ↔ LocalStorageDataService', () => {
     });
   });
 
+  describe('consumo simultáneo de sesiones (issue #201)', () => {
+    it('N consumos simultáneos suben used_sessions exactamente N', async () => {
+      const program = await model.createProgram(validProgramData({ totalSessions: 24 }));
+
+      const results = await Promise.all(
+        Array.from({ length: 8 }, () => model.consumeSession(program.id))
+      );
+
+      expect(results.every(r => r !== null)).toBe(true);
+      const saved = await dataService.programs.getById(program.id);
+      expect(saved?.usedSessions).toBe(8);
+    });
+
+    it('nunca supera totalSessions aunque lleguen más peticiones que sesiones', async () => {
+      const program = await model.createProgram(validProgramData({ totalSessions: 3 }));
+
+      const results = await Promise.all(
+        Array.from({ length: 8 }, () => model.consumeSession(program.id))
+      );
+
+      expect(results.filter(r => r !== null)).toHaveLength(3);
+      const saved = await dataService.programs.getById(program.id);
+      expect(saved?.usedSessions).toBe(3);
+    });
+
+    it('N devoluciones simultáneas bajan used_sessions exactamente N sin pasar de 0', async () => {
+      const program = await model.createProgram(validProgramData({ totalSessions: 10 }));
+      await model.updateUsedSessions(program.id, 5);
+
+      const results = await Promise.all(
+        Array.from({ length: 8 }, () => model.restoreSession(program.id))
+      );
+
+      expect(results.filter(r => r !== null)).toHaveLength(5);
+      const saved = await dataService.programs.getById(program.id);
+      expect(saved?.usedSessions).toBe(0);
+    });
+  });
+
   describe('flujo completo: crear → usar sesiones → renovar', () => {
     it('ejecuta el ciclo de vida completo de un programa', async () => {
       // 1. Crear programa

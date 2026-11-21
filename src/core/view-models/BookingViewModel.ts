@@ -1,6 +1,8 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { BookingModel } from '../models/BookingModel';
-import { ProgramModel } from '../models/ProgramModel';
+import { IBookingCommands } from '../repositories';
+import { getBrowserTimeZone } from '../utils/timezone';
+import { format } from 'date-fns';
 import { Booking, Trainer, ZoneType, ZONE_CONFIG } from '../types';
 import { BookingCapacityError } from '../types/errors';
 
@@ -22,6 +24,7 @@ export class BookingViewModel {
   availableSlotsByTrainer: Record<string, string[]> = {};
   bookings: Booking[] = [];
   isLoading = false;
+  isSubmitting = false;
   error: string | null = null;
   
   // Cache para capacidades (para acceso síncrono desde UI)
@@ -38,7 +41,12 @@ export class BookingViewModel {
   showSuccessModal = false;
   confirmedBooking: Booking | null = null;
 
-  constructor(private model: BookingModel, private programModel: ProgramModel) {
+  constructor(
+    private model: BookingModel,
+    private commands: IBookingCommands,
+    private getTimeZone: () => string = getBrowserTimeZone,
+    private now: () => Date = () => new Date()
+  ) {
     makeAutoObservable(this);
     // No cargar automáticamente en constructor para evitar hydration issues
   }
@@ -71,7 +79,7 @@ export class BookingViewModel {
     this.setLoading(true);
     try {
       // Pre-cargar capacidades para los slots disponibles
-      const slots = await this.model.getAvailableSlots(trainerId, date);
+      const slots = await this.model.getAvailableSlots(trainerId, date, this.now());
       
       // Pre-cachear capacidades para todos los slots
       await this.preloadCapacities(trainerId, date, slots);
@@ -96,7 +104,7 @@ export class BookingViewModel {
     try {
       const entries = await Promise.all(
         this.trainers.map(async (trainer) => {
-          const slots = await this.model.getAvailableSlots(trainer.id, date);
+          const slots = await this.model.getAvailableSlots(trainer.id, date, this.now());
           return [trainer.id, slots] as const;
         })
       );
@@ -118,28 +126,28 @@ export class BookingViewModel {
   }
 
   async createBooking(): Promise<boolean> {
+    // Evita reservas duplicadas por clics repetidos mientras la petición sigue en curso
+    if (this.isSubmitting) {
+      return false;
+    }
+
     if (!this.canCreateBooking) {
       this.setError('Faltan datos para crear la reserva');
       return false;
     }
 
+    this.isSubmitting = true;
     this.setLoading(true);
     try {
-      const bookingData: Omit<Booking, 'id'> = {
-        clientId: this.clientId,
+      // El backend valida disponibilidad y aforo, consume la sesión del programa
+      // y calcula el instante UTC a partir de la zona horaria del cliente.
+      const createdBooking = await this.commands.create({
         trainerId: this.selectedTrainer!.id,
-        trainerName: `Entrenador ${this.selectedTrainer!.name}`,
-        date: this.selectedDate!,
+        date: format(this.selectedDate!, 'yyyy-MM-dd'),
         time: this.selectedTime!,
-        duration: 60,
         zone: this.selectedZone!,
-        status: 'confirmed',
-      };
-
-      const createdBooking = await this.model.createBooking(bookingData);
-
-      // Delegar consumo de sesión al ProgramModel — ProgramViewModel se recarga en la UI
-      await this.programModel.consumeSessionForClient(this.clientId);
+        timeZone: this.getTimeZone(),
+      });
 
       runInAction(() => {
         this.error = null;
@@ -158,6 +166,9 @@ export class BookingViewModel {
       });
       return false;
     } finally {
+      runInAction(() => {
+        this.isSubmitting = false;
+      });
       this.setLoading(false);
     }
   }

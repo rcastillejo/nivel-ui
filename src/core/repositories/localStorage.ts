@@ -342,6 +342,17 @@ class LocalStorageBookingRepository implements IBookingRepository {
     }
   }
 
+  async cancelIfConfirmed(id: string): Promise<boolean> {
+    const bookings = await this.getAll();
+    const index = bookings.findIndex(b => b.id === id);
+    if (index < 0 || bookings[index].status !== 'confirmed') {
+      return false;
+    }
+    bookings[index] = { ...bookings[index], status: 'cancelled' };
+    localStorage.setItem(this.key, JSON.stringify(bookings));
+    return true;
+  }
+
   async delete(id: string): Promise<void> {
     const bookings = await this.getAll();
     const filtered = bookings.filter(b => b.id !== id);
@@ -349,10 +360,11 @@ class LocalStorageBookingRepository implements IBookingRepository {
   }
 
   private parseBookings(data: string): Booking[] {
-    const parsed = JSON.parse(data) as Array<Omit<Booking, 'date'> & { date: string }>;
+    const parsed = JSON.parse(data) as Array<Omit<Booking, 'date' | 'startsAt'> & { date: string; startsAt?: string }>;
     return parsed.map((b) => ({
       ...b,
-      date: new Date(b.date)
+      date: new Date(b.date),
+      startsAt: b.startsAt ? new Date(b.startsAt) : undefined
     }));
   }
 
@@ -402,6 +414,32 @@ class LocalStorageProgramRepository implements IProgramRepository {
     }
 
     localStorage.setItem(this.key, JSON.stringify(programs));
+  }
+
+  async consumeSession(id: string): Promise<Program | null> {
+    return this.adjustUsedSessions(id, 1, p => p.usedSessions < p.totalSessions);
+  }
+
+  async restoreSession(id: string): Promise<Program | null> {
+    return this.adjustUsedSessions(id, -1, p => p.status === 'active' && p.usedSessions > 0);
+  }
+
+  // Lectura y escritura sin `await` intermedio: en el navegador es atómico respecto a otras llamadas
+  private adjustUsedSessions(
+    id: string,
+    delta: number,
+    canApply: (program: Program) => boolean
+  ): Program | null {
+    const data = localStorage.getItem(this.key);
+    if (!data) return null;
+    const programs = this.parsePrograms(data);
+    const index = programs.findIndex(p => p.id === id);
+    if (index < 0 || !canApply(programs[index])) return null;
+
+    const updated: Program = { ...programs[index], usedSessions: programs[index].usedSessions + delta };
+    programs[index] = updated;
+    localStorage.setItem(this.key, JSON.stringify(programs));
+    return updated;
   }
 
   async delete(id: string): Promise<void> {
