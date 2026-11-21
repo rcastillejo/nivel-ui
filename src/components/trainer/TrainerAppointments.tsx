@@ -5,6 +5,7 @@ import { observer } from 'mobx-react-lite';
 import { format, startOfWeek, addDays, isSameDay, addWeeks, subWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useTrainerViewModel, useClientViewModel } from '@/core/providers/ViewModelProvider';
+import { useAuthViewModel } from '@/core/providers/AuthProvider';
 import { Booking, ZONE_CONFIG } from '@/core/types';
 import { TimeSlotWithCapacity } from '@/core/types';
 
@@ -12,7 +13,16 @@ import { TimeSlotWithCapacity } from '@/core/types';
 const TrainerAppointments = observer(function TrainerAppointments() {
   const vm = useTrainerViewModel();
   const clientVM = useClientViewModel();
-  const { bookings, isLoading } = vm;
+  const authVM = useAuthViewModel();
+  // Solo las citas del entrenador conectado: el listado general trae las de todos.
+  const bookings = vm.trainerAppointments;
+  const { isLoading } = vm;
+  const authUserId = authVM.currentUser?.id;
+
+  useEffect(() => {
+    // Resuelve la fila de `trainers` del usuario conectado (no depende de otras pestañas)
+    if (authUserId) vm.loadCurrentTrainer(authUserId);
+  }, [vm, authUserId]);
 
   useEffect(() => {
     vm.loadAllBookings();
