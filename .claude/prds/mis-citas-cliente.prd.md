@@ -41,7 +41,7 @@ We'll know we're right when **TBD — métrica y meta pendientes de definir** (c
 |---|---|---|---|---|
 | 1 | Ver mis citas | El cliente consulta sus citas próximas y su historial | complete | [client-appointments.spec.md](../../docs/archive/specs/client-appointments.spec.md) |
 | 2 | Cancelar cita | El cliente cancela una cita futura respetando la anticipación mínima | complete | [mis-citas-cliente-cancelar-cita.plan.md](../plans/mis-citas-cliente-cancelar-cita.plan.md) |
-| 3 | Reprogramar cita | El cliente mueve una cita futura (horario, entrenador, zona) respetando anticipación, aforo y disponibilidad | pending | — |
+| 3 | Reprogramar cita | El cliente mueve una cita futura (horario, entrenador, zona) respetando anticipación, aforo y disponibilidad | in-progress | [mis-citas-cliente-reprogramar-cita.plan.md](../plans/mis-citas-cliente-reprogramar-cita.plan.md) |
 
 ## Open Questions
 - [x] ¿El aforo y la anticipación deben garantizarse del lado servidor? **Decisión: no en este alcance.** Se mantiene el aforo actual (validación en el cliente, igual que reservar) y la garantía en servidor queda en [#182](https://github.com/rcastillejo/nivel-ui/issues/182) y [#178](https://github.com/rcastillejo/nivel-ui/issues/178). La anticipación de 1 h / 24 h también queda solo en el cliente y se puede saltar llamando a la API directamente. **Actualización (hito 2):** esta decisión quedó superada para reservar y cancelar. Ambas operaciones se ejecutan en la Edge Function `bookings` (reloj del servidor, `starts_at` UTC), que valida anticipación, aforo y duplicados, y la migración `20261111000000_close_direct_writes.sql` (#209) cerró las escrituras directas del cliente. Lo que sigue abierto en #182 es la inconsistencia gym global vs por entrenador.
