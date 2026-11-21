@@ -25,7 +25,9 @@ El entrenador de Nivel Gym asigna a cada cliente un "Programa" de texto libre: s
 | Especial | Personal | Definidas manualmente (sin cantidad predefinida) | Manual | Derivada |
 
 - El nombre del plan define la duración (mensual, bimensual, trimestral); la cantidad de sesiones se elige aparte entre 8, 12 y 16.
-- **Duo**: es un indicador de que participan 2 personas. Siempre hay un cliente **representante**; las sesiones se cuentan solo a ese cliente. Una reserva cubre a ambas personas. Cuenta como **2 cupos** de capacidad (pendiente de confirmar).
+- **Fecha fin**: se calcula en **bloques de 30 días** desde la fecha de inicio (ej.: inicia el 2 de noviembre, termina 30 días después). Mensual = 1 bloque (30 días); Bimensual y Trimestral = 2 y 3 bloques (60 y 90 días, asumido); DuoMensual = 1 bloque, DuoTrimestral = 3 bloques.
+- **Duo**: es un indicador de que participan 2 personas. Siempre hay un cliente **representante** (cliente registrado); las sesiones se cuentan solo a ese cliente. El acompañante **no es cliente registrado**: solo se guarda su nombre como dato **opcional**. Una reserva cubre a ambas personas. Cuenta como **2 cupos** de capacidad (pendiente de confirmar).
+- **Sesiones**: se descuentan **al reservar** (no existe un evento de asistencia). Se devuelven al **cancelar**. Al **reprogramar** el descuento se mantiene. Es el comportamiento actual.
 - Se mantiene la regla de **un solo plan activo por cliente**. Un cliente puede migrar de plan.
 - La fecha de inicio sigue la regla actual (no puede ser pasada: hoy debe ser mañana o después).
 - Los programas existentes (fase de prueba) se migran o se descartan.
@@ -34,7 +36,7 @@ El entrenador de Nivel Gym asigna a cada cliente un "Programa" de texto libre: s
 ### Visualización (por entrenador)
 1. **Planes**: se muestran los 6 planes.
 2. **Dentro de un plan**: tabla de 2 columnas, *sesiones* y *clientes* (ej.: 8 sesiones → 5 clientes; 12 → 3; 16 → 6). Para Especial se agrupa por el total de sesiones definido.
-3. **Dentro de un grupo de sesiones**: lista de clientes con *sesiones tomadas / sesiones del plan*. Un Duo ocupa **una sola fila** (el representante).
+3. **Dentro de un grupo de sesiones**: lista de clientes con *sesiones tomadas / sesiones del plan*. Un Duo ocupa **una sola fila**: se muestra el nombre del cliente representante y, si existe, el del acompañante (opcional).
 4. La navegación Plan → sesiones → clientes aplica igual a cada plan.
 
 ## Hipótesis
@@ -71,18 +73,20 @@ Sabremos que acertamos cuando **el entrenador ve la cantidad de clientes por pla
 - [ ] ¿Se permite cambiar de plan y se mantiene un solo plan activo? (por ahora asumido)
 
 **Para resolver antes de /plan**
-- [ ] **Fecha fin**: la respuesta fue "explica la primera pregunta". Interpretado como duración por tipo de plan: Mensual 1 mes, Bimensual 2, Trimestral 3, DuoMensual 1, DuoTrimestral 3. ¿Meses calendario o bloques de 30 días? ¿Se confirma?
-- [ ] **Fecha fin de Especial**: se "deriva", pero ¿de qué (sesiones, regla fija)? TBD.
-- [ ] **Momento del descuento**: se dijo "como hoy, al asistir", pero hoy la sesión se descuenta **al reservar** (se devuelve al cancelar). ¿Se mantiene al reservar o pasa a al asistir?
-- [ ] ¿Qué pasa con el hito de 12 sesiones de la pantalla del cliente (hoy fijo) según el plan?
-- [ ] Un Duo: ¿cómo se identifica a la segunda persona (¿es cliente registrado?) y cómo se muestra en las vistas?
+- [ ] **Fecha fin de Bimensual/Trimestral**: asumido 60 y 90 días (2 y 3 bloques de 30). ¿Se confirma?
+- [ ] **Fecha fin de Especial**: se "deriva" de la fecha de inicio, pero ¿cuántos días? TBD.
+- [ ] **Hito de 12 sesiones** en la pantalla del cliente (hoy fijo, "sesiones mínimas para resultados"): ¿se mantiene igual para todos los planes? TBD.
+
+**Resueltas**
+- [x] Fecha fin: bloques de 30 días desde el inicio.
+- [x] Descuento de sesión: al reservar; se devuelve al cancelar; reprogramar lo mantiene.
+- [x] Acompañante de Duo: no es cliente registrado; nombre opcional, se muestra en las vistas junto al del cliente.
 
 ## Riesgos
 | Riesgo | Probabilidad | Impacto | Mitigación |
 |---|---|---|---|
 | Reglas de Duo (cupos, gabinete) distintas a lo asumido | Media | Alto | Confirmar con el gimnasio antes del hito 2 |
-| Descuento al reservar vs al asistir mal interpretado | Media | Alto | Resolver la pregunta abierta antes de /plan |
-| Fecha fin ambigua (meses vs 30 días) | Media | Medio | Confirmar regla de cálculo |
+| Fecha fin de Bimensual/Trimestral/Especial no confirmada | Media | Medio | Confirmar duraciones antes de /plan |
 | Pérdida de datos al migrar programas | Baja | Bajo (fase de prueba) | Migrar o descartar según se decida |
 
 ---
