@@ -40,16 +40,16 @@ We'll know we're right when **TBD — métrica y meta pendientes de definir** (c
 | # | Milestone | Outcome | Status | Plan |
 |---|---|---|---|---|
 | 1 | Ver mis citas | El cliente consulta sus citas próximas y su historial | complete | [client-appointments.spec.md](../../docs/archive/specs/client-appointments.spec.md) |
-| 2 | Cancelar cita | El cliente cancela una cita futura respetando la anticipación mínima | in-progress | [mis-citas-cliente-cancelar-cita.plan.md](../plans/mis-citas-cliente-cancelar-cita.plan.md) |
+| 2 | Cancelar cita | El cliente cancela una cita futura respetando la anticipación mínima | complete | [mis-citas-cliente-cancelar-cita.plan.md](../plans/mis-citas-cliente-cancelar-cita.plan.md) |
 | 3 | Reprogramar cita | El cliente mueve una cita futura (horario, entrenador, zona) respetando anticipación, aforo y disponibilidad | pending | — |
 
 ## Open Questions
-- [x] ¿El aforo y la anticipación deben garantizarse del lado servidor? **Decisión: no en este alcance.** Se mantiene el aforo actual (validación en el cliente, igual que reservar) y la garantía en servidor queda en [#182](https://github.com/rcastillejo/nivel-ui/issues/182) y [#178](https://github.com/rcastillejo/nivel-ui/issues/178). La anticipación de 1 h / 24 h también queda solo en el cliente y se puede saltar llamando a la API directamente.
+- [x] ¿El aforo y la anticipación deben garantizarse del lado servidor? **Decisión: no en este alcance.** Se mantiene el aforo actual (validación en el cliente, igual que reservar) y la garantía en servidor queda en [#182](https://github.com/rcastillejo/nivel-ui/issues/182) y [#178](https://github.com/rcastillejo/nivel-ui/issues/178). La anticipación de 1 h / 24 h también queda solo en el cliente y se puede saltar llamando a la API directamente. **Actualización (hito 2):** esta decisión quedó superada para reservar y cancelar. Ambas operaciones se ejecutan en la Edge Function `bookings` (reloj del servidor, `starts_at` UTC), que valida anticipación, aforo y duplicados, y la migración `20261111000000_close_direct_writes.sql` (#209) cerró las escrituras directas del cliente. Lo que sigue abierto en #182 es la inconsistencia gym global vs por entrenador.
 - [x] ¿El aforo del gym es global (10 por hueco) o por entrenador? **Por entrenador**, según `docs/archive/specs/booking-flow.spec.md` y `ZONE_CONFIG`. La inconsistencia de `BookingModel.validateCapacity` (cuenta global) se corrige en [#182](https://github.com/rcastillejo/nivel-ui/issues/182).
 - [ ] ¿Reprogramar modifica la misma reserva o crea una nueva? ¿Debe quedar rastro de la cita original?
 - [ ] ¿La anticipación se mide contra la cita original, la nueva o ambas? Al pasar de gym a gabinete, ¿aplican 24 h al nuevo hueco?
-- [ ] ¿En qué zona horaria se evalúan los cortes y la división entre próximas y pasadas? ¿Una cita es "pasada" al empezar o al terminar?
-- [ ] ¿Cancelar devuelve la sesión del programa? ¿Reprogramar consume otra? ¿Qué pasa con cancelaciones fuera de plazo?
+- [x] ¿En qué zona horaria se evalúan los cortes y la división entre próximas y pasadas? ¿Una cita es "pasada" al empezar o al terminar? **Decisión (hito 2):** cada reserva guarda `starts_at` en UTC, calculado en el servidor a partir de la zona IANA del cliente; los cortes se comparan contra el reloj del servidor. Una cita pasa al historial **al terminar**.
+- [ ] ¿Cancelar devuelve la sesión del programa? ¿Reprogramar consume otra? ¿Qué pasa con cancelaciones fuera de plazo? **Decidido para cancelar:** devuelve la sesión una sola vez y fuera de plazo se rechaza (HTTP 409). Sigue abierto qué ocurre con la sesión al reprogramar.
 - [ ] ¿Se puede reprogramar a otra fecha o solo a otro horario del mismo día? ¿Hay límite de reprogramaciones por cita?
 - [ ] ¿El historial muestra las citas canceladas? ¿Hace falta distinguir "completada" o "no asistió"?
 - [ ] ¿Cómo se entera el entrenador de una cancelación o reprogramación, si no hay notificaciones en el MVP?
@@ -65,7 +65,7 @@ We'll know we're right when **TBD — métrica y meta pendientes de definir** (c
 |---|---|---|---|
 | Sobreventa de cupos al reprogramar: hoy el cliente solo ve sus propias reservas, así que el aforo no se valida bien (crítico en gabinete, capacidad 1) | High | High | Se acepta el aforo actual en este alcance; seguimiento en [#182](https://github.com/rcastillejo/nivel-ui/issues/182) y [#178](https://github.com/rcastillejo/nivel-ui/issues/178). No hay reservas de gabinete en producción todavía |
 | Dos clientes toman el último cupo a la vez (sin garantías de concurrencia) | Medium | High | Garantía de consistencia en el servidor |
-| La regla de 1 h / 24 h solo se aplica en el cliente y se puede saltar | High | Medium | Aplicar la regla donde no se pueda evadir |
+| La regla de 1 h / 24 h solo se aplica en el cliente y se puede saltar | High | Medium | **Mitigado para reservar y cancelar** (hito 2): la regla vive en la Edge Function `bookings` y las escrituras directas del cliente están cerradas (#209). Queda pendiente aplicarlo igual al reprogramar |
 | Zona horaria inconsistente en los cortes y en próximas/pasadas | Medium | Medium | Definir zona horaria de referencia del gimnasio |
 | Reprogramar no atómico: el cliente puede perder la cita o quedar con dos | Medium | High | Operación única y atómica |
 | Sesiones de programa mal contabilizadas al cancelar o reprogramar | High | Medium | Definir la regla de negocio antes de implementar |
@@ -75,4 +75,4 @@ We'll know we're right when **TBD — métrica y meta pendientes de definir** (c
 | No se puede probar de punta a punta en modo local | High | Low | Probar contra el backend real |
 
 ---
-*Status: DRAFT — requirements only. Implementation planning pending via /plan.*
+*Status: hitos 1 y 2 completos. Hito 3 (reprogramar) pendiente: faltan decisiones de negocio (ver Open Questions) y su plan vía /plan.*
