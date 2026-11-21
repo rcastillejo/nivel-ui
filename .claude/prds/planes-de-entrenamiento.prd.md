@@ -56,6 +56,7 @@ Sabremos que acertamos cuando **el entrenador ve la cantidad de clientes por pla
 **Fuera de alcance**
 - Pagos y precios — fuera del enfoque actual.
 - Cambios a la vista del cliente más allá del nombre — se mantiene como hoy.
+- Vista general del gimnasio (todos los entrenadores) — aumentaría la complejidad.
 
 ## Hitos de entrega
 | # | Hito | Resultado | Estado | Plan |
@@ -70,13 +71,13 @@ Sabremos que acertamos cuando **el entrenador ve la cantidad de clientes por pla
 - [ ] Un Duo cuenta como 2 cupos de capacidad (por ahora asumido). ¿El gabinete, con capacidad 1, admite un Duo?
 - [ ] ¿Un cliente sin plan puede reservar? (hoy puede)
 - [ ] Qué ocurre al agotarse las sesiones (por ahora, como hoy)
-- [ ] La vista es por entrenador, no de todo el gimnasio (por ahora asumido)
 - [ ] ¿Se permite cambiar de plan y se mantiene un solo plan activo? (por ahora asumido)
 
 **Para resolver antes de /plan**
 Ninguna. Solo quedan los pendientes del gimnasio de arriba.
 
 **Resueltas**
+- [x] Alcance de las vistas: por entrenador. No habrá vista general del gimnasio (aumentaría la complejidad).
 - [x] Duraciones: Bimensual 60 días, Trimestral 90, Especial 30 (mensual).
 - [x] Mensaje del hito de 12 sesiones: se elimina del cliente.
 - [x] Fecha fin: bloques de 30 días desde el inicio.
