@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { observer } from 'mobx-react-lite';
 import { format, startOfWeek, addDays, isSameDay, addWeeks, subWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useTrainerViewModel, useClientViewModel } from '@/core/providers/ViewModelProvider';
@@ -8,7 +9,7 @@ import { Booking, ZONE_CONFIG } from '@/core/types';
 import { TimeSlotWithCapacity } from '@/core/types';
 
 
-export default function TrainerAppointments() {
+const TrainerAppointments = observer(function TrainerAppointments() {
   const vm = useTrainerViewModel();
   const clientVM = useClientViewModel();
   const { bookings, isLoading } = vm;
@@ -16,6 +17,13 @@ export default function TrainerAppointments() {
   useEffect(() => {
     vm.loadAllBookings();
   }, [vm]);
+
+  // Recarga clientes si la lista está vacía (p. ej. se cargó antes de la sesión)
+  useEffect(() => {
+    if (clientVM.clients.length === 0 && !clientVM.isLoading) {
+      clientVM.loadClients();
+    }
+  }, [clientVM]);
 
   const [currentWeek, setCurrentWeek] = useState(new Date());
 
@@ -253,4 +261,6 @@ export default function TrainerAppointments() {
       </div>
     </div>
   );
-}
+});
+
+export default TrainerAppointments;
