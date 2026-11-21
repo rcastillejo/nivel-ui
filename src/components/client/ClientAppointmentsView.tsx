@@ -4,10 +4,11 @@ import React, { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useClientAppointmentsViewModel } from '@/core/providers/ViewModelProvider';
+import { useClientAppointmentsViewModel, useRescheduleViewModel } from '@/core/providers/ViewModelProvider';
 import { useAuthViewModel } from '@/core/providers/AuthProvider';
 import { Booking, ZONE_CONFIG } from '@/core/types';
 import CancelAppointmentDialog from './CancelAppointmentDialog';
+import RescheduleDialog from './RescheduleDialog';
 
 const STATUS_LABELS: Record<Booking['status'], string> = {
   confirmed: 'Confirmada',
@@ -23,8 +24,10 @@ const STATUS_STYLES: Record<Booking['status'], string> = {
 
 interface CancelControl {
   canCancel: boolean;
+  canReschedule: boolean;
   notice: string;
   onRequest: () => void;
+  onReschedule: () => void;
 }
 
 function AppointmentItem({ booking, cancel }: { booking: Booking; cancel?: CancelControl }) {
@@ -42,7 +45,7 @@ function AppointmentItem({ booking, cancel }: { booking: Booking; cancel?: Cance
         <p className="text-sm text-gray-600">
           {booking.trainerName} · {zone.icon} {zone.name}
         </p>
-        {cancel && !cancel.canCancel && (
+        {cancel && !cancel.canCancel && !cancel.canReschedule && (
           <p data-testid={`appointment-cancel-blocked-${booking.id}`} className="mt-1 text-xs text-gray-500">
             {cancel.notice}
           </p>
@@ -55,6 +58,16 @@ function AppointmentItem({ booking, cancel }: { booking: Booking; cancel?: Cance
         >
           {STATUS_LABELS[booking.status]}
         </span>
+        {cancel?.canReschedule && (
+          <button
+            type="button"
+            data-testid={`appointment-reschedule-${booking.id}`}
+            onClick={cancel.onReschedule}
+            className="text-sm font-medium text-blue-600 hover:text-blue-800"
+          >
+            Reprogramar
+          </button>
+        )}
         {cancel?.canCancel && (
           <button
             type="button"
@@ -72,6 +85,7 @@ function AppointmentItem({ booking, cancel }: { booking: Booking; cancel?: Cance
 
 const ClientAppointmentsView = observer(() => {
   const vm = useClientAppointmentsViewModel();
+  const rescheduleVM = useRescheduleViewModel();
   const authVM = useAuthViewModel();
 
   useEffect(() => {
@@ -117,8 +131,12 @@ const ClientAppointmentsView = observer(() => {
                 booking={booking}
                 cancel={{
                   canCancel: vm.canCancel(booking),
+                  canReschedule: vm.canReschedule(booking),
                   notice: vm.cancellationNotice(booking),
                   onRequest: () => vm.requestCancel(booking),
+                  onReschedule: () => {
+                    void rescheduleVM.start(booking);
+                  },
                 }}
               />
             ))}
@@ -144,6 +162,11 @@ const ClientAppointmentsView = observer(() => {
           onDismiss={() => vm.dismissCancel()}
         />
       )}
+      <RescheduleDialog
+        onRescheduled={() => {
+          void vm.refresh();
+        }}
+      />
     </div>
   );
 });

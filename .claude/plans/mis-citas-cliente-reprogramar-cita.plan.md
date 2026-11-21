@@ -144,9 +144,11 @@ npx playwright test e2e/client-appointments.spec.ts
 | Hora de la zona del cliente distinta a la del navegador al reprogramar | Low | Se envía la zona IANA actual y se actualiza `client_timezone` junto con `starts_at` |
 
 ## Acceptance
-- [ ] D1–D8 confirmadas por el usuario
-- [ ] Un cliente no puede mover una cita ajena, cancelada, terminada o fuera de plazo llamando a la API directamente
-- [ ] Mover una cita es atómico: no se pierde ni se duplica y no se toca la sesión del programa
-- [ ] Mover y luego cancelar devuelve la sesión una sola vez
-- [ ] Función desplegada y verificada antes de mergear la pantalla
-- [ ] `lint`, `tsc`, `vitest`, `build` y el E2E pasan; sin `any`; lógica de negocio solo en Models; dependencias inyectadas
+Estado a 2026-11-21. Evidencia detallada en `.claude/tdd/mis-citas-cliente-reprogramar-cita.tdd.md`.
+
+- [x] D1–D8 tomadas como confirmadas: el usuario invocó `/ecc:tdd-workflow` sobre este plan ya mergeado (#214) y siguió adelante tras ver el PR del backend (#216), sin objeciones. No hubo una confirmación explícita ítem por ítem
+- [x] Un cliente no puede mover una cita ajena, cancelada, terminada o fuera de plazo llamando a la API directamente: 404/409/422 verificados con la función real en el stack local (36 chequeos) y `PATCH` directo del cliente → 0 filas. **No se ejercitó contra producción** (sin JWT de cliente desde el sandbox)
+- [x] Mover una cita es atómico: un único `UPDATE` condicional; el índice único frena el duplicado también en un `UPDATE` directo; no se toca la sesión del programa (verificado en local)
+- [x] Mover y luego cancelar devuelve la sesión una sola vez (integración, E2E de punta a punta en local y tests unitarios)
+- [x] Función desplegada y verificada antes de mergear la pantalla: `Supabase Functions Deploy` en verde, `bookings` en la versión 6 y el código desplegado contiene `reschedule`. **La llamada real a `reschedule` en producción sigue sin probarse**
+- [x] `lint`, `tsc`, `vitest` (704 tests), `build` y el E2E (9 tests, modo local) pasan; sin `any`; lógica de negocio en Models y servidor (el ViewModel guarda estado de UI y los componentes solo lo consumen; la excepción menor es `canConfirm`, que repite como ayuda de interfaz la regla "no mover al mismo hueco" que ya aplican el Model y el servidor); dependencias inyectadas

@@ -1,7 +1,7 @@
-# TDD — Mis citas: reprogramar cita (Hito 3) — PR A: backend
+# TDD — Mis citas: reprogramar cita (Hito 3)
 
-**Plan de origen**: `.claude/plans/mis-citas-cliente-reprogramar-cita.plan.md` (Tasks 1 a 6)
-**Alcance de esta ejecución**: backend de reprogramar. La pantalla (Tasks 7 a 9) va en un PR aparte, después de desplegar y verificar la función.
+**Plan de origen**: `.claude/plans/mis-citas-cliente-reprogramar-cita.plan.md`
+**Alcance**: dos PRs. **PR A (#216, mergeado)**: backend, Tasks 1 a 6. **PR B (este documento, segunda parte)**: pantalla, Tasks 7 a 9, después de desplegar y verificar la función.
 
 ## Interpretación y desviaciones
 
@@ -86,3 +86,70 @@ Causa de todos los fallos: `TypeError: ... is not a function` en `rescheduleBook
 ## Evidencia para el merge
 
 Si este PR se aplasta con squash, copiar a la descripción: RED 55 fallos por `is not a function`, GREEN 641 tests, 36 chequeos de punta a punta con la función real en local, `tsc` y lint sin errores.
+
+---
+
+# PR B — Pantalla de reprogramar (Tasks 7 a 9)
+
+## Qué se hizo
+
+| Pieza | Cambio |
+|---|---|
+| `src/components/TimeSelectionView.tsx` | **Extraído** de `BookingView.tsx` sin cambiar su comportamiento: mismas props, mismos textos por defecto. Gana props opcionales (`title`, `confirmationTitle`, `confirmLabel`, `submittingLabel`, `showProgramInfo`) y `data-testid` |
+| `src/core/view-models/RescheduleViewModel.ts` | Nuevo (SRP: no se mezcla con reservar ni con la lista). Elige fecha/horario/zona, pide horarios **sin contar la propia cita**, `isSubmitting` anti doble clic, error del backend como texto |
+| `src/components/client/RescheduleDialog.tsx` | Nuevo: cita actual + calendario + `TimeSelectionView` con textos de reprogramar y **sin** aviso de sesión del programa |
+| `ClientAppointmentsViewModel` | `canReschedule`, `refresh()` (refresca sin pantalla de carga) y el aviso de plazo ahora dice "cancelar o reprogramar"; `confirmCancel` reutiliza `refresh` |
+| `ClientAppointmentsView` | Botón "Reprogramar" junto a "Cancelar"; si no se cumple el plazo, un solo aviso |
+| `ViewModelProvider` | Crea `RescheduleViewModel` y expone `useRescheduleViewModel` |
+
+## RED (antes de tocar código de producción)
+
+| Archivo | Resultado antes de implementar |
+|---|---|
+| `tests/unit/components/TimeSelectionView.test.tsx` (14 tests) | no carga: el módulo no existe |
+| `tests/unit/core/view-models/RescheduleViewModel.test.ts` (27 tests) | no carga: el módulo no existe |
+| `tests/unit/components/client/RescheduleDialog.test.tsx` (14 tests) | no carga: el módulo no existe |
+| `ClientAppointmentsViewModel.test.ts` | 4 fallan (`canReschedule`, `refresh` ×2, texto del aviso) |
+| `ClientAppointmentsView.test.tsx` | 2 fallan (botón "Reprogramar" y refresco); los 2 negativos nuevos ya pasaban |
+| **Total** | **61 en rojo** (55 en archivos que no cargan + 6 fallos); el resto de la suite en verde |
+
+Mismo caso que en el PR A: el hook de pre-commit corre la suite completa, así que el RED no tiene commit propio (no se usó `--no-verify`).
+
+## GREEN
+
+| Comando | Resultado |
+|---|---|
+| `npx vitest run` | 39 archivos, **704 tests** pasan (641 + 63 nuevos) |
+| `npx tsc --noEmit` | sin errores |
+| `npm run lint` | 0 errores, 7 warnings previos |
+| `npm run build` | compila; `/client/citas` incluida |
+| `npx playwright test e2e/client-appointments.spec.ts` (modo local) | **9 passed**: los 4 de cancelar de antes y 5 nuevos |
+
+## E2E nuevo (modo local, `e2e/client-appointments.spec.ts`)
+
+1. Mover una cita a otra fecha y horario: el diálogo se cierra, la cita sigue en "Próximas" como "Confirmada" con la hora nueva y `localStorage` guarda hora y día nuevos.
+2. Cerrar el diálogo no cambia la cita.
+3. No se puede confirmar hasta elegir horario y zona (botón ausente → deshabilitado → habilitado).
+4. Gimnasio a menos de 1 h: no hay botón "Reprogramar" y el aviso menciona "reprogramar".
+5. Gabinete a menos de 24 h: no hay botón "Reprogramar".
+
+**Mutación para comprobar que detectan una regresión:** con `BookingModel.canReschedule` devolviendo siempre `true`, los tests 4 y 5 **fallan** (aparece el botón; esperado 0, recibido 1). El primer intento no llegó a aplicarse (el `sed` no coincidía con la línea) y los tests pasaron sobre el código intacto, así que se descartó y se repitió comprobando que el `diff` sí tenía el cambio. El código quedó restaurado sin diff.
+
+## Decisiones de diseño que conviene conocer
+
+- **`TimeSelectionView` se reutiliza en vez de duplicarse**: la reserva y el diálogo comparten la misma selección de horario, zona y confirmación.
+- **Los horarios y el aforo del diálogo no cuentan la cita que se mueve** (el Model recibe su `id`), igual que en el backend; si no, el cliente no podría elegir su propio horario con otra zona.
+- **El aviso de plazo es uno solo**: cancelar y reprogramar comparten la regla, así que el texto dice "cancelar o reprogramar".
+- **`canConfirm` repite como ayuda de interfaz la regla "no mover al mismo hueco"**, que ya aplican el Model y el servidor; es la única duplicación de reglas en el ViewModel.
+
+## Cobertura y huecos conocidos
+
+- **Cobertura sin medir**: falta `@vitest/coverage-v8`; no se informa ninguna cifra.
+- **El E2E solo cubre el modo local** y no corre en CI (ningún workflow ejecuta Playwright). La Edge Function y la regla en servidor se probaron en el PR A.
+- **No se ha probado `reschedule` contra producción**: no hay JWT de cliente desde el sandbox. Tras el merge, la comprobación natural es mover una cita de prueba desde la propia app y mirar la base y los logs de la función.
+- **El ViewModelProvider real no tiene tests**: su cableado se comprueba con `tsc` y el E2E.
+- **Navegadores del sandbox**: se usó una config temporal de Playwright (`/opt/pw-browsers/chromium`) que no se commitea.
+
+## Evidencia para el merge
+
+Si este PR se aplasta con squash, copiar a la descripción: RED 61 (módulos inexistentes y métodos que faltaban), GREEN 704 tests, E2E 9/9, mutación de `canReschedule` detectada, `tsc`/lint/build sin errores.

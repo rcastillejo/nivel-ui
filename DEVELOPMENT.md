@@ -136,3 +136,14 @@ supabase functions serve       # sirve la función en http://127.0.0.1:54321/fun
 4. **Recién entonces** mergear `20261111000000_close_direct_writes.sql`: `starts_at` pasa a NOT NULL y se
    cierran las escrituras directas del cliente sobre `bookings` y `programs`. Aplicarla antes impide reservar
    y cancelar. Aborta si queda alguna reserva sin `starts_at` (rellénala antes, no se adivina su zona horaria).
+
+### Añadir una acción nueva a la función (p. ej. `reschedule`)
+
+Parte el cambio en dos PRs, **backend primero y pantalla después**:
+
+1. Mergear el backend. `supabase-functions.yml` corre `Validate` y despliega la función; espera a que termine y
+   comprueba que `bookings` subió de versión.
+2. Solo entonces mergear la pantalla que usa la acción nueva.
+
+Si la app sale antes que la función, el cliente recibe 422 «Comando inválido» porque la función desplegada aún no
+conoce la acción. Vercel y el despliegue de la función son independientes y no se esperan entre sí.
