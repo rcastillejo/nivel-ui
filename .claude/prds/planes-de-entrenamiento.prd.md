@@ -32,6 +32,7 @@ El entrenador de Nivel Gym asigna a cada cliente un "Programa" de texto libre: s
 - **Un solo plan activo por cliente.** Para pasar a otro plan, el cliente debe **terminar** el plan actual (no se migra a mitad de plan).
 - **Reservar exige un plan activo.** Un cliente sin plan activo no puede reservar. (Cambia el comportamiento de hoy, que lo permite.)
 - **Sesiones agotadas bloquean las reservas.** Con 0 sesiones disponibles el cliente no puede reservar hasta **renovar**. (Cambia el comportamiento de hoy, que no bloquea.)
+- **Freezing (información del gimnasio, alcance por decidir)**: el plan puede pausarse. Días de freezing por plan: mensual **7**, bimensual **10**, trimestral **14**. Solo se da por viaje o enfermedad (podría darse por otros motivos) y se comunica por correo. Implica **bloquear** las reservas durante la pausa y **reprogramar** las fechas del plan. Ver preguntas abiertas.
 - La fecha de inicio sigue la regla actual (no puede ser pasada: hoy debe ser mañana o después).
 - Los programas existentes (fase de prueba) se migran o se descartan.
 
@@ -70,11 +71,18 @@ Sabremos que acertamos cuando **el entrenador ve la cantidad de clientes por pla
 
 ## Preguntas abiertas
 **Para resolver antes de /plan**
-- [ ] **"Terminar" el plan**: ¿significa que se agotaron las sesiones, que pasó la fecha fin, o lo que ocurra primero? Hoy un plan no expira al pasar la fecha fin. Si queda con sesiones y pasó la fecha, ¿se pierden y el cliente queda bloqueado?
-- [ ] **Interpretación de "solo para entrenamientos"**: se asumió que equivale a la zona gimnasio (no gabinete). ¿Se confirma?
-- [ ] **Renovar con otro plan**: al terminar, ¿el cliente puede elegir cualquier plan (incluido otro tipo)? Se asume que sí.
+- [ ] **"Terminar" el plan**: el gimnasio respondió que es más complejo por el **freezing** (ver abajo). Sigue sin definirse si terminar es agotar sesiones, pasar la fecha fin (ya ajustada por freezing) o lo que ocurra primero, y qué pasa con las sesiones no usadas al llegar a la fecha.
+- [ ] **Freezing (pausa del plan)**: ¿entra en el MVP o es un hito posterior?
+- [ ] **Freezing, reglas por definir** (TBD — needs validation con el gimnasio):
+  - ¿Los días de freezing se pueden dividir en varias pausas o se toman de una vez?
+  - ¿Aplica igual a DuoMensual, DuoTrimestral (se asume mensual y trimestral) y a Especial (se asume mensual)?
+  - ¿Quién lo registra? Se comunica por correo; se asume que el entrenador lo registra en el sistema.
+  - Motivos: hoy viajes y enfermedad; "podría darse por otros temas". ¿Se registra el motivo?
+  - ¿Qué pasa con las reservas ya hechas durante la pausa?
 
 **Resueltas**
+- [x] Renovar: al terminar el plan, el cliente puede elegir cualquier plan.
+- [x] "Solo para entrenamientos" = zona gimnasio.
 - [x] Duo solo en zona gimnasio, 2 cupos.
 - [x] Reservar exige plan activo.
 - [x] Sesiones agotadas: se bloquea y debe renovar.
