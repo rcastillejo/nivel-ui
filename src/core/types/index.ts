@@ -141,7 +141,28 @@ export interface CancelBookingCommand {
   bookingId: string;
 }
 
-export type BookingCommand = CreateBookingCommand | CancelBookingCommand;
+export interface RescheduleBookingCommand {
+  action: 'reschedule';
+  bookingId: string;
+  trainerId: string;
+  date: string; // yyyy-MM-dd
+  time: string; // HH:mm
+  zone: ZoneType;
+  timeZone: string; // zona IANA del cliente
+}
+
+export type BookingCommand = CreateBookingCommand | CancelBookingCommand | RescheduleBookingCommand;
+
+// Destino de una reprogramación ya resuelto por el backend (hora convertida a UTC)
+export interface RescheduleTarget {
+  trainerId: string;
+  trainerName: string;
+  date: Date;
+  time: string;
+  zone: ZoneType;
+  startsAt: Date;
+  clientTimezone: string;
+}
 
 // Representación serializable de una reserva (respuesta de la Edge Function)
 export interface BookingDto {

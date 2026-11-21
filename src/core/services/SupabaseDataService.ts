@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { addWeeks, format, startOfWeek } from 'date-fns';
-import { Booking, Client, Program, Trainer, TrainerSchedule } from '../types';
+import { Booking, Client, Program, RescheduleTarget, Trainer, TrainerSchedule } from '../types';
 import {
   IBookingRepository,
   IClientRepository,
@@ -279,6 +279,29 @@ export class SupabaseBookingRepository implements IBookingRepository {
       .eq('id', id)
       .eq('status', 'confirmed')
       .select('id');
+    if (error) throw new Error(error.message);
+    return Array.isArray(data) && data.length > 0;
+  }
+
+  async rescheduleIfConfirmed(id: string, target: RescheduleTarget): Promise<boolean> {
+    // Un solo UPDATE condicional al estado: una cita cancelada entre medias no se reactiva.
+    // No toca status, client_id, program_id ni duration_minutes.
+    const { data, error } = await this.client
+      .from('bookings')
+      .update({
+        trainer_id: target.trainerId,
+        trainer_name: target.trainerName,
+        date: format(target.date, 'yyyy-MM-dd'),
+        time_slot: target.time,
+        zone: target.zone,
+        starts_at: target.startsAt.toISOString(),
+        client_timezone: target.clientTimezone,
+      })
+      .eq('id', id)
+      .eq('status', 'confirmed')
+      .select('id');
+    // 23505 = unique_violation: el cliente ya tiene otra reserva confirmada en ese horario
+    if (error?.code === '23505') throw new BookingDuplicateError();
     if (error) throw new Error(error.message);
     return Array.isArray(data) && data.length > 0;
   }

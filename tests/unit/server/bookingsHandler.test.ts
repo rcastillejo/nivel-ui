@@ -8,6 +8,7 @@ import {
   BookingCapacityError,
   BookingDuplicateError,
   BookingNotFoundError,
+  BookingRescheduleNoticeError,
   BookingValidationError,
   InvalidTimeZoneError,
 } from '@/core/types/errors';
@@ -15,6 +16,7 @@ import {
 const commands = {
   createBooking: vi.fn(),
   cancelBooking: vi.fn(),
+  rescheduleBooking: vi.fn(),
 };
 
 const fixedNow = new Date('2026-11-10T12:00:00.000Z');
@@ -167,6 +169,91 @@ describe('handleBookingsRequest', () => {
     });
   });
 
+  describe('reschedule', () => {
+    const rescheduleBody = {
+      action: 'reschedule',
+      bookingId: 'b1',
+      trainerId: 'trainer2',
+      date: '2026-11-20',
+      time: '09:00',
+      zone: 'gabinete',
+      timeZone: 'America/Lima',
+    };
+
+    beforeEach(() => {
+      commands.rescheduleBooking.mockResolvedValue({ ...booking, trainerId: 'trainer2', zone: 'gabinete' });
+    });
+
+    it('reschedules using the authenticated user and the server clock', async () => {
+      const response = await call({ body: rescheduleBody });
+
+      expect(response.status).toBe(200);
+      expect(commands.rescheduleBooking).toHaveBeenCalledWith(
+        {
+          bookingId: 'b1',
+          clientId: 'client1',
+          trainerId: 'trainer2',
+          date: '2026-11-20',
+          time: '09:00',
+          zone: 'gabinete',
+          timeZone: 'America/Lima',
+        },
+        fixedNow
+      );
+      expect(response.body).toMatchObject({ booking: { id: 'b1', trainerId: 'trainer2', zone: 'gabinete' } });
+      expect(commands.createBooking).not.toHaveBeenCalled();
+      expect(commands.cancelBooking).not.toHaveBeenCalled();
+    });
+
+    it('ignores a clientId smuggled in the body', async () => {
+      await call({ body: { ...rescheduleBody, clientId: 'victim' } });
+
+      expect(commands.rescheduleBooking.mock.calls[0][0].clientId).toBe('client1');
+    });
+
+    it('rejects non-client roles with 403 without rescheduling', async () => {
+      authenticate.mockResolvedValue({ id: 'trainer1', role: 'trainer' });
+
+      expect((await call({ body: rescheduleBody })).status).toBe(403);
+      expect(commands.rescheduleBooking).not.toHaveBeenCalled();
+    });
+
+    it('maps a missing or foreign booking to 404', async () => {
+      commands.rescheduleBooking.mockRejectedValue(new BookingNotFoundError('b1'));
+
+      expect((await call({ body: rescheduleBody })).status).toBe(404);
+    });
+
+    it('maps the notice error to 409 keeping the domain message about rescheduling', async () => {
+      commands.rescheduleBooking.mockRejectedValue(new BookingRescheduleNoticeError('gabinete', 1440));
+
+      const response = await call({ body: rescheduleBody });
+
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({
+        error: { name: 'BookingRescheduleNoticeError', message: expect.stringContaining('reprogramar') },
+      });
+    });
+
+    it.each([
+      ['already cancelled', new BookingAlreadyCancelledError('b1')],
+      ['duplicate', new BookingDuplicateError()],
+      ['capacity', new BookingCapacityError('gabinete', 1, 1)],
+    ])('maps %s to 409', async (_label, error) => {
+      commands.rescheduleBooking.mockRejectedValue(error);
+
+      expect((await call({ body: rescheduleBody })).status).toBe(409);
+    });
+
+    it('maps validation and time zone errors to 422', async () => {
+      commands.rescheduleBooking.mockRejectedValue(new BookingValidationError('Elige un horario distinto al actual'));
+      expect((await call({ body: rescheduleBody })).status).toBe(422);
+
+      commands.rescheduleBooking.mockRejectedValue(new InvalidTimeZoneError('Mars/Olympus'));
+      expect((await call({ body: rescheduleBody })).status).toBe(422);
+    });
+  });
+
   describe('input validation', () => {
     it.each([
       ['null body', null],
@@ -175,12 +262,17 @@ describe('handleBookingsRequest', () => {
       ['create with missing fields', { action: 'create', trainerId: 'trainer1' }],
       ['create with an invalid zone', { ...createBody, zone: 'pool' }],
       ['non-string field', { ...createBody, time: 900 }],
+      ['reschedule without bookingId', { ...createBody, action: 'reschedule' }],
+      ['reschedule with missing fields', { action: 'reschedule', bookingId: 'b1', trainerId: 'trainer1' }],
+      ['reschedule with an invalid zone', { ...createBody, action: 'reschedule', bookingId: 'b1', zone: 'pool' }],
+      ['reschedule with a non-string field', { ...createBody, action: 'reschedule', bookingId: 'b1', time: 900 }],
     ])('rejects %s with 422', async (_label, body) => {
       const response = await call({ body });
 
       expect(response.status).toBe(422);
       expect(commands.createBooking).not.toHaveBeenCalled();
       expect(commands.cancelBooking).not.toHaveBeenCalled();
+      expect(commands.rescheduleBooking).not.toHaveBeenCalled();
     });
   });
 

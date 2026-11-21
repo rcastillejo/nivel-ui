@@ -47,6 +47,18 @@ export class BookingCancellationNoticeError extends Error {
   }
 }
 
+export class BookingRescheduleNoticeError extends Error {
+  constructor(
+    public zone: ZoneType,
+    public minNoticeMinutes: number
+  ) {
+    const hours = minNoticeMinutes / 60;
+    const label = hours === 1 ? '1 hora' : `${hours} horas`;
+    super(`Solo puedes reprogramar una cita del ${ZONE_CONFIG[zone].name} con al menos ${label} de anticipación`);
+    this.name = 'BookingRescheduleNoticeError';
+  }
+}
+
 export class InvalidTimeZoneError extends Error {
   constructor(public timeZone: string) {
     super(`Zona horaria inválida: ${timeZone}`);

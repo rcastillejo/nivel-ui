@@ -52,6 +52,53 @@ describe('EdgeFunctionBookingCommands', () => {
     expect(booking.status).toBe('cancelled');
   });
 
+  it('reschedule invokes the bookings function with the booking id and the new slot', async () => {
+    const { client, invoke } = makeClient({ data: { booking: { ...dto, trainerId: 'trainer2', time: '10:00' } }, error: null });
+
+    const booking = await new EdgeFunctionBookingCommands(client).reschedule({
+      bookingId: 'b1',
+      trainerId: 'trainer2',
+      date: '2026-11-20',
+      time: '10:00',
+      zone: 'gym',
+      timeZone: 'America/Lima',
+    });
+
+    expect(invoke).toHaveBeenCalledWith('bookings', {
+      body: {
+        action: 'reschedule',
+        bookingId: 'b1',
+        trainerId: 'trainer2',
+        date: '2026-11-20',
+        time: '10:00',
+        zone: 'gym',
+        timeZone: 'America/Lima',
+      },
+    });
+    expect(booking.id).toBe('b1');
+    expect(booking.trainerId).toBe('trainer2');
+    expect(booking.date).toBeInstanceOf(Date);
+  });
+
+  it('surfaces the domain message of a rejected reschedule', async () => {
+    const response = new Response(
+      JSON.stringify({ error: { name: 'BookingRescheduleNoticeError', message: 'Solo puedes reprogramar con 1 hora de anticipación' } }),
+      { status: 409 }
+    );
+    const { client } = makeClient({ data: null, error: new FunctionsHttpError(response) });
+
+    await expect(
+      new EdgeFunctionBookingCommands(client).reschedule({
+        bookingId: 'b1',
+        trainerId: 'trainer1',
+        date: '2026-11-20',
+        time: '09:00',
+        zone: 'gym',
+        timeZone: 'America/Lima',
+      })
+    ).rejects.toThrow('Solo puedes reprogramar con 1 hora de anticipación');
+  });
+
   it('surfaces the domain message returned by the backend on HTTP errors', async () => {
     const response = new Response(
       JSON.stringify({ error: { name: 'BookingCancellationNoticeError', message: 'Solo puedes cancelar con 1 hora de anticipación' } }),

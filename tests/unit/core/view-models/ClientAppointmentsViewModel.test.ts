@@ -13,6 +13,7 @@ const mockBookingModel = {
 const mockCommands = {
   create: vi.fn(),
   cancel: vi.fn(),
+  reschedule: vi.fn(),
 };
 
 const fixedNow = new Date(2026, 10, 10, 9, 30);

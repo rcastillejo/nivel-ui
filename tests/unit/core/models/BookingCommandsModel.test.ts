@@ -3,12 +3,18 @@ import { BookingCommandsModel } from '@/core/models/BookingCommandsModel';
 import { BookingModel } from '@/core/models/BookingModel';
 import { ProgramModel } from '@/core/models/ProgramModel';
 import { Booking, Program, Trainer } from '@/core/types';
-import { BookingCancellationNoticeError, BookingValidationError, InvalidTimeZoneError } from '@/core/types/errors';
+import {
+  BookingCancellationNoticeError,
+  BookingRescheduleNoticeError,
+  BookingValidationError,
+  InvalidTimeZoneError,
+} from '@/core/types/errors';
 
 const mockBookingModel = {
   getTrainerById: vi.fn(),
   createBooking: vi.fn(),
   cancelBooking: vi.fn(),
+  rescheduleBooking: vi.fn(),
   attachProgram: vi.fn(),
 };
 
@@ -158,6 +164,88 @@ describe('BookingCommandsModel', () => {
 
       await expect(model.cancelBooking('b1', 'client1', now)).rejects.toThrow(BookingCancellationNoticeError);
       expect(mockProgramModel.restoreSession).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('rescheduleBooking', () => {
+    const input = {
+      bookingId: 'b1',
+      clientId: 'client1',
+      trainerId: 'trainer1',
+      date: '2026-11-20',
+      time: '09:00',
+      zone: 'gym' as const,
+      timeZone: 'America/Lima',
+    };
+
+    const moved: Booking = {
+      id: 'b1',
+      clientId: 'client1',
+      trainerId: 'trainer1',
+      trainerName: 'Entrenador John',
+      date: new Date(2026, 10, 20),
+      time: '09:00',
+      duration: 60,
+      zone: 'gym',
+      status: 'confirmed',
+      programId: 'program1',
+    };
+
+    beforeEach(() => {
+      mockBookingModel.getTrainerById.mockResolvedValue(trainer);
+      mockBookingModel.rescheduleBooking.mockResolvedValue(moved);
+    });
+
+    it('computes the new startsAt in UTC from the client time zone and sends it with the trainer and zone', async () => {
+      const result = await model.rescheduleBooking(input, now);
+
+      const [bookingId, clientId, target, passedNow] = mockBookingModel.rescheduleBooking.mock.calls[0];
+      expect(bookingId).toBe('b1');
+      expect(clientId).toBe('client1');
+      expect(target.startsAt.toISOString()).toBe('2026-11-20T14:00:00.000Z');
+      expect(target.clientTimezone).toBe('America/Lima');
+      expect(target).toMatchObject({ trainerId: 'trainer1', trainerName: 'Entrenador John', time: '09:00', zone: 'gym' });
+      expect(passedNow).toBe(now);
+      expect(result).toBe(moved);
+    });
+
+    it('takes the client id from the command input, never from elsewhere', async () => {
+      await model.rescheduleBooking({ ...input, clientId: 'session-client' }, now);
+
+      expect(mockBookingModel.rescheduleBooking.mock.calls[0][1]).toBe('session-client');
+    });
+
+    it('never touches the program session: moving a booking neither consumes nor gives back anything', async () => {
+      await model.rescheduleBooking(input, now);
+
+      expect(mockProgramModel.consumeSessionForClient).not.toHaveBeenCalled();
+      expect(mockProgramModel.restoreSession).not.toHaveBeenCalled();
+      expect(mockBookingModel.attachProgram).not.toHaveBeenCalled();
+    });
+
+    it('rejects an invalid time zone before touching the database', async () => {
+      await expect(model.rescheduleBooking({ ...input, timeZone: 'Mars/Olympus' }, now)).rejects.toThrow(InvalidTimeZoneError);
+      expect(mockBookingModel.getTrainerById).not.toHaveBeenCalled();
+      expect(mockBookingModel.rescheduleBooking).not.toHaveBeenCalled();
+    });
+
+    it('rejects malformed dates and times', async () => {
+      await expect(model.rescheduleBooking({ ...input, date: '20/11/2026' }, now)).rejects.toThrow(BookingValidationError);
+      await expect(model.rescheduleBooking({ ...input, time: '9am' }, now)).rejects.toThrow(BookingValidationError);
+      expect(mockBookingModel.rescheduleBooking).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unknown trainer', async () => {
+      mockBookingModel.getTrainerById.mockResolvedValue(null);
+
+      await expect(model.rescheduleBooking(input, now)).rejects.toThrow('El entrenador no existe');
+      expect(mockBookingModel.rescheduleBooking).not.toHaveBeenCalled();
+    });
+
+    it('passes domain errors through untouched', async () => {
+      mockBookingModel.rescheduleBooking.mockRejectedValue(new BookingRescheduleNoticeError('gym', 60));
+
+      await expect(model.rescheduleBooking(input, now)).rejects.toThrow(BookingRescheduleNoticeError);
     });
   });
 });
