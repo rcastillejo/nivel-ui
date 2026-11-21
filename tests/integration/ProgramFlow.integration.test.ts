@@ -102,6 +102,47 @@ describe('ProgramModel ↔ LocalStorageDataService', () => {
       ).rejects.toThrow(ActiveProgramAlreadyExistsError);
     });
 
+    it('permite agregar más de un cliente al mismo programa y los persiste', async () => {
+      const program = await model.createProgram(
+        validProgramData({ clientIds: ['client1', 'client2', 'client3'] })
+      );
+
+      const saved = await dataService.programs.getById(program.id);
+      expect(saved?.clientIds).toEqual(['client1', 'client2', 'client3']);
+    });
+
+    it('el programa compartido es el programa activo de cada uno de sus clientes', async () => {
+      const program = await model.createProgram(
+        validProgramData({ clientIds: ['client1', 'client2'] })
+      );
+
+      expect((await model.getActiveProgram('client1'))?.id).toBe(program.id);
+      expect((await model.getActiveProgram('client2'))?.id).toBe(program.id);
+      expect(await model.getProgramsByClient('client2')).toHaveLength(1);
+    });
+
+    it('rechaza el programa si alguno de los clientes ya tiene un programa activo', async () => {
+      await model.createProgram(validProgramData({ clientIds: ['client2'] }));
+
+      await expect(
+        model.createProgram(validProgramData({ clientIds: ['client1', 'client2'] }))
+      ).rejects.toThrow(ActiveProgramAlreadyExistsError);
+
+      // No debe haberse creado ningún programa para client1
+      expect(await model.getProgramsByClient('client1')).toHaveLength(0);
+    });
+
+    it('al renovar un programa compartido se conservan todos los clientes', async () => {
+      const original = await model.createProgram(
+        validProgramData({ clientIds: ['client1', 'client2'] })
+      );
+
+      const renewed = await model.renewProgram(original.id, 8);
+
+      expect(renewed.clientIds).toEqual(['client1', 'client2']);
+      expect((await model.getActiveProgram('client2'))?.id).toBe(renewed.id);
+    });
+
     it('lanza ProgramValidationError si el nombre está vacío', async () => {
       await expect(
         model.createProgram(validProgramData({ name: '' }))
