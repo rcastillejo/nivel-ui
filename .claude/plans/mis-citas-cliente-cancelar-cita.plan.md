@@ -139,9 +139,15 @@ supabase functions serve bookings
 | Modo local no ejerce la garantía de servidor | High | Declararlo en la spec; la regla del plazo vive igual en `BookingModel` |
 
 ## Acceptance
-- [ ] Spike superado y decisión de empaquetado registrada
-- [ ] Un cliente no puede reservar ni cancelar fuera de reglas llamando a Supabase directamente
-- [ ] `bookings.starts_at` se guarda en UTC, calculado por el servidor
-- [ ] Cancelar devuelve la sesión del programa una sola vez
-- [ ] Spec en `implemented`; `lint`, `tsc`, `vitest` y `build` pasan
-- [ ] Sin `any`; lógica de negocio solo en Models; dependencias inyectadas
+Estado verificado el 2026-11-21 sobre `main` (`774cbc2`). Evidencia detallada en `.claude/tdd/mis-citas-cliente-cancelar-cita.tdd.md`.
+
+- [x] Spike superado y decisión de empaquetado registrada (opción C, esbuild; ver `DEVELOPMENT.md`)
+- [x] Un cliente no puede reservar ni cancelar fuera de reglas llamando a Supabase directamente. Migración `20261111000000_close_direct_writes.sql` aplicada en producción (#209): sin las políticas `bookings: client insert`/`client cancel` ni `programs: client consume own session`, y sin `EXECUTE` para `authenticated` en `consume/restore_program_session`. Comprobado con `pg_policies` en producción y con intentos directos por REST en local (INSERT → 403, RPC → `permission denied`, PATCH → 0 filas)
+- [x] `bookings.starts_at` se guarda en UTC, calculado por el servidor (`NOT NULL` en producción)
+- [x] Cancelar devuelve la sesión del programa una sola vez (tests unitarios, de integración y E2E local; en producción no se ha ejercitado desde la UI)
+- [x] ~~Spec en `implemented`~~ No aplica: el flujo SDD se retiró (`CLAUDE.md` §11). `lint`, `tsc`, `vitest` (580 tests) y `build` pasan
+- [x] Sin `any`; lógica de negocio solo en Models; dependencias inyectadas (revisado en los archivos del hito; ViewModels y componentes del cliente no importan repositorios ni servicios)
+
+## Cierre de la Task 6
+- La política `programs: client consume own session` y el `EXECUTE` de `authenticated` sobre las funciones de sesión se retiraron en #209.
+- **Se conserva el trigger `trg_guard_client_program_update`.** Con las políticas de cliente ya borradas es una defensa redundante pero inofensiva (los entrenadores pasan, `service_role` salta RLS) y sigue impidiendo que cualquier rol que no sea entrenador ni `service_role` modifique `programs` más allá de `used_sessions + 1`. Quitarlo no aporta nada.
