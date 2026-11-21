@@ -154,6 +154,13 @@ export class TrainerViewModel {
     return this.trainers.find(t => t.id === this.selectedTrainerId);
   }
 
+  // Todas las reservas del entrenador conectado (cualquier estado). `bookings` trae las de
+  // todos los entrenadores porque RLS permite leerlas; filtrar aquí evita mostrar ajenas.
+  get trainerAppointments(): Booking[] {
+    if (!this.selectedTrainerId) return [];
+    return this.bookings.filter(booking => booking.trainerId === this.selectedTrainerId);
+  }
+
   get trainerBookings(): Booking[] {
     if (!this.selectedTrainerId) return [];
     return this.bookings.filter(booking =>

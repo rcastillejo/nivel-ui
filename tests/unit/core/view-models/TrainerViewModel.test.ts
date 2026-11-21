@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TrainerViewModel } from '@/core/view-models/TrainerViewModel';
 import { BookingModel } from '@/core/models/BookingModel';
 import { TrainerModel } from '@/core/models/TrainerModel';
-import { Trainer, TrainerSchedule } from '@/core/types';
+import { Booking, Trainer, TrainerSchedule } from '@/core/types';
 
 const mockTrainer: Trainer = {
   id: 'trainer1',
@@ -48,6 +48,36 @@ describe('TrainerViewModel', () => {
     bookingModel = makeMockBookingModel();
     trainerModel = makeMockTrainerModel();
     vm = new TrainerViewModel(bookingModel, trainerModel);
+  });
+
+  describe('trainerAppointments', () => {
+    const makeBooking = (id: string, trainerId: string, status: Booking['status']): Booking =>
+      ({ id, trainerId, status, clientId: 'client1', time: '09:00', zone: 'gym' }) as unknown as Booking;
+
+    const allBookings = [
+      makeBooking('mia-confirmada', 'trainer1', 'confirmed'),
+      makeBooking('mia-cancelada', 'trainer1', 'cancelled'),
+      makeBooking('de-otro-entrenador', 'trainer2', 'confirmed'),
+    ];
+
+    it('solo incluye las reservas del entrenador conectado, de cualquier estado', async () => {
+      vi.mocked(trainerModel.getTrainerByAuthUser).mockResolvedValue(mockTrainer);
+      vi.mocked(trainerModel.getSchedule).mockResolvedValue(mockSchedule);
+      vi.mocked(bookingModel.getAllBookings).mockResolvedValue(allBookings);
+
+      await vm.loadCurrentTrainer('auth-user-1');
+      await vm.loadAllBookings();
+
+      expect(vm.trainerAppointments.map(b => b.id)).toEqual(['mia-confirmada', 'mia-cancelada']);
+    });
+
+    it('no muestra ninguna reserva mientras no se sabe qué entrenador está conectado', async () => {
+      vi.mocked(bookingModel.getAllBookings).mockResolvedValue(allBookings);
+
+      await vm.loadAllBookings();
+
+      expect(vm.trainerAppointments).toEqual([]);
+    });
   });
 
   describe('loadCurrentTrainer', () => {
