@@ -61,10 +61,27 @@ export class ClientAppointmentsViewModel {
     return this.bookingModel.canCancel(booking, this.now());
   }
 
+  canReschedule(booking: Booking): boolean {
+    return this.bookingModel.canReschedule(booking, this.now());
+  }
+
+  // Cancelar y reprogramar comparten la regla de anticipación, así que comparten el aviso
   cancellationNotice(booking: Booking): string {
     const hours = CANCELLATION_NOTICE_MINUTES[booking.zone] / 60;
     const label = hours === 1 ? '1 hora' : `${hours} horas`;
-    return `Solo se puede cancelar con al menos ${label} de anticipación (${ZONE_CONFIG[booking.zone].name})`;
+    return `Solo se puede cancelar o reprogramar con al menos ${label} de anticipación (${ZONE_CONFIG[booking.zone].name})`;
+  }
+
+  /**
+   * Vuelve a cargar las listas sin el estado de carga de página completa (p. ej. tras reprogramar).
+   * Si falla se mantienen las anteriores: la operación ya se hizo y el cliente puede recargar la página.
+   */
+  async refresh(): Promise<void> {
+    try {
+      await this.fetchAppointments();
+    } catch {
+      // Se mantiene la lista anterior
+    }
   }
 
   requestCancel(booking: Booking): void {
@@ -98,11 +115,7 @@ export class ClientAppointmentsViewModel {
     }
 
     // La cancelación ya se hizo; si falla el refresco, las listas quedan como estaban
-    try {
-      await this.fetchAppointments();
-    } catch {
-      // Se mantiene la lista anterior; el cliente puede recargar la página
-    }
+    await this.refresh();
 
     runInAction(() => {
       this.cancelTarget = null;

@@ -11,6 +11,7 @@ import { TrainerModel } from '../models/TrainerModel';
 import { ClientViewModel } from '../view-models/ClientViewModel';
 import { ClientModel } from '../models/ClientModel';
 import { ClientAppointmentsViewModel } from '../view-models/ClientAppointmentsViewModel';
+import { RescheduleViewModel } from '../view-models/RescheduleViewModel';
 import { BookingCommandsModel } from '../models/BookingCommandsModel';
 import { IBookingCommands } from '../repositories';
 import { EdgeFunctionBookingCommands } from '../services/EdgeFunctionBookingCommands';
@@ -25,6 +26,7 @@ interface ViewModelContextType {
   trainerVM: TrainerViewModel;
   clientVM: ClientViewModel;
   clientAppointmentsVM: ClientAppointmentsViewModel;
+  rescheduleVM: RescheduleViewModel;
 }
 
 const ViewModelContext = createContext<ViewModelContextType | null>(null);
@@ -60,8 +62,9 @@ export const ViewModelProvider = observer(function ViewModelProvider({ children 
     const trainerVM = new TrainerViewModel(bookingModel, trainerModel);
     const clientVM = new ClientViewModel(clientModel);
     const clientAppointmentsVM = new ClientAppointmentsViewModel(bookingModel, commands);
+    const rescheduleVM = new RescheduleViewModel(bookingModel, commands);
 
-    return { bookingVM, programVM, trainerVM, clientVM, clientAppointmentsVM };
+    return { bookingVM, programVM, trainerVM, clientVM, clientAppointmentsVM, rescheduleVM };
   }, [service, isLocalStorageFallback, authVM]);
 
   useEffect(() => {
@@ -110,4 +113,9 @@ export function useClientViewModel() {
 export function useClientAppointmentsViewModel(): ClientAppointmentsViewModel {
   const { clientAppointmentsVM } = useViewModels();
   return clientAppointmentsVM;
+}
+
+export function useRescheduleViewModel(): RescheduleViewModel {
+  const { rescheduleVM } = useViewModels();
+  return rescheduleVM;
 }

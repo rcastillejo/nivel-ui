@@ -9,12 +9,24 @@ vi.mock('@/core/providers/AuthProvider', () => ({
 
 vi.mock('@/core/providers/ViewModelProvider', () => ({
   useClientAppointmentsViewModel: vi.fn(),
+  useRescheduleViewModel: vi.fn(),
+}));
+
+// El diálogo tiene sus propios tests: aquí solo se comprueba cómo lo conecta la vista
+vi.mock('@/components/client/RescheduleDialog', () => ({
+  default: ({ onRescheduled }: { onRescheduled: () => void }) => (
+    <button type="button" data-testid="reschedule-dialog-stub" onClick={onRescheduled}>
+      stub
+    </button>
+  ),
 }));
 
 import { useAuthViewModel } from '@/core/providers/AuthProvider';
-import { useClientAppointmentsViewModel } from '@/core/providers/ViewModelProvider';
+import { useClientAppointmentsViewModel, useRescheduleViewModel } from '@/core/providers/ViewModelProvider';
 
 const load = vi.fn();
+const refresh = vi.fn();
+const startReschedule = vi.fn();
 const requestCancel = vi.fn();
 const dismissCancel = vi.fn();
 const confirmCancel = vi.fn();
@@ -56,7 +68,10 @@ function mockVm(state: {
     isEmpty: upcoming.length === 0 && past.length === 0,
     load,
     canCancel: (b: Booking) => (state.cancellable ?? []).includes(b.id),
-    cancellationNotice: () => 'Solo se puede cancelar con al menos 1 hora de anticipación (Gym)',
+    // Cancelar y reprogramar comparten la regla de anticipación
+    canReschedule: (b: Booking) => (state.cancellable ?? []).includes(b.id),
+    refresh,
+    cancellationNotice: () => 'Solo se puede cancelar o reprogramar con al menos 1 hora de anticipación (Gym)',
     cancelTarget: state.cancelTarget ?? null,
     cancellingId: state.cancellingId ?? null,
     cancelError: state.cancelError ?? null,
@@ -72,6 +87,9 @@ describe('ClientAppointmentsView', () => {
     vi.mocked(useAuthViewModel).mockReturnValue({
       currentUser: { id: 'u1', email: 'c@nivel.gym', role: 'client' },
     } as ReturnType<typeof useAuthViewModel>);
+    vi.mocked(useRescheduleViewModel).mockReturnValue({
+      start: startReschedule,
+    } as unknown as ReturnType<typeof useRescheduleViewModel>);
   });
 
   it('loads the appointments of the authenticated client', () => {
@@ -214,6 +232,48 @@ describe('ClientAppointmentsView', () => {
 
       expect(screen.getByTestId('cancel-error')).toHaveTextContent('No se pudo cancelar la cita');
       expect(screen.getByTestId('appointments-upcoming')).toBeInTheDocument();
+    });
+  });
+
+  describe('rescheduling', () => {
+    it('shows a reschedule button next to cancel for appointments that can be changed and starts the flow', () => {
+      const b = booking('b1');
+      mockVm({ upcoming: [b], cancellable: ['b1'] });
+
+      render(<ClientAppointmentsView />);
+      expect(screen.getByTestId('appointment-cancel-b1')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('appointment-reschedule-b1'));
+
+      expect(startReschedule).toHaveBeenCalledWith(b);
+    });
+
+    it('hides the reschedule button when the notice is not met and explains why once', () => {
+      mockVm({ upcoming: [booking('b1')], cancellable: [] });
+
+      render(<ClientAppointmentsView />);
+
+      expect(screen.queryByTestId('appointment-reschedule-b1')).toBeNull();
+      expect(screen.getAllByTestId('appointment-cancel-blocked-b1')).toHaveLength(1);
+      expect(screen.getByTestId('appointment-cancel-blocked-b1')).toHaveTextContent('cancelar o reprogramar');
+    });
+
+    it('never offers rescheduling for history items', () => {
+      mockVm({ past: [booking('p1'), booking('p2', { status: 'cancelled' })], cancellable: ['p1', 'p2'] });
+
+      render(<ClientAppointmentsView />);
+
+      expect(screen.queryByTestId('appointment-reschedule-p1')).toBeNull();
+      expect(screen.queryByTestId('appointment-reschedule-p2')).toBeNull();
+    });
+
+    it('refreshes the lists, without the full-page loading state, when the dialog reports a reschedule', () => {
+      mockVm({ upcoming: [booking('b1')], cancellable: ['b1'] });
+
+      render(<ClientAppointmentsView />);
+      fireEvent.click(screen.getByTestId('reschedule-dialog-stub'));
+
+      expect(refresh).toHaveBeenCalledTimes(1);
+      expect(load).toHaveBeenCalledTimes(1); // solo la carga inicial
     });
   });
 });

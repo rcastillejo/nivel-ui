@@ -8,6 +8,7 @@ import { BookingValidationError } from '@/core/types/errors';
 const mockBookingModel = {
   getClientAppointments: vi.fn(),
   canCancel: vi.fn(),
+  canReschedule: vi.fn(),
 };
 
 const mockCommands = {
@@ -139,6 +140,44 @@ describe('ClientAppointmentsViewModel', () => {
     it('explains the minimum notice of the booking zone', () => {
       expect(vm.cancellationNotice(upcoming)).toContain('1 hora');
       expect(vm.cancellationNotice({ ...upcoming, zone: 'gabinete' })).toContain('24 horas');
+    });
+
+    it('says the same notice applies to rescheduling, since the buttons share the rule', () => {
+      expect(vm.cancellationNotice(upcoming)).toContain('cancelar o reprogramar');
+    });
+
+    it('canReschedule delegates the rule to the model with the injected clock', () => {
+      mockBookingModel.canReschedule.mockReturnValue(true);
+
+      expect(vm.canReschedule(upcoming)).toBe(true);
+      expect(mockBookingModel.canReschedule).toHaveBeenCalledWith(upcoming, fixedNow);
+
+      mockBookingModel.canReschedule.mockReturnValue(false);
+      expect(vm.canReschedule(upcoming)).toBe(false);
+    });
+
+    describe('refresh', () => {
+      const moved = { ...upcoming, time: '11:00' };
+
+      it('reloads the lists without showing the full-page loading state', async () => {
+        mockBookingModel.getClientAppointments.mockResolvedValue({ upcoming: [moved], past: [] });
+
+        const pending = vm.refresh();
+        expect(vm.isLoading).toBe(false);
+        await pending;
+
+        expect(vm.upcoming).toEqual([moved]);
+        expect(vm.error).toBeNull();
+      });
+
+      it('keeps the previous lists when the refresh fails', async () => {
+        mockBookingModel.getClientAppointments.mockRejectedValue(new Error('sin conexión'));
+
+        await vm.refresh();
+
+        expect(vm.upcoming).toEqual([upcoming]);
+        expect(vm.error).toBeNull();
+      });
     });
 
     it('requestCancel opens the confirmation and dismissCancel closes it', () => {
