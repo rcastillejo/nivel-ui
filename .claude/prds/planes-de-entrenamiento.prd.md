@@ -27,12 +27,13 @@ El entrenador de Nivel Gym asigna a cada cliente un "Programa" de texto libre: s
 - El nombre del plan define la duración (mensual, bimensual, trimestral); la cantidad de sesiones se elige aparte entre 8, 12 y 16.
 - **Fecha fin**: se calcula en **bloques de 30 días** desde la fecha de inicio (ej.: inicia el 2 de noviembre, termina 30 días después). Mensual = 30 días; Bimensual = 60; Trimestral = 90; DuoMensual = 30; DuoTrimestral = 90; Especial = 30 (es mensual).
 - **Mensaje de 12 sesiones**: el recuadro "sesiones recomendadas para resultados visibles" de la pantalla del cliente se **elimina**. Depende del entrenador y del cliente, y queda fuera de alcance.
-- **Duo**: es un indicador de que participan 2 personas. Siempre hay un cliente **representante** (cliente registrado); las sesiones se cuentan solo a ese cliente. El acompañante **no es cliente registrado**: solo se guarda su nombre como dato **opcional**. Una reserva cubre a ambas personas. Cuenta como **2 cupos** de capacidad (pendiente de confirmar).
+- **Duo**: es un indicador de que participan 2 personas. Siempre hay un cliente **representante** (cliente registrado); las sesiones se cuentan solo a ese cliente. El acompañante **no es cliente registrado**: solo se guarda su nombre como dato **opcional**. Una reserva cubre a ambas personas. Cuenta como **2 cupos** de capacidad. El Duo es **solo para entrenamientos** (zona gimnasio): no se puede reservar en el gabinete.
 - **Sesiones**: se descuentan **al reservar** (no existe un evento de asistencia). Se devuelven al **cancelar**. Al **reprogramar** el descuento se mantiene. Es el comportamiento actual.
-- Se mantiene la regla de **un solo plan activo por cliente**. Un cliente puede migrar de plan.
+- **Un solo plan activo por cliente.** Para pasar a otro plan, el cliente debe **terminar** el plan actual (no se migra a mitad de plan).
+- **Reservar exige un plan activo.** Un cliente sin plan activo no puede reservar. (Cambia el comportamiento de hoy, que lo permite.)
+- **Sesiones agotadas bloquean las reservas.** Con 0 sesiones disponibles el cliente no puede reservar hasta **renovar**. (Cambia el comportamiento de hoy, que no bloquea.)
 - La fecha de inicio sigue la regla actual (no puede ser pasada: hoy debe ser mañana o después).
 - Los programas existentes (fase de prueba) se migran o se descartan.
-- El descuento de sesión y el manejo de sesiones agotadas se mantienen como hoy (ver Preguntas abiertas).
 
 ### Visualización (por entrenador)
 1. **Planes**: se muestran los 6 planes.
@@ -62,21 +63,22 @@ Sabremos que acertamos cuando **el entrenador ve la cantidad de clientes por pla
 | # | Hito | Resultado | Estado | Plan |
 |---|---|---|---|---|
 | 1 | Catálogo de planes y asignación | El entrenador asigna uno de los 6 tipos a un cliente, con fecha fin calculada | pending | — |
-| 2 | Plan Duo | Un Duo con representante, una reserva para 2 personas, 2 cupos, sesiones al representante | pending | — |
+| 2 | Plan Duo | Un Duo con representante, una reserva para 2 personas en el gimnasio, 2 cupos, sesiones al representante | pending | — |
+| 2b | Reglas de reserva por plan | Solo se reserva con plan activo y sesiones disponibles; al agotarse se debe renovar; solo se cambia de plan al terminar el actual | pending | — |
 | 3 | Vistas Plan → Sesiones → Clientes | El entrenador ve clientes por plan y sesiones tomadas/total sin contar a mano | pending | — |
 | 4 | Renombre y migración | Pantalla del cliente dice "Plan"; datos de prueba migrados o descartados | pending | — |
 
 ## Preguntas abiertas
-**Pendientes de confirmar con el gimnasio**
-- [ ] Un Duo cuenta como 2 cupos de capacidad (por ahora asumido). ¿El gabinete, con capacidad 1, admite un Duo?
-- [ ] ¿Un cliente sin plan puede reservar? (hoy puede)
-- [ ] Qué ocurre al agotarse las sesiones (por ahora, como hoy)
-- [ ] ¿Se permite cambiar de plan y se mantiene un solo plan activo? (por ahora asumido)
-
 **Para resolver antes de /plan**
-Ninguna. Solo quedan los pendientes del gimnasio de arriba.
+- [ ] **"Terminar" el plan**: ¿significa que se agotaron las sesiones, que pasó la fecha fin, o lo que ocurra primero? Hoy un plan no expira al pasar la fecha fin. Si queda con sesiones y pasó la fecha, ¿se pierden y el cliente queda bloqueado?
+- [ ] **Interpretación de "solo para entrenamientos"**: se asumió que equivale a la zona gimnasio (no gabinete). ¿Se confirma?
+- [ ] **Renovar con otro plan**: al terminar, ¿el cliente puede elegir cualquier plan (incluido otro tipo)? Se asume que sí.
 
 **Resueltas**
+- [x] Duo solo en zona gimnasio, 2 cupos.
+- [x] Reservar exige plan activo.
+- [x] Sesiones agotadas: se bloquea y debe renovar.
+- [x] Cambio de plan: solo cuando el actual terminó.
 - [x] Alcance de las vistas: por entrenador. No habrá vista general del gimnasio (aumentaría la complejidad).
 - [x] Duraciones: Bimensual 60 días, Trimestral 90, Especial 30 (mensual).
 - [x] Mensaje del hito de 12 sesiones: se elimina del cliente.
@@ -87,7 +89,7 @@ Ninguna. Solo quedan los pendientes del gimnasio de arriba.
 ## Riesgos
 | Riesgo | Probabilidad | Impacto | Mitigación |
 |---|---|---|---|
-| Reglas de Duo (cupos, gabinete) distintas a lo asumido | Media | Alto | Confirmar con el gimnasio antes del hito 2 |
+| Bloquear reservas sin plan o sin sesiones cambia el comportamiento actual y puede dejar clientes sin poder reservar | Media | Alto | Definir qué es "terminar" y cómo se renueva antes de /plan; avisar a los entrenadores |
 | Pérdida de datos al migrar programas | Baja | Bajo (fase de prueba) | Migrar o descartar según se decida |
 
 ---
