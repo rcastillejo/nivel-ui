@@ -23,7 +23,9 @@ import {
   BookingAlreadyCancelledError,
   BookingCancellationNoticeError,
   BookingCapacityError,
+  BookingDuplicateError,
   BookingNotFoundError,
+  BookingRescheduleNoticeError,
   BookingValidationError,
 } from '@/core/types/errors';
 import { format } from 'date-fns';
@@ -580,6 +582,153 @@ describe('Reservar y cancelar: LocalBookingCommands ↔ BookingCommandsModel ↔
     expect((await service.bookings.getById(booking.id))?.programId ?? null).toBeNull();
 
     await expect(commands.cancel(booking.id)).resolves.toMatchObject({ status: 'cancelled' });
+  });
+});
+
+describe('Reservar y reprogramar: LocalBookingCommands ↔ BookingCommandsModel ↔ LocalStorageDataService', () => {
+  const CLIENT = 'client-reschedule';
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  let commandsModel: BookingCommandsModel;
+  let commands: LocalBookingCommands;
+  let programId: string;
+
+  // Primer día laborable posterior a mañana (los entrenadores no atienden domingos)
+  const laterWeekday = (): Date => {
+    const d = tomorrow();
+    do {
+      d.setDate(d.getDate() + 1);
+    } while (d.getDay() === 0 || d.getDay() === 6);
+    return d;
+  };
+
+  const bookRequest = () => ({
+    trainerId: 'trainer1',
+    date: format(tomorrow(), 'yyyy-MM-dd'),
+    time: '09:00',
+    zone: 'gym' as ZoneType,
+    timeZone,
+  });
+  const moveRequest = (bookingId: string, overrides: Partial<{ trainerId: string; date: string; time: string; zone: ZoneType }> = {}) => ({
+    bookingId,
+    trainerId: 'trainer1',
+    date: format(laterWeekday(), 'yyyy-MM-dd'),
+    time: '10:00',
+    zone: 'gym' as ZoneType,
+    timeZone,
+    ...overrides,
+  });
+  const usedSessions = async (): Promise<number> => (await service.programs.getById(programId))!.usedSessions;
+
+  beforeEach(async () => {
+    commandsModel = new BookingCommandsModel(model, new ProgramModel(service));
+    commands = new LocalBookingCommands(commandsModel, () => CLIENT);
+    const program = await service.programs.create({
+      name: 'Programa de prueba',
+      description: 'Integración',
+      trainerId: 'trainer1',
+      clientIds: [CLIENT],
+      startDate: new Date(2026, 0, 1),
+      endDate: new Date(2099, 0, 1),
+      totalSessions: 10,
+      usedSessions: 2,
+      status: 'active',
+    });
+    programId = program.id;
+  });
+
+  it('reprogramar mueve la misma cita, conserva el programa y no toca la sesión', async () => {
+    const booking = await commands.create(bookRequest());
+    expect(await usedSessions()).toBe(3);
+
+    const moved = await commands.reschedule(moveRequest(booking.id));
+
+    const saved = await service.bookings.getById(booking.id);
+    expect(moved.id).toBe(booking.id);
+    expect(saved).toMatchObject({ id: booking.id, status: 'confirmed', time: '10:00', zone: 'gym', programId, clientTimezone: timeZone });
+    expect(isSameCalendarDay(saved!.date, laterWeekday())).toBe(true);
+    expect(saved!.startsAt!.getTime()).not.toBe(booking.startsAt!.getTime());
+    expect(await usedSessions()).toBe(3);
+    expect((await service.bookings.getByClient(CLIENT)).length).toBe(1);
+  });
+
+  it('permite cambiar de entrenador y de zona a la vez', async () => {
+    const booking = await commands.create(bookRequest());
+    const trainer2 = await model.getTrainerById('trainer2');
+
+    await commands.reschedule(moveRequest(booking.id, { trainerId: 'trainer2', zone: 'gabinete', time: '09:00' }));
+
+    const saved = await service.bookings.getById(booking.id);
+    expect(saved).toMatchObject({ trainerId: 'trainer2', trainerName: `Entrenador ${trainer2!.name}`, zone: 'gabinete', time: '09:00' });
+  });
+
+  it('permite cambiar solo la zona en el mismo horario sin chocar con la propia cita', async () => {
+    const booking = await commands.create(bookRequest());
+
+    await commands.reschedule({ ...bookRequest(), bookingId: booking.id, zone: 'gabinete' });
+
+    expect((await service.bookings.getById(booking.id))?.zone).toBe('gabinete');
+  });
+
+  it('rechaza mover a exactamente el mismo horario', async () => {
+    const booking = await commands.create(bookRequest());
+
+    await expect(commands.reschedule({ ...bookRequest(), bookingId: booking.id })).rejects.toThrow(BookingValidationError);
+  });
+
+  it('rechaza reprogramar con menos de 1 hora de anticipación (gym) y no cambia nada', async () => {
+    const booking = await commands.create(bookRequest());
+    const thirtyMinutesBefore = new Date(booking.startsAt!.getTime() - 30 * 60_000);
+    const late = new LocalBookingCommands(commandsModel, () => CLIENT, () => thirtyMinutesBefore);
+
+    await expect(late.reschedule(moveRequest(booking.id))).rejects.toThrow(BookingRescheduleNoticeError);
+    expect(await service.bookings.getById(booking.id)).toMatchObject({ time: '09:00', status: 'confirmed' });
+    expect(await usedSessions()).toBe(3);
+  });
+
+  it('no deja reprogramar la cita de otro cliente', async () => {
+    const booking = await commands.create(bookRequest());
+    const other = new LocalBookingCommands(commandsModel, () => 'otro-cliente');
+
+    await expect(other.reschedule(moveRequest(booking.id))).rejects.toThrow(BookingNotFoundError);
+    expect((await service.bookings.getById(booking.id))?.time).toBe('09:00');
+  });
+
+  it('no deja reprogramar una cita cancelada', async () => {
+    const booking = await commands.create(bookRequest());
+    await commands.cancel(booking.id);
+
+    await expect(commands.reschedule(moveRequest(booking.id))).rejects.toThrow(BookingAlreadyCancelledError);
+    expect((await service.bookings.getById(booking.id))?.status).toBe('cancelled');
+  });
+
+  it('rechaza mover a un horario donde el cliente ya tiene otra cita', async () => {
+    const first = await commands.create(bookRequest());
+    await commands.create({ ...bookRequest(), date: format(laterWeekday(), 'yyyy-MM-dd'), time: '10:00' });
+
+    await expect(commands.reschedule(moveRequest(first.id))).rejects.toThrow(BookingDuplicateError);
+    expect((await service.bookings.getById(first.id))?.time).toBe('09:00');
+  });
+
+  it('reprogramar y luego cancelar devuelve la sesión una sola vez', async () => {
+    const booking = await commands.create(bookRequest());
+    await commands.reschedule(moveRequest(booking.id));
+    expect(await usedSessions()).toBe(3);
+
+    await commands.cancel(booking.id);
+    expect(await usedSessions()).toBe(2);
+
+    await expect(commands.cancel(booking.id)).rejects.toThrow(BookingAlreadyCancelledError);
+    expect(await usedSessions()).toBe(2);
+  });
+
+  it('la cita reprogramada aparece en la nueva fecha de "Mis citas"', async () => {
+    const booking = await commands.create(bookRequest());
+    await commands.reschedule(moveRequest(booking.id));
+
+    const { upcoming } = await model.getClientAppointments(CLIENT, new Date());
+
+    expect(upcoming.map((b) => b.id)).toEqual([booking.id]);
+    expect(isSameCalendarDay(upcoming[0].date, laterWeekday())).toBe(true);
   });
 });
 

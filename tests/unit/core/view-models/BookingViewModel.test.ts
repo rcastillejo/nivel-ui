@@ -18,7 +18,8 @@ const mockBookingModel = {
 // Mock del gateway de comandos (la reserva se ejecuta en el backend)
 const mockCommands = {
   create: vi.fn(),
-  cancel: vi.fn()
+  cancel: vi.fn(),
+  reschedule: vi.fn()
 };
 
 const mockTrainer: Trainer = {

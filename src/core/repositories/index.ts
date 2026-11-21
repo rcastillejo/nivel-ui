@@ -1,4 +1,13 @@
-import { Trainer, Booking, TrainerSchedule, Client, Program, CreateBookingCommand } from '../types';
+import {
+  Trainer,
+  Booking,
+  TrainerSchedule,
+  Client,
+  Program,
+  CreateBookingCommand,
+  RescheduleBookingCommand,
+  RescheduleTarget,
+} from '../types';
 
 // Interfaces de repositorios para abstracción de datos
 export interface IClientRepository {
@@ -29,6 +38,11 @@ export interface IBookingRepository {
   update(id: string, booking: Partial<Booking>): Promise<void>;
   /** Cancela la reserva solo si sigue confirmada. Devuelve true si cambió una fila (operación atómica). */
   cancelIfConfirmed(id: string): Promise<boolean>;
+  /**
+   * Mueve la reserva a otro entrenador, fecha, horario y/o zona solo si sigue confirmada.
+   * Devuelve true si cambió una fila (operación atómica). No modifica estado, cliente ni programa.
+   */
+  rescheduleIfConfirmed(id: string, target: RescheduleTarget): Promise<boolean>;
   delete(id: string): Promise<void>;
 }
 
@@ -37,6 +51,7 @@ export interface IBookingRepository {
 export interface IBookingCommands {
   create(request: Omit<CreateBookingCommand, 'action'>): Promise<Booking>;
   cancel(bookingId: string): Promise<Booking>;
+  reschedule(request: Omit<RescheduleBookingCommand, 'action'>): Promise<Booking>;
 }
 
 export interface IProgramRepository {

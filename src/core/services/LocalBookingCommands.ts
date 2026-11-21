@@ -1,6 +1,6 @@
 import { BookingCommandsModel } from '../models/BookingCommandsModel';
 import { IBookingCommands } from '../repositories';
-import { Booking, CreateBookingCommand } from '../types';
+import { Booking, CreateBookingCommand, RescheduleBookingCommand } from '../types';
 
 /**
  * Modo local (sin Supabase): ejecuta los mismos casos de uso en el navegador.
@@ -20,5 +20,9 @@ export class LocalBookingCommands implements IBookingCommands {
 
   cancel(bookingId: string): Promise<Booking> {
     return this.commands.cancelBooking(bookingId, this.getClientId(), this.now());
+  }
+
+  reschedule(request: Omit<RescheduleBookingCommand, 'action'>): Promise<Booking> {
+    return this.commands.rescheduleBooking({ clientId: this.getClientId(), ...request }, this.now());
   }
 }

@@ -3,7 +3,7 @@ import { LocalBookingCommands } from '@/core/services/LocalBookingCommands';
 import { BookingCommandsModel } from '@/core/models/BookingCommandsModel';
 import { Booking } from '@/core/types';
 
-const commandsModel = { createBooking: vi.fn(), cancelBooking: vi.fn() };
+const commandsModel = { createBooking: vi.fn(), cancelBooking: vi.fn(), rescheduleBooking: vi.fn() };
 const fixedNow = new Date('2026-11-10T12:00:00.000Z');
 const booking = { id: 'b1' } as Booking;
 
@@ -17,6 +17,22 @@ describe('LocalBookingCommands', () => {
     commands = new LocalBookingCommands(commandsModel as unknown as BookingCommandsModel, () => clientId, () => fixedNow);
     commandsModel.createBooking.mockResolvedValue(booking);
     commandsModel.cancelBooking.mockResolvedValue(booking);
+    commandsModel.rescheduleBooking.mockResolvedValue(booking);
+  });
+
+  it('reschedule delegates with the current client id and clock', async () => {
+    const request = {
+      bookingId: 'b1',
+      trainerId: 't2',
+      date: '2026-11-20',
+      time: '10:00',
+      zone: 'gabinete' as const,
+      timeZone: 'America/Lima',
+    };
+
+    await expect(commands.reschedule(request)).resolves.toBe(booking);
+
+    expect(commandsModel.rescheduleBooking).toHaveBeenCalledWith({ clientId: 'client1', ...request }, fixedNow);
   });
 
   it('create delegates with the current client id and clock', async () => {

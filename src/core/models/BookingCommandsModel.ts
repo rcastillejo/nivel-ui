@@ -1,11 +1,21 @@
 import { parseISO } from 'date-fns';
-import { Booking, ZoneType } from '../types';
+import { Booking, Trainer, ZoneType } from '../types';
 import { BookingValidationError, InvalidTimeZoneError } from '../types/errors';
 import { isValidTimeZone, zonedDateTimeToUtc } from '../utils/timezone';
 import { BookingModel } from './BookingModel';
 import { ProgramModel } from './ProgramModel';
 
 export interface CreateBookingInput {
+  clientId: string;
+  trainerId: string;
+  date: string; // yyyy-MM-dd
+  time: string; // HH:mm
+  zone: ZoneType;
+  timeZone: string; // zona IANA del cliente
+}
+
+export interface RescheduleBookingInput {
+  bookingId: string;
   clientId: string;
   trainerId: string;
   date: string; // yyyy-MM-dd
@@ -30,17 +40,7 @@ export class BookingCommandsModel {
   ) {}
 
   async createBooking(input: CreateBookingInput, now: Date): Promise<Booking> {
-    if (!isValidTimeZone(input.timeZone)) {
-      throw new InvalidTimeZoneError(input.timeZone);
-    }
-    if (!DATE_PATTERN.test(input.date) || !TIME_PATTERN.test(input.time)) {
-      throw new BookingValidationError('La fecha o la hora no tienen un formato válido');
-    }
-
-    const trainer = await this.bookingModel.getTrainerById(input.trainerId);
-    if (!trainer) {
-      throw new BookingValidationError('El entrenador no existe');
-    }
+    const { trainer, startsAt } = await this.resolveSlot(input);
 
     const created = await this.bookingModel.createBooking(
       {
@@ -52,7 +52,7 @@ export class BookingCommandsModel {
         duration: BOOKING_DURATION_MINUTES,
         zone: input.zone,
         status: 'confirmed',
-        startsAt: zonedDateTimeToUtc(input.date, input.time, input.timeZone),
+        startsAt,
         clientTimezone: input.timeZone,
       },
       now
@@ -75,5 +75,50 @@ export class BookingCommandsModel {
       await this.programModel.restoreSession(cancelled.programId);
     }
     return cancelled;
+  }
+
+  /**
+   * Mueve una cita a otro entrenador, fecha, horario y/o zona. No toca el programa: la sesión
+   * ya consumida pasa a la nueva fecha, así que no se consume ni se devuelve ninguna.
+   */
+  async rescheduleBooking(input: RescheduleBookingInput, now: Date): Promise<Booking> {
+    const { trainer, startsAt } = await this.resolveSlot(input);
+
+    return this.bookingModel.rescheduleBooking(
+      input.bookingId,
+      input.clientId,
+      {
+        trainerId: input.trainerId,
+        trainerName: `Entrenador ${trainer.name}`,
+        date: parseISO(input.date),
+        time: input.time,
+        zone: input.zone,
+        startsAt,
+        clientTimezone: input.timeZone,
+      },
+      now
+    );
+  }
+
+  // Valida zona horaria, formatos y entrenador, y calcula el inicio en UTC con la zona del cliente
+  private async resolveSlot(slot: {
+    trainerId: string;
+    date: string;
+    time: string;
+    timeZone: string;
+  }): Promise<{ trainer: Trainer; startsAt: Date }> {
+    if (!isValidTimeZone(slot.timeZone)) {
+      throw new InvalidTimeZoneError(slot.timeZone);
+    }
+    if (!DATE_PATTERN.test(slot.date) || !TIME_PATTERN.test(slot.time)) {
+      throw new BookingValidationError('La fecha o la hora no tienen un formato válido');
+    }
+
+    const trainer = await this.bookingModel.getTrainerById(slot.trainerId);
+    if (!trainer) {
+      throw new BookingValidationError('El entrenador no existe');
+    }
+
+    return { trainer, startsAt: zonedDateTimeToUtc(slot.date, slot.time, slot.timeZone) };
   }
 }

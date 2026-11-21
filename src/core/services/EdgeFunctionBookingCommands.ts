@@ -1,7 +1,7 @@
 import { FunctionsHttpError, SupabaseClient } from '@supabase/supabase-js';
 import { BookingMapper } from '../mappers/BookingMapper';
 import { IBookingCommands } from '../repositories';
-import { Booking, BookingCommand, BookingDto, CreateBookingCommand } from '../types';
+import { Booking, BookingCommand, BookingDto, CreateBookingCommand, RescheduleBookingCommand } from '../types';
 
 const FUNCTION_NAME = 'bookings';
 
@@ -36,6 +36,10 @@ export class EdgeFunctionBookingCommands implements IBookingCommands {
 
   cancel(bookingId: string): Promise<Booking> {
     return this.invoke({ action: 'cancel', bookingId });
+  }
+
+  reschedule(request: Omit<RescheduleBookingCommand, 'action'>): Promise<Booking> {
+    return this.invoke({ action: 'reschedule', ...request });
   }
 
   private async invoke(command: BookingCommand): Promise<Booking> {

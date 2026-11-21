@@ -1,4 +1,4 @@
-import { Trainer, Booking, TrainerSchedule, Client, Program } from '../types';
+import { Trainer, Booking, TrainerSchedule, Client, Program, RescheduleTarget } from '../types';
 import { IClientRepository, ITrainerRepository, IBookingRepository, IProgramRepository, IDataService } from './index';
 
 // Horarios preestablecidos por día (Lunes a Sábado)
@@ -349,6 +349,27 @@ class LocalStorageBookingRepository implements IBookingRepository {
       return false;
     }
     bookings[index] = { ...bookings[index], status: 'cancelled' };
+    localStorage.setItem(this.key, JSON.stringify(bookings));
+    return true;
+  }
+
+  async rescheduleIfConfirmed(id: string, target: RescheduleTarget): Promise<boolean> {
+    const bookings = await this.getAll();
+    const index = bookings.findIndex(b => b.id === id);
+    if (index < 0 || bookings[index].status !== 'confirmed') {
+      return false;
+    }
+    // Solo cambia el destino: estado, cliente, programa y duración se conservan
+    bookings[index] = {
+      ...bookings[index],
+      trainerId: target.trainerId,
+      trainerName: target.trainerName,
+      date: target.date,
+      time: target.time,
+      zone: target.zone,
+      startsAt: target.startsAt,
+      clientTimezone: target.clientTimezone,
+    };
     localStorage.setItem(this.key, JSON.stringify(bookings));
     return true;
   }

@@ -1,6 +1,6 @@
 import { BookingMapper } from '../core/mappers/BookingMapper';
 import { BookingCommandsModel } from '../core/models/BookingCommandsModel';
-import { BookingCommand, BookingDto, UserRole, ZONE_CONFIG, ZoneType } from '../core/types';
+import { Booking, BookingCommand, BookingDto, UserRole, ZONE_CONFIG, ZoneType } from '../core/types';
 import {
   AuthenticationError,
   BookingAlreadyCancelledError,
@@ -8,6 +8,7 @@ import {
   BookingCapacityError,
   BookingDuplicateError,
   BookingNotFoundError,
+  BookingRescheduleNoticeError,
   BookingValidationError,
   InvalidTimeZoneError,
 } from '../core/types/errors';
@@ -72,6 +73,20 @@ function parseCommand(body: unknown): BookingCommand | null {
       return { action: 'create', trainerId, date, time, zone, timeZone };
     }
   }
+
+  if (body.action === 'reschedule') {
+    const { bookingId, trainerId, date, time, zone, timeZone } = body;
+    if (
+      typeof bookingId === 'string' && bookingId &&
+      typeof trainerId === 'string' && trainerId &&
+      typeof date === 'string' &&
+      typeof time === 'string' &&
+      isZone(zone) &&
+      typeof timeZone === 'string'
+    ) {
+      return { action: 'reschedule', bookingId, trainerId, date, time, zone, timeZone };
+    }
+  }
   return null;
 }
 
@@ -89,6 +104,7 @@ function toErrorResponse(error: unknown): BookingsResponse {
   }
   if (
     error instanceof BookingCancellationNoticeError ||
+    error instanceof BookingRescheduleNoticeError ||
     error instanceof BookingAlreadyCancelledError ||
     error instanceof BookingCapacityError ||
     error instanceof BookingDuplicateError
@@ -100,6 +116,38 @@ function toErrorResponse(error: unknown): BookingsResponse {
   }
   // Los errores inesperados no filtran detalles internos al cliente
   return errorResponse(500, 'InternalError', 'Error interno del servidor');
+}
+
+function runCommand(command: BookingCommand, clientId: string, deps: BookingsHandlerDeps): Promise<Booking> {
+  switch (command.action) {
+    case 'create':
+      return deps.commands.createBooking(
+        {
+          clientId,
+          trainerId: command.trainerId,
+          date: command.date,
+          time: command.time,
+          zone: command.zone,
+          timeZone: command.timeZone,
+        },
+        deps.now()
+      );
+    case 'cancel':
+      return deps.commands.cancelBooking(command.bookingId, clientId, deps.now());
+    case 'reschedule':
+      return deps.commands.rescheduleBooking(
+        {
+          bookingId: command.bookingId,
+          clientId,
+          trainerId: command.trainerId,
+          date: command.date,
+          time: command.time,
+          zone: command.zone,
+          timeZone: command.timeZone,
+        },
+        deps.now()
+      );
+  }
 }
 
 export async function handleBookingsRequest(
@@ -130,20 +178,7 @@ export async function handleBookingsRequest(
     }
 
     // El cliente siempre sale del token, nunca del cuerpo de la petición
-    const booking =
-      command.action === 'create'
-        ? await deps.commands.createBooking(
-            {
-              clientId: user.id,
-              trainerId: command.trainerId,
-              date: command.date,
-              time: command.time,
-              zone: command.zone,
-              timeZone: command.timeZone,
-            },
-            deps.now()
-          )
-        : await deps.commands.cancelBooking(command.bookingId, user.id, deps.now());
+    const booking = await runCommand(command, user.id, deps);
 
     return { status: 200, body: { booking: BookingMapper.toDto(booking) } };
   } catch (error) {

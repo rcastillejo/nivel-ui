@@ -382,6 +382,83 @@ describe('SupabaseBookingRepository', () => {
     });
   });
 
+  describe('rescheduleIfConfirmed', () => {
+    const target = {
+      trainerId: 't2',
+      trainerName: 'Entrenador Ana',
+      date: new Date(2026, 10, 20),
+      time: '09:00',
+      zone: 'gabinete' as const,
+      startsAt: new Date('2026-11-20T14:00:00.000Z'),
+      clientTimezone: 'America/Lima',
+    };
+
+    it('moves only a confirmed booking and returns true when a row changed', async () => {
+      const builder = makeBuilder({ data: [{ id: 'b1' }], error: null });
+      (builder.update as ReturnType<typeof vi.fn>).mockReturnValue(builder);
+      const client = makeClient(builder);
+      const repo = new SupabaseBookingRepository(client);
+
+      const changed = await repo.rescheduleIfConfirmed('b1', target);
+
+      expect(changed).toBe(true);
+      expect(client.from).toHaveBeenCalledWith('bookings');
+      expect(builder.update).toHaveBeenCalledWith({
+        trainer_id: 't2',
+        trainer_name: 'Entrenador Ana',
+        date: '2026-11-20',
+        time_slot: '09:00',
+        zone: 'gabinete',
+        starts_at: '2026-11-20T14:00:00.000Z',
+        client_timezone: 'America/Lima',
+      });
+      expect(builder.eq).toHaveBeenCalledWith('id', 'b1');
+      expect(builder.eq).toHaveBeenCalledWith('status', 'confirmed');
+      expect(builder.select).toHaveBeenCalledWith('id');
+    });
+
+    it('never changes the status, the client or the program of the booking', async () => {
+      const builder = makeBuilder({ data: [{ id: 'b1' }], error: null });
+      (builder.update as ReturnType<typeof vi.fn>).mockReturnValue(builder);
+      const repo = new SupabaseBookingRepository(makeClient(builder));
+
+      await repo.rescheduleIfConfirmed('b1', target);
+
+      const [updates] = (builder.update as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(Object.keys(updates)).not.toContain('status');
+      expect(Object.keys(updates)).not.toContain('client_id');
+      expect(Object.keys(updates)).not.toContain('program_id');
+      expect(Object.keys(updates)).not.toContain('duration_minutes');
+    });
+
+    it('returns false when no confirmed row matched (cancelled in the meantime)', async () => {
+      const builder = makeBuilder({ data: [], error: null });
+      (builder.update as ReturnType<typeof vi.fn>).mockReturnValue(builder);
+      const repo = new SupabaseBookingRepository(makeClient(builder));
+
+      expect(await repo.rescheduleIfConfirmed('b1', target)).toBe(false);
+    });
+
+    it('translates a unique violation (23505) into BookingDuplicateError', async () => {
+      const builder = makeBuilder({
+        data: null,
+        error: { code: '23505', message: 'duplicate key value violates unique constraint "uq_bookings_client_slot_confirmed"' },
+      });
+      (builder.update as ReturnType<typeof vi.fn>).mockReturnValue(builder);
+      const repo = new SupabaseBookingRepository(makeClient(builder));
+
+      await expect(repo.rescheduleIfConfirmed('b1', target)).rejects.toThrow(BookingDuplicateError);
+    });
+
+    it('throws when the database reports another error', async () => {
+      const builder = makeBuilder({ data: null, error: { message: 'boom' } });
+      (builder.update as ReturnType<typeof vi.fn>).mockReturnValue(builder);
+      const repo = new SupabaseBookingRepository(makeClient(builder));
+
+      await expect(repo.rescheduleIfConfirmed('b1', target)).rejects.toThrow('boom');
+    });
+  });
+
   describe('delete', () => {
     it('calls delete on the bookings table with the given id', async () => {
       const builder = makeBuilder({ data: null, error: null });
